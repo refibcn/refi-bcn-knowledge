@@ -1,0 +1,176 @@
+---
+import Layout from "../../../components/Layout.astro";
+import { loadKb, publishableKb, connections } from "../../../lib/kb.mjs";
+import {
+  tagRowHtml,
+  typedFieldsHtml,
+  TYPE_INFO,
+} from "../../../lib/kb-render.mjs";
+import { withBase } from "../../../lib/paths";
+
+export async function getStaticPaths() {
+  const pub = publishableKb(loadKb());
+  // Connections scoped to the PUBLISHABLE subset: a link to a non-public
+  // object stays unresolved (never a path) — the leak guard, structurally.
+  const c = connections(pub);
+  return pub.map((o, i) => ({
+    params: { schema: o.schema, slug: o.slug },
+    props: {
+      o,
+      refs: c.out[i].map((j) => pub[j]),
+      backs: c.backlinks[i].map((j) => pub[j]),
+      siblings: c.siblings[i].map((j) => pub[j]).slice(0, 12),
+    },
+  }));
+}
+const { o, refs, backs, siblings } = Astro.props;
+const link = (c: any) => withBase(`commons/${c.schema}/${c.slug}/`);
+---
+
+<Layout
+  title={o.title}
+  current="commons"
+  section="Bioregional Commons"
+  description={o.summary?.slice(0, 150)}
+>
+  <article class="kb-object">
+    <nav class="kb-crumb">
+      <a href={withBase("commons/")}>Commons</a>
+      <span>/</span>
+      <a href={withBase(`commons/#${o.schema}`)}>{o.schema}</a>
+      <span>/</span>
+      <span class="kb-crumb__cur">{o.slug}</span>
+    </nav>
+    <p class="kb-kind">{TYPE_INFO[o.schema]}</p>
+    <h1>{o.title}</h1>
+    <Fragment set:html={tagRowHtml(o)} />
+    <dl><Fragment set:html={typedFieldsHtml(o)} /></dl>
+
+    {
+      (refs.length > 0 || backs.length > 0 || siblings.length > 0) && (
+        <div class="kb-conn">
+          {refs.length > 0 && (
+            <section>
+              <h2>References</h2>
+              <ul>
+                {refs.map((c: any) => (
+                  <li>
+                    <a href={link(c)}>{c.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {backs.length > 0 && (
+            <section>
+              <h2>Referenced by</h2>
+              <ul>
+                {backs.map((c: any) => (
+                  <li>
+                    <a href={link(c)}>{c.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+          {siblings.length > 0 && (
+            <section>
+              <h2>From the same source</h2>
+              <ul>
+                {siblings.map((c: any) => (
+                  <li>
+                    <a href={link(c)}>{c.title}</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )
+    }
+  </article>
+</Layout>
+
+<style>
+  .kb-object {
+    max-width: 74ch;
+    margin: 0 auto;
+    padding: var(--space-16) var(--gutter) var(--space-24);
+  }
+  .kb-crumb {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .kb-crumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .kb-crumb a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+  .kb-crumb__cur {
+    color: var(--text-primary);
+  }
+  .kb-kind {
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    margin: var(--space-4) 0 0;
+  }
+  .kb-object h1 {
+    margin: var(--space-2) 0 var(--space-4);
+  }
+  .kb-object dl {
+    margin: var(--space-6) 0 0;
+  }
+  .kb-object dl dt {
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: var(--space-5);
+  }
+  .kb-object dl dd {
+    margin: var(--space-1) 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: var(--leading-body);
+  }
+  .kb-object dl dd.mono {
+    font-family: var(--mono);
+    font-size: var(--text-sm);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+  }
+  .kb-conn {
+    margin-top: var(--space-10);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-6);
+    display: grid;
+    gap: var(--space-6);
+  }
+  .kb-conn h2 {
+    font-size: var(--text-md);
+    margin: 0 0 var(--space-2);
+  }
+  .kb-conn ul {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .kb-conn a {
+    color: var(--primary);
+  }
+</style>

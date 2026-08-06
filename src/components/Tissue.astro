@@ -1,0 +1,41 @@
+---
+// Tissue.astro — organic cell texture (DESIGN.md §5, Tissues motif).
+// Uses Andrea's baked Voronoi SVGs as a CSS mask, tinted by a pillar var,
+// at low opacity. Decorative, zero client-JS. Place inside a
+// position:relative / isolate container.
+import { withBase } from "../lib/paths";
+interface Props {
+  seed?: number; // 1..4 picks which baked tissue svg
+  opacity?: number; // 0.1–0.2 per DESIGN.md §5.3
+  tone?: string; // CSS var name for tint, e.g. "--pillar-tissue-mid"
+  class?: string;
+}
+const {
+  seed = 1,
+  opacity = 0.12,
+  tone = "--pillar-tissue-mid",
+  class: cls = "",
+} = Astro.props;
+const n = ((Math.abs(seed) - 1) % 4) + 1;
+const src = withBase(`assets/tissues/tissue-${n}.svg`);
+---
+
+<div
+  class={`tissue ${cls}`}
+  aria-hidden="true"
+  style={`--tissue-opacity:${opacity}; --tissue-tone:var(${tone}); --tissue-src:url('${src}')`}
+>
+</div>
+
+<style>
+  .tissue {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--tissue-opacity);
+    background-color: var(--tissue-tone);
+    -webkit-mask: var(--tissue-src) center / cover no-repeat;
+    mask: var(--tissue-src) center / cover no-repeat;
+  }
+</style>

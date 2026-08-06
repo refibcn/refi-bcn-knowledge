@@ -42,11 +42,12 @@ npm run check     # astro check (types) + prettier --check
 npm run format    # prettier --write
 ```
 
+`npm run build` ends in `node scripts/verify-public-kb.mjs` — a hard gate that walks the
+whole of `dist/` for known raw-store canary strings and fails the build if any appear.
+It is the last line of defence behind `publishableKb()`, not a substitute for it.
+
 Scripts arrive incrementally as their files land:
 
-- **Task 6** adds the KB engine.
-- **Task 8** appends the public-KB gate to `build` (`astro build && node scripts/verify-public-kb.mjs`)
-  and adds `export:public-kb`. Until then `build` is plain `astro build`.
 - **Task 9** adds `protect:commons`, `verify:commons` and `build:internal`
   (`COMMONS_REVIEW=1 astro build && npm run protect:commons && npm run verify:commons`),
   plus the `test` script.

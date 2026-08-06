@@ -1,0 +1,261 @@
+---
+import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
+import { loadKb, facets, publishableKb } from "../lib/kb.mjs";
+import { COLORS, TYPE_INFO, tagRowHtml } from "../lib/kb-render.mjs";
+import { withBase } from "../lib/paths";
+
+const all = loadKb();
+const pub = publishableKb(all);
+const { schemas } = facets(all);
+const bySchema = Object.fromEntries(
+  schemas.map((s) => [s, all.filter((o) => o.schema === s).length]),
+);
+const inReview = all.filter((o) => o.maturity === "raw").length;
+// Guard the meter's divisor: a standalone CI clone reads the committed public
+// subset (`data/kb-public/`), which is legitimately empty today — `0 / 0` would
+// emit `width:NaN%`.
+const publishedPct = all.length
+  ? Math.round((pub.length / all.length) * 100)
+  : 0;
+// Published objects grouped by schema (empty today by design).
+const pubBySchema = schemas
+  .map((s) => ({ schema: s, items: pub.filter((o) => o.schema === s) }))
+  .filter((g) => g.items.length > 0);
+---
+
+<Layout
+  title="Commons"
+  current="commons"
+  section="Bioregional Commons"
+  description="The knowledge commons — one internal broad knowledge base; curated public collections, each with a clear scope, audience, and goal."
+>
+  <SectionBlock
+    id="commons"
+    title="Bioregional Commons"
+    tissue={true}
+    tissueSeed={4}
+    intro="One consolidated internal knowledge base; what publishes are curated collections with a clear scope, audience, and goal — starting with regeneration in Catalunya."
+  >
+    <p class="lede">
+      We keep a single broad knowledge base internally and publish curated
+      sub-collections from it. Every published entry is human-reviewed, carries
+      its provenance, and belongs to a defined public scope — knowledge as a
+      commons, not a content dump.
+    </p>
+
+    <a class="kb-atlas" href={withBase("atlas/")}>
+      <span class="kb-atlas__eyebrow">Atlas · maps</span>
+      <strong>Catalunya's regenerative territory, mapped →</strong>
+      <p>
+        The Regenerant Catalunya cohort across its comarques — the spatial lens
+        on the same commons.
+      </p>
+    </a>
+
+    <h3>What's inside</h3>
+    <div class="kb-types">
+      {
+        schemas.map((s) => (
+          <article class="kb-type" id={s}>
+            <span class="dot" style={`background:${COLORS[s]}`} />
+            <div>
+              <strong>{s}</strong> <span class="kb-count">{bySchema[s]}</span>
+              <p>{TYPE_INFO[s]}</p>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <h3>Status</h3>
+    <div
+      class="kb-meter"
+      role="img"
+      aria-label={`${all.length} ingested, ${inReview} in review, ${pub.length} published`}
+    >
+      <span class="kb-meter__bar"
+        ><span class="kb-meter__fill" style={`width:${publishedPct}%`}
+        ></span></span
+      >
+      <p>
+        <strong>{all.length}</strong> knowledge objects ingested ·
+        <strong>{inReview}</strong> in human review ·
+        <strong>{pub.length}</strong> published{
+          pub.length === 0 &&
+            " — the first curated collection (regeneration in Catalunya) is in review now"
+        }.
+      </p>
+    </div>
+
+    {
+      pubBySchema.length > 0 ? (
+        pubBySchema.map((g) => (
+          <section class="kb-group">
+            <h3>
+              <span class="dot" style={`background:${COLORS[g.schema]}`} />
+              {g.schema} <span class="kb-count">{g.items.length}</span>
+            </h3>
+            <div class="kb-list">
+              {g.items.map((o) => (
+                <a
+                  class="kb-card"
+                  href={withBase(`commons/${o.schema}/${o.slug}/`)}
+                >
+                  <strong>{o.title}</strong>
+                  {o.summary && <p>{o.summary.slice(0, 200)}</p>}
+                  <Fragment set:html={tagRowHtml(o)} />
+                </a>
+              ))}
+            </div>
+          </section>
+        ))
+      ) : (
+        <p class="kb-empty">
+          No entries are published yet. The first curated collection —
+          regeneration in Catalunya — is in human review; entries appear here as
+          they clear it.
+        </p>
+      )
+    }
+
+    <p class="kb-note">
+      Collaborating with us? A password-gated review instance with the full
+      working set exists — ask the team for access.
+    </p>
+  </SectionBlock>
+</Layout>
+
+<style>
+  .kb-types {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 12px 0 28px;
+  }
+  .kb-type {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    background: var(--surface-1);
+  }
+  .kb-type .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: none;
+    margin-top: 6px;
+  }
+  .kb-type p {
+    margin: 2px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .kb-count {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: var(--mono);
+  }
+  .kb-meter {
+    margin: 12px 0 28px;
+  }
+  .kb-meter__bar {
+    display: block;
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .kb-meter__fill {
+    display: block;
+    height: 100%;
+    background: var(--primary);
+    min-width: 2px;
+  }
+  .kb-group {
+    margin: 24px 0;
+  }
+  .kb-group h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kb-group .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .kb-list {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .kb-card {
+    display: block;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 13px 15px;
+    background: var(--surface-1);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--t-fast);
+  }
+  .kb-card:hover {
+    border-color: var(--border-default);
+  }
+  .kb-card p {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+  }
+  .kb-empty {
+    color: var(--text-muted);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-5);
+  }
+  .kb-note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin-top: 24px;
+  }
+  .kb-atlas {
+    display: block;
+    border: 1px solid var(--ink);
+    background: var(--surface-1);
+    padding: var(--space-5) var(--space-6);
+    margin: 20px 0 28px;
+    text-decoration: none;
+    color: var(--text-primary);
+    transition:
+      translate var(--t-med),
+      box-shadow var(--t-med);
+  }
+  .kb-atlas:hover {
+    translate: 0 -2px;
+    box-shadow: 4px 4px 0 color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+  .kb-atlas__eyebrow {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .kb-atlas strong {
+    display: block;
+    font-family: var(--serif);
+    font-size: var(--text-lg);
+    margin: var(--space-1) 0;
+  }
+  .kb-atlas p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+  }
+</style>

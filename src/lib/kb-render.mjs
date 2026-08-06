@@ -1,6 +1,10 @@
 // Server-side render helpers shared by the public commons pages and the
 // internal review page's frontmatter. Pure string builders — no DOM.
 // COLORS: dataviz-validated on paper #fbf9f3 (all 6 checks pass; fixed assignment).
+// The `Record<string, string>` annotations are for callers only: schema names
+// arrive from the store as plain strings, so a literal-key type would make every
+// `COLORS[o.schema]` lookup an implicit-any error under `astro check`.
+/** @type {Record<string, string>} */
 export const COLORS = {
   "claim-evidence": "#C92637",
   "concept-lineage": "#7B3B6E",
@@ -11,6 +15,7 @@ export const COLORS = {
   "source-system": "#0A9B8E",
 };
 
+/** @type {Record<string, string>} */
 export const TYPE_INFO = {
   resource:
     "Concrete assets — articles, guides, funding rounds, tools, organizations.",

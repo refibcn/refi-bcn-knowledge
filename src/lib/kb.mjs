@@ -85,10 +85,31 @@ function canonicalize(p) {
   }
 }
 
+// ── Types ────────────────────────────────────────────────────────────────
+// JSDoc only: this file stays plain ESM and `checkJs` is off, so nothing here
+// is type-checked. The annotations exist so `.astro` consumers — which ARE
+// checked, by `npm run check` — get a real shape instead of `any`/`never`.
+/**
+ * @typedef {object} KbObject
+ * @property {string} id           `<schema>/<slug>`
+ * @property {string} schema
+ * @property {string} slug
+ * @property {string} title
+ * @property {string} subtype
+ * @property {string} domain
+ * @property {string} maturity
+ * @property {boolean} high_risk
+ * @property {string} summary
+ * @property {string} origin
+ * @property {Record<string, any>} raw  The untouched YAML entry.
+ */
+
+/** @returns {KbObject[]} */
 export function loadKb(kbDir = resolveKbDir()) {
   const schemas = readdirSync(kbDir)
     .filter((f) => f.endsWith(".yaml"))
     .map((f) => f.replace(/\.yaml$/, ""));
+  /** @type {KbObject[]} */
   const objects = [];
   for (const schema of schemas) {
     const doc = yaml.load(readFileSync(join(kbDir, `${schema}.yaml`), "utf8"));
@@ -129,6 +150,7 @@ export function loadKb(kbDir = resolveKbDir()) {
   return objects;
 }
 
+/** @param {KbObject[]} objects */
 export function facets(objects) {
   return {
     schemas: [...new Set(objects.map((o) => o.schema))].sort(),
@@ -139,8 +161,10 @@ export function facets(objects) {
 
 // Graph model: nodes = objects; edges = same-source siblings + shared-concept pairs.
 // Same-source edges first (strongest signal), concept edges fill up to the cap.
+/** @param {KbObject[]} objects */
 export function graphData(objects) {
   const seen = new Set();
+  /** @type {[number, number][]} */
   const links = [];
   const push = (a, b) => {
     if (a === b) return;
@@ -208,14 +232,21 @@ export function graphData(objects) {
 const OK_MATURITY = new Set(["reviewed", "published"]);
 const PUBLIC_TIERS = new Set(["public"]);
 
+/** @param {KbObject} o */
 function pairKeys(o) {
+  /** @type {string[]} */
   const keys = [];
   if (o.raw.work_order) keys.push(`wo:${o.raw.work_order}`);
   if (o.origin) keys.push(`or:${o.origin}`);
   return keys;
 }
 
+/**
+ * @param {KbObject[]} objects
+ * @returns {KbObject[]}
+ */
 export function publishableKb(objects) {
+  /** @type {Map<string, KbObject[]>} */
   const boundaryIndex = new Map();
   for (const b of objects) {
     if (b.schema !== "public-use-boundary") continue;
@@ -244,8 +275,14 @@ export function publishableKb(objects) {
 // a link to an unpublished title stays `unresolved` — never becomes a path.
 const normTitle = (s) => String(s).trim().toLowerCase().replace(/\s+/g, " ");
 
+/**
+ * @param {KbObject[]} objects
+ * @returns {{ out: number[][], unresolved: string[][], backlinks: number[][], siblings: number[][] }}
+ */
 export function connections(objects) {
+  /** @type {Map<string, number>} */
   const byTitle = new Map();
+  /** @type {Map<string, number>} */
   const bySlug = new Map();
   objects.forEach((o, i) => {
     const t = normTitle(o.title);
@@ -253,8 +290,11 @@ export function connections(objects) {
     if (!bySlug.has(o.slug)) bySlug.set(o.slug, i);
   });
 
+  /** @type {number[][]} */
   const out = objects.map(() => []);
+  /** @type {string[][]} */
   const unresolved = objects.map(() => []);
+  /** @type {number[][]} */
   const backlinks = objects.map(() => []);
 
   objects.forEach((o, i) => {

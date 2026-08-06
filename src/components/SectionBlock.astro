@@ -1,0 +1,62 @@
+---
+import Tissue from "./Tissue.astro";
+interface Props {
+  id?: string;
+  title?: string;
+  intro?: string;
+  alt?: boolean;
+  tissue?: boolean;
+  tissueSeed?: number;
+}
+const {
+  id,
+  title,
+  intro,
+  alt = false,
+  tissue = false,
+  tissueSeed = 1,
+} = Astro.props;
+---
+
+<section class:list={["section-block", { "section-block--alt": alt }]} id={id}>
+  {
+    tissue && (
+      <Tissue seed={tissueSeed} opacity={0.06} tone="--pillar-tissue-mid" />
+    )
+  }
+  <div class="section-block__inner">
+    {title && <h2 class="section-block__title">{title}</h2>}
+    {intro && <p class="section-block__intro">{intro}</p>}
+    <slot />
+  </div>
+</section>
+
+<style>
+  .section-block {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    padding: var(--space-16) var(--gutter);
+    background: var(--bg);
+  }
+  .section-block--alt {
+    background: var(--surface-1);
+  }
+  .section-block__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--container-default);
+    margin: 0 auto;
+  }
+  .section-block__title {
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+    margin-bottom: var(--space-2);
+  }
+  .section-block__intro {
+    font-size: var(--text-md);
+    color: var(--text-muted);
+    margin-bottom: var(--space-10);
+    max-width: 60ch;
+    line-height: var(--leading-body);
+  }
+</style>

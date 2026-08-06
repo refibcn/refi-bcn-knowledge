@@ -1,0 +1,73 @@
+/* themes/organic.css — Andrea's full three-pillar direction
+ * (Neural / Tissue / Flow). Ported from origin/andrea colors-locked.json
+ * + tokens.css — the 2026-05-31 lock (4-step ramps, light=1 mid=3 dark=4);
+ * primary = flow red per the 2026-07-04 decision. */
+
+:root {
+  /* §2.1 Paper neutrals */
+  --paper-50: #F5F5F5; --paper-100: #F1F0EE; --paper-200: #DDD7CF;
+  --paper-700: #4B3B34; --paper-900: #2A1810;
+
+  /* §2.2 Pillars (1 light -> 4 deep, 05-31 lock) */
+  --pillar-neural-1: #B8F4ED; --pillar-neural-2: #85C1BB;
+  --pillar-neural-3: #426EAF; --pillar-neural-4: #184B7A;
+  --pillar-neural-light: var(--pillar-neural-1);
+  --pillar-neural-mid: var(--pillar-neural-3);
+  --pillar-neural-dark: var(--pillar-neural-4);
+
+  --pillar-tissue-1: #DDF48A; --pillar-tissue-2: #ACB05E;
+  --pillar-tissue-3: #447932; --pillar-tissue-4: #2F4937;
+  --pillar-tissue-light: var(--pillar-tissue-1);
+  --pillar-tissue-mid: var(--pillar-tissue-3);
+  --pillar-tissue-dark: var(--pillar-tissue-4);
+
+  --pillar-flow-1: #FFDD80; --pillar-flow-2: #E58961;
+  --pillar-flow-3: #C92637; --pillar-flow-4: #613400;
+  --pillar-flow-light: var(--pillar-flow-1);
+  --pillar-flow-mid: var(--pillar-flow-3);
+  --pillar-flow-dark: var(--pillar-flow-4);
+
+  /* §2.3 Library accents (data-viz, 05-31 set) */
+  --lib-gris: #AEADA5; --lib-ocean: #4C6BC1; --lib-blue: #6BB5B4;
+  --lib-green: #39A659; --lib-yellow: #D5AD1C; --lib-orange: #DC7221;
+  --lib-red: #CC4727; --lib-pink: #DC697F; --lib-purple: #8161BF;
+
+  /* Semantic mapping (Andrea's wiring) */
+  --bg: var(--paper-50);
+  --surface-1: var(--paper-100);
+  --surface-2: var(--paper-50);
+  --text-primary: var(--paper-900);
+  --text-muted: var(--paper-700);
+  --border-default: var(--paper-200);
+  --border-subtle: color-mix(in srgb, var(--paper-200) 55%, var(--paper-50));
+  --primary: var(--pillar-flow-mid);          /* red #C92637 */
+  --primary-hover: var(--pillar-flow-dark);   /* deep brown #613400 */
+  --primary-foreground: var(--paper-50);      /* paper-50 on red — AA 5.05:1 */
+  --accent: var(--pillar-neural-light);
+  --accent-foreground: var(--pillar-neural-dark);
+
+  /* Status + foregrounds */
+  --success: var(--pillar-tissue-dark);  --success-foreground: #F4F6F2;      /* 9.07:1 */
+  --warning: var(--pillar-flow-light);   --warning-foreground: var(--paper-900); /* 12.86:1 */
+  --danger:  #7A2618;                    --danger-foreground: #FFF8F6;       /* dark brick, distinct from primary */
+  --info:    var(--pillar-neural-mid);   --info-foreground: var(--paper-50); /* 4.72:1 */
+
+  --gradient-bridge: linear-gradient(135deg, var(--pillar-neural-mid), var(--pillar-flow-mid));
+
+  /* Type — Geist headings, Averia for .display.
+   * Variable @fontsource families register with a " Variable" suffix. */
+  --serif: "Averia Serif Libre", Georgia, serif;
+  --sans: "Geist Variable", "Geist", system-ui, sans-serif;
+  --mono: "Geist Mono Variable", "Geist Mono", ui-monospace, monospace;
+  --font-headings: var(--sans);
+  --font-display-weight: 400;
+
+  /* Radius (rounded) + shadow (3-step) */
+  --radius: 0.5rem;
+  --radius-sm: 0.25rem;
+  --shadow-sm: 0 1px 2px 0 color-mix(in srgb, var(--paper-900) 6%, transparent);
+  --shadow-md: 0 4px 8px -2px color-mix(in srgb, var(--paper-900) 8%, transparent),
+               0 2px 4px -2px color-mix(in srgb, var(--paper-900) 5%, transparent);
+  --shadow-lg: 0 12px 24px -6px color-mix(in srgb, var(--paper-900) 10%, transparent),
+               0 4px 8px -4px color-mix(in srgb, var(--paper-900) 6%, transparent);
+}

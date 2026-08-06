@@ -1,0 +1,29 @@
+{
+  "name": "refi-bcn-knowledge",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ReFi BCN Knowledge Commons — public commons lens, internal review lens, Catalunya atlas, and the Notion-CRM-fed directory.",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@fontsource-variable/fraunces": "^5.0.0",
+    "@fontsource-variable/geist": "^5.0.0",
+    "@fontsource-variable/geist-mono": "^5.0.0",
+    "@fontsource-variable/inter": "^5.0.0",
+    "@fontsource/averia-serif-libre": "^5.0.0",
+    "@fontsource/ibm-plex-mono": "^5.0.0",
+    "@notionhq/client": "^3.1.0",
+    "astro": "^5.0.0",
+    "js-yaml": "^4.1.0",
+    "maplibre-gl": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "typescript": "^5.9.3"
+  }
+}

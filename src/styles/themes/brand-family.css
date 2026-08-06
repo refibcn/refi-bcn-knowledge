@@ -1,0 +1,50 @@
+/* themes/brand-family.css — v2 spec direction (purple/orange/forest,
+ * Fraunces/Inter/IBM Plex Mono, straight edges). Preserved swap-back.
+ * Activate by editing the @import in src/styles/theme.css. */
+
+:root {
+  /* Neutrals */
+  --paper: #FBF9F3; --ivory: #F6F1E8; --sand: #E6DFD7;
+  --ink: #1D1A16; --rule: #6B6660; --navy: #092045;
+
+  /* Accents */
+  --purple: #6B4EA3; --purple-light: #8B6EC3;
+  --orange: #E67E50; --orange-light: #F49870;
+  --forest: #214033; --terracotta: #8B5A3C; --blue: #4A6B85;
+
+  /* Semantic mapping (ink-on-paper) */
+  --bg: var(--paper);
+  --surface-1: var(--ivory);
+  --surface-2: var(--sand);
+  --text-primary: var(--ink);
+  --text-muted: var(--rule);
+  --border-default: color-mix(in srgb, var(--rule) 30%, transparent);
+  --border-subtle: color-mix(in srgb, var(--rule) 15%, transparent);
+  --primary: var(--purple);
+  --primary-hover: var(--purple-light);
+  --primary-foreground: var(--paper);
+  --accent: var(--orange);
+  --accent-foreground: var(--ink);
+
+  /* Status + foregrounds */
+  --success: var(--blue);    --success-foreground: var(--paper);
+  --warning: #D27A3A;        --warning-foreground: var(--ink);
+  --danger:  #B33A2A;        --danger-foreground: var(--paper);
+  --info:    #6b4a85;        --info-foreground: var(--paper);
+
+  --gradient-bridge: linear-gradient(135deg, var(--purple), var(--orange));
+
+  /* Type — variable @fontsource families register with a " Variable" suffix */
+  --serif: "Fraunces Variable", "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-headings: var(--serif);   /* serif headings */
+  --font-display-weight: 400;
+
+  /* Radius (straight) + shadow (flat) */
+  --radius: 0;
+  --radius-sm: 2px;
+  --shadow-sm: 0 1px 3px 0 color-mix(in srgb, var(--ink) 8%, transparent);
+  --shadow-md: var(--shadow-sm);
+  --shadow-lg: var(--shadow-sm);
+}

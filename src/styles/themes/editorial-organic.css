@@ -1,0 +1,60 @@
+/* themes/editorial-organic.css — ACTIVE. BIS editorial structure
+ * (warm paper/ink, straight edges, flat) + Andrea's organic three-pillar
+ * accents + backgrounds. Palette = the 2026-05-31 lock (4-step ramps,
+ * light=1 mid=3 dark=4); primary = flow red per the 2026-07-04 decision. */
+:root {
+  /* Neutrals — BIS warm-editorial */
+  --paper: #fbf9f3; --ivory: #f6f1e8; --sand: #ece4d8;
+  --ink: #1d1a16; --rule: #6b6660;
+
+  /* Organic pillars (Andrea, 2026-05-31 lock) — accents + motif tints */
+  --pillar-neural-1: #B8F4ED; --pillar-neural-2: #85C1BB;
+  --pillar-neural-3: #426EAF; --pillar-neural-4: #184B7A;
+  --pillar-neural-light: var(--pillar-neural-1); --pillar-neural-mid: var(--pillar-neural-3); --pillar-neural-dark: var(--pillar-neural-4);
+  --pillar-tissue-1: #DDF48A; --pillar-tissue-2: #ACB05E;
+  --pillar-tissue-3: #447932; --pillar-tissue-4: #2F4937;
+  --pillar-tissue-light: var(--pillar-tissue-1); --pillar-tissue-mid: var(--pillar-tissue-3); --pillar-tissue-dark: var(--pillar-tissue-4);
+  --pillar-flow-1: #FFDD80; --pillar-flow-2: #E58961;
+  --pillar-flow-3: #C92637; --pillar-flow-4: #613400;
+  --pillar-flow-light: var(--pillar-flow-1); --pillar-flow-mid: var(--pillar-flow-3); --pillar-flow-dark: var(--pillar-flow-4);
+
+  /* Library accents (Andrea's 05-31 data-viz set) */
+  --lib-gris: #AEADA5; --lib-ocean: #4C6BC1; --lib-blue: #6BB5B4;
+  --lib-green: #39A659; --lib-yellow: #D5AD1C; --lib-orange: #DC7221;
+  --lib-red: #CC4727; --lib-pink: #DC697F; --lib-purple: #8161BF;
+
+  /* Semantic mapping */
+  --bg: var(--paper);
+  --surface-1: var(--ivory);
+  --surface-2: var(--sand);
+  --text-primary: var(--ink);
+  --text-muted: var(--rule);
+  --border-default: color-mix(in srgb, var(--ink) 45%, transparent);
+  --border-subtle: color-mix(in srgb, var(--rule) 22%, transparent);
+  --primary: var(--pillar-flow-mid);          /* red #C92637 */
+  --primary-hover: var(--pillar-flow-dark);   /* deep brown #613400 */
+  --primary-foreground: var(--paper);         /* paper on red — AA 5.23:1 */
+  --accent: var(--pillar-neural-mid);
+  --accent-foreground: var(--paper);          /* paper on #426EAF — AA 4.89:1 */
+
+  --success: var(--pillar-tissue-dark);       --success-foreground: #F4F6F2;  /* 9.07:1 */
+  --warning: var(--pillar-flow-light);        --warning-foreground: var(--ink);  /* 13.13:1 */
+  --danger:  #7A2618;                         --danger-foreground: var(--paper); /* dark brick, distinct from primary — 9.42:1 */
+  --info:    var(--pillar-neural-mid);        --info-foreground: var(--paper);   /* 4.89:1 */
+
+  --gradient-bridge: linear-gradient(135deg, var(--pillar-neural-mid), var(--pillar-flow-mid));
+
+  /* Type — Averia Serif Libre titles/display; Geist body (Andrea's direction,
+   * 2026-07-04 decision); IBM Plex Mono labels (editorial signature). */
+  --serif: "Averia Serif Libre", "Fraunces", Georgia, serif;
+  --sans: "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-headings: var(--serif);
+  --font-display-weight: 400;
+
+  /* Radius / shadow — BIS straight + flat */
+  --radius: 0; --radius-sm: 0;
+  --shadow-sm: 0 1px 2px 0 color-mix(in srgb, var(--ink) 6%, transparent);
+  --shadow-md: var(--shadow-sm);
+  --shadow-lg: var(--shadow-sm);
+}

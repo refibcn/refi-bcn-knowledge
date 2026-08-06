@@ -1,0 +1,97 @@
+---
+import "@fontsource-variable/fraunces";
+import "@fontsource-variable/inter";
+import "@fontsource/ibm-plex-mono/400.css";
+import "@fontsource/ibm-plex-mono/500.css";
+import "@fontsource-variable/geist";
+import "@fontsource-variable/geist-mono";
+import "@fontsource/averia-serif-libre/400.css";
+import "@fontsource/averia-serif-libre/700.css";
+import "../styles/tokens.css";
+import "../styles/theme.css";
+import "../styles/global.css";
+import Nav from "./Nav.astro";
+import Footer from "./Footer.astro";
+import fs from "node:fs";
+import path from "node:path";
+import yaml from "js-yaml";
+
+const site = yaml.load(
+  fs.readFileSync(path.join(process.cwd(), "src/data/site.yaml"), "utf8")
+) as { name: string; url: string; description: string };
+
+interface Props {
+  title: string;
+  description?: string;
+  current?:
+    | "home"
+    | "commons"
+    | "atlas"
+    | "organizations"
+    | "programs"
+    | "events"
+    | "priorities"
+    | "about";
+  section?: string;
+  dataset?: string;
+  minimal?: boolean;
+  noindex?: boolean;
+}
+const { title, description = site.description, current = "home", section, dataset, minimal = false, noindex = false } = Astro.props;
+const pageTitle = `${title} · ${site.name}`;
+const canonical = new URL(Astro.url.pathname, site.url).href;
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content={description} />
+  {noindex && <meta name="robots" content="noindex" />}
+  <title>{pageTitle}</title>
+  <link rel="canonical" href={canonical} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content={site.name} />
+  <meta property="og:title" content={pageTitle} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonical} />
+  <slot name="head" />
+</head>
+<body class:list={{ minimal }}>
+  {!minimal && <Nav current={current} section={section} dataset={dataset} />}
+  <main><slot /></main>
+  {!minimal && <Footer />}
+  <script>
+    const els = document.querySelectorAll("main > section, main > header, main > article");
+    if ("IntersectionObserver" in window && els.length) {
+      const revealIn = (el) => {
+        el.classList.add("reveal");
+        const rect = el.getBoundingClientRect();
+        const inViewport = rect.top < window.innerHeight && rect.bottom > 0;
+        if (inViewport) {
+          el.classList.add("reveal--in");
+        }
+      };
+
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (e.isIntersecting) {
+              e.target.classList.add("reveal--in");
+              io.unobserve(e.target);
+            }
+          }
+        },
+        { threshold: 0.01, rootMargin: "0px 0px -50px 0px" },
+      );
+
+      els.forEach((el) => {
+        revealIn(el);
+        if (!el.classList.contains("reveal--in")) {
+          io.observe(el);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

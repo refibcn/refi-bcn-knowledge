@@ -6,3 +6,11 @@ package-lock.json
 public/CNAME
 public/CNAME.pending
 data/kb-public/
+
+# prettier-plugin-astro cannot parse this file: its whole body is one JSX
+# conditional whose branch contains a raw `<script is:inline>`, and the plugin
+# tries to parse that script as an expression ("SyntaxError: Unexpected token,
+# expected }"). The file is also deliberately hand-tuned for self-containment —
+# every byte of KB-derived markup, CSS and JS has to stay inline so staticrypt
+# encrypts all of it — so leaving it unformatted is the safer trade.
+src/pages/commons-review.astro

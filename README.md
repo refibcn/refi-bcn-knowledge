@@ -46,11 +46,28 @@ npm run format    # prettier --write
 whole of `dist/` for known raw-store canary strings and fails the build if any appear.
 It is the last line of defence behind `publishableKb()`, not a substitute for it.
 
-Scripts arrive incrementally as their files land:
+### The internal lens builds separately
 
-- **Task 9** adds `protect:commons`, `verify:commons` and `build:internal`
-  (`COMMONS_REVIEW=1 astro build && npm run protect:commons && npm run verify:commons`),
-  plus the `test` script.
+`/commons-review` is env-gated. A plain `astro build` renders a **stub** — the page
+short-circuits on `COMMONS_REVIEW !== "1"` and no store content is read at all, so a
+public deploy cannot ship the dataset even by accident. The real app is built and
+encrypted by its own command:
+
+```bash
+STATICRYPT_PASSWORD=… npm run build:internal
+```
+
+which runs `COMMONS_REVIEW=1 astro build`, then `protect:commons` (staticrypt-encrypts
+`dist/commons-review/index.html` into `dist-commons-protected/`) and `verify:commons`
+(asserts exactly one HTML file, a staticrypt marker, no `/_astro` references, and no
+canary strings in plaintext). The password comes only from the environment — never a
+file, never a commit. `.staticrypt.json` holds only the salt, and is committed so
+"remember me" survives redeploys.
+
+That artifact deploys to the existing `refibcn/commons-review` bucket. The page is
+deliberately self-contained: all KB markup, CSS and JS are inline so that staticrypt
+encrypts every byte of it. Do not "optimise" it into shared `/_astro` chunks —
+`verify:commons` will fail, and rightly so.
 
 ## Deploy model
 

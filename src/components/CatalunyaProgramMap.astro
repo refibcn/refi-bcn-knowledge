@@ -1,0 +1,1062 @@
+---
+// src/components/CatalunyaProgramMap.astro
+// Article-view interactive program map using MapLibre GL + hosted vector tiles
+// (OpenFreeMap "positron"). Constrained to Catalunya, comarca overlay, custom
+// project markers with click-to-popover, province quick-zoom, L'Hospitalet
+// shortcut, on-screen zoom controls.
+import type { Project, NetworkMeta } from "../content.config";
+import { initialTileDataUrl } from "../lib/initial-tile";
+import { withBase } from "../lib/paths";
+
+interface Props {
+  projects: Project[];
+  networks: Record<"miceli" | "keras-buti", NetworkMeta>;
+}
+const { projects, networks } = Astro.props;
+// Ported from refibcn-site; the only change is that public-asset URLs go
+// through withBase() per this repo's convention instead of hand-trimming
+// BASE_URL. The client script reads the resolved URL off `data-geo-url`, so it
+// needs no base awareness of its own.
+const geoUrl = withBase("geo/catalunya-comarques.geojson");
+
+// GeoJSON FeatureCollection for the marker layer
+const markerFeatures = projects.map((p) => ({
+  type: "Feature" as const,
+  geometry: { type: "Point" as const, coordinates: [p.geo.lng, p.geo.lat] },
+  properties: {
+    id: p.id,
+    name: p.name,
+    network: p.network,
+    locality: p.locality,
+  },
+}));
+const markersGeoJson = {
+  type: "FeatureCollection" as const,
+  features: markerFeatures,
+};
+
+// Comarques (nom_comar field in the GeoJSON — schema: cap_comar, comarca, nom_comar) that contain a confirmed project.
+const PROJECT_COMARQUES = new Set([
+  "Garrotxa",
+  "Anoia",
+  "Bages",
+  "Berguedà",
+  "Barcelonès",
+  "Baix Llobregat",
+  "Ripollès",
+]);
+
+// Network anchor nodes GeoJSON
+const networkNodesGeoJson = {
+  type: "FeatureCollection" as const,
+  features: [
+    {
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [2.2, 42.2] },
+      properties: {
+        id: "miceli",
+        label: "MICELI SOCIAL",
+        role: "Rural network",
+        network: "miceli",
+      },
+    },
+    {
+      type: "Feature" as const,
+      geometry: { type: "Point" as const, coordinates: [2.1, 41.36] },
+      properties: {
+        id: "keras-buti",
+        label: "LA FUNDICIÓ / KERAS BUTI",
+        role: "Urban network",
+        network: "keras-buti",
+      },
+    },
+  ],
+};
+
+const cardImage = (p: Project): string => {
+  if (p.image) return withBase(p.image);
+  const meta = networks[p.network];
+  return initialTileDataUrl({ initial: p.name.charAt(0), accent: meta.accent });
+};
+---
+
+<div class="program-map" data-program-map data-geo-url={geoUrl}>
+  <div class="map-controls" aria-label="Map navigation">
+    <div class="province-strip" role="tablist">
+      <button class="prov-chip active" data-prov="catalunya" type="button"
+        >Catalunya</button
+      >
+      <button class="prov-chip" data-prov="barcelona" type="button"
+        >Barcelona</button
+      >
+      <button class="prov-chip" data-prov="tarragona" type="button"
+        >Tarragona</button
+      >
+      <button class="prov-chip" data-prov="lleida" type="button">Lleida</button>
+      <button class="prov-chip" data-prov="girona" type="button">Girona</button>
+      <button class="prov-chip" data-prov="lhospitalet" type="button"
+        >L'Hospitalet</button
+      >
+      <span class="strip-divider" aria-hidden="true"></span>
+      <button
+        class="prov-chip net-chip"
+        data-network="miceli"
+        data-prov="miceli"
+        type="button">Miceli</button
+      >
+      <button
+        class="prov-chip net-chip"
+        data-network="keras-buti"
+        data-prov="kerasbuti"
+        type="button">La Fundició</button
+      >
+    </div>
+    <p class="map-hint">Click a marker · Scroll to zoom · Drag to pan</p>
+  </div>
+
+  <div class="maplibre-host" data-maplibre-host></div>
+
+  <div class="zoom-buttons" aria-label="Zoom controls">
+    <button class="zoom-btn" data-zoom-in type="button" aria-label="Zoom in"
+      >+</button
+    >
+    <button class="zoom-btn" data-zoom-out type="button" aria-label="Zoom out"
+      >−</button
+    >
+    <button
+      class="zoom-btn"
+      data-zoom-reset
+      type="button"
+      aria-label="Fit Catalunya">↺</button
+    >
+  </div>
+
+  <!-- Pre-rendered popover cards (hidden by default; revealed on marker click). -->
+  <div class="popover-stack" aria-live="polite">
+    {
+      projects.map((p) => {
+        const meta = networks[p.network];
+        const themeLabel = p.theme.replace(/-/g, " ");
+        return (
+          <article
+            class="popover-card"
+            data-popover-id={p.id}
+            data-network={p.network}
+            hidden
+          >
+            <button
+              class="popover-close"
+              type="button"
+              aria-label="Close project"
+            >
+              ×
+            </button>
+            <div class="image-wrap">
+              <img
+                src={cardImage(p)}
+                alt={`${p.name} — ${p.theme}`}
+                loading="lazy"
+              />
+              <span class="network-chip" data-accent={meta.accent}>
+                {meta.name.split(" / ")[0]}
+              </span>
+            </div>
+            <div class="body">
+              <h3>{p.name}</h3>
+              <p class="locality">{p.locality}</p>
+              <p class="summary">{p.summary}</p>
+              <div class="meta">
+                <span class="theme-tag">{themeLabel}</span>
+                {p.links.web && (
+                  <a
+                    class="ext-link"
+                    href={p.links.web}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    ↗ visit
+                  </a>
+                )}
+              </div>
+            </div>
+          </article>
+        );
+      })
+    }
+  </div>
+
+  <script
+    type="application/json"
+    data-markers
+    set:html={JSON.stringify(markersGeoJson)}
+  />
+  <script
+    type="application/json"
+    data-network-nodes
+    set:html={JSON.stringify(networkNodesGeoJson)}
+  />
+</div>
+
+<script>
+  import maplibregl from "maplibre-gl";
+  import "maplibre-gl/dist/maplibre-gl.css";
+
+  // Tile source — free, no API key, OSM-based, MapLibre-compatible.
+  // Swap to a Protomaps PMTiles or MapTiler URL later if we want self-hosted / branded styling.
+  const TILE_STYLE = "https://tiles.openfreemap.org/styles/positron";
+
+  // Catalunya bounds (SW [lng, lat], NE [lng, lat]) — pan + zoom can't escape this box.
+  const CATALUNYA_BOUNDS: [[number, number], [number, number]] = [
+    [-0.5, 40.3],
+    [3.6, 43.0],
+  ];
+
+  // Province / L'Hospitalet bounding boxes for the chip-driven fit-to-bounds.
+  type BBox = [[number, number], [number, number]];
+  const PROVINCE_BOUNDS: Record<string, BBox> = {
+    catalunya: [
+      [0.15, 40.52],
+      [3.32, 42.86],
+    ],
+    barcelona: [
+      [1.45, 41.16],
+      [2.85, 42.05],
+    ],
+    tarragona: [
+      [0.1, 40.52],
+      [1.65, 41.45],
+    ],
+    lleida: [
+      [0.55, 41.3],
+      [1.85, 42.86],
+    ],
+    girona: [
+      [1.85, 41.6],
+      [3.32, 42.55],
+    ],
+    lhospitalet: [
+      [1.95, 41.3],
+      [2.25, 41.42],
+    ],
+    miceli: [
+      [1.3, 41.4],
+      [2.85, 42.55],
+    ], // rural Catalunya cluster
+    kerasbuti: [
+      [1.95, 41.3],
+      [2.25, 41.42],
+    ], // L'Hospitalet metro
+  };
+
+  const prefersReducedMotion = () =>
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  document
+    .querySelectorAll<HTMLDivElement>("[data-program-map]")
+    .forEach((host) => {
+      const mapHost = host.querySelector<HTMLDivElement>(
+        "[data-maplibre-host]",
+      );
+      const markersEl = host.querySelector<HTMLScriptElement>("[data-markers]");
+      const networkNodesEl = host.querySelector<HTMLScriptElement>(
+        "[data-network-nodes]",
+      );
+      if (!mapHost || !markersEl) return;
+      const geoUrl = host.dataset.geoUrl ?? "/geo/catalunya-comarques.geojson";
+      const markersGeo = JSON.parse(
+        markersEl.textContent ?? '{"type":"FeatureCollection","features":[]}',
+      );
+      const networkNodesGeo = JSON.parse(
+        networkNodesEl?.textContent ??
+          '{"type":"FeatureCollection","features":[]}',
+      );
+
+      const map = new maplibregl.Map({
+        container: mapHost,
+        style: TILE_STYLE,
+        center: [1.7, 41.85],
+        zoom: 7.4,
+        minZoom: 6,
+        maxZoom: 14,
+        maxBounds: CATALUNYA_BOUNDS,
+        attributionControl: { compact: true },
+        cooperativeGestures: false,
+        dragRotate: false,
+        pitchWithRotate: false,
+        touchZoomRotate: true,
+      });
+      // Disable rotation entirely — keeps the map oriented with north up.
+      map.touchZoomRotate.disableRotation();
+
+      map.on("load", async () => {
+        // Subtle palette tweaks on top of the positron base — push it toward our paper-and-ink feel.
+        desaturateBaseStyle(map);
+        // Hide OSM city/town/village/place labels — keep only our own labels.
+        hideOsmPlaceLabels(map);
+
+        // Comarques overlay (line + data-driven fill for project comarques + labels)
+        const projectComarquesArr = [
+          "Garrotxa",
+          "Anoia",
+          "Bages",
+          "Berguedà",
+          "Barcelonès",
+          "Baix Llobregat",
+          "Ripollès",
+        ];
+        try {
+          const geoResp = await fetch(geoUrl);
+          const geo = await geoResp.json();
+          map.addSource("comarques", { type: "geojson", data: geo });
+          map.addLayer({
+            id: "comarques-fill",
+            type: "fill",
+            source: "comarques",
+            paint: {
+              "fill-color": "#8B5A3C",
+              "fill-opacity": [
+                "case",
+                ["in", ["get", "nom_comar"], ["literal", projectComarquesArr]],
+                0.14,
+                0.0,
+              ],
+            } as any,
+          });
+          map.addLayer({
+            id: "comarques-line",
+            type: "line",
+            source: "comarques",
+            paint: {
+              "line-color": "#1d1a16",
+              "line-width": 0.6,
+              "line-dasharray": [2, 3],
+              "line-opacity": 0.55,
+            },
+          });
+          // Comarca name labels — subtle, mono caps. Show all at zoom ≥ 8; project-bearing
+          // comarques get a more visible label that's already visible at Catalunya zoom (≥ 7).
+          map.addLayer({
+            id: "comarques-label",
+            type: "symbol",
+            source: "comarques",
+            minzoom: 8,
+            layout: {
+              "text-field": ["get", "nom_comar"],
+              "text-font": ["Noto Sans Regular", "Open Sans Regular"],
+              "text-size": 10,
+              "text-letter-spacing": 0.08,
+              "text-transform": "uppercase",
+              "text-allow-overlap": false,
+              "text-padding": 4,
+            },
+            paint: {
+              "text-color": "#1d1a16",
+              "text-opacity": 0.6,
+              "text-halo-color": "#fbf9f3",
+              "text-halo-width": 1.5,
+            },
+          });
+          // Project-bearing comarques: name visible from the default Catalunya overview zoom.
+          map.addLayer({
+            id: "comarques-label-project",
+            type: "symbol",
+            source: "comarques",
+            filter: [
+              "in",
+              ["get", "nom_comar"],
+              ["literal", projectComarquesArr],
+            ] as any,
+            minzoom: 6.5,
+            maxzoom: 8,
+            layout: {
+              "text-field": ["get", "nom_comar"],
+              "text-font": ["Noto Sans Regular", "Open Sans Regular"],
+              "text-size": 10,
+              "text-letter-spacing": 0.1,
+              "text-transform": "uppercase",
+              "text-allow-overlap": false,
+              "text-padding": 6,
+            },
+            paint: {
+              "text-color": "#1d1a16",
+              "text-opacity": 0.7,
+              "text-halo-color": "#fbf9f3",
+              "text-halo-width": 2,
+            },
+          });
+        } catch (err) {
+          console.warn("Could not load comarques GeoJSON:", err);
+        }
+
+        // Network anchor nodes
+        map.addSource("networks", { type: "geojson", data: networkNodesGeo });
+        map.addLayer({
+          id: "networks-halo",
+          type: "circle",
+          source: "networks",
+          paint: {
+            "circle-radius": 22,
+            "circle-color": [
+              "match",
+              ["get", "network"],
+              "miceli",
+              "#8B5A3C",
+              "keras-buti",
+              "#6B4EA3",
+              "#1d1a16",
+            ],
+            "circle-opacity": 0.18,
+            "circle-stroke-width": 1,
+            "circle-stroke-color": [
+              "match",
+              ["get", "network"],
+              "miceli",
+              "#8B5A3C",
+              "keras-buti",
+              "#6B4EA3",
+              "#1d1a16",
+            ],
+            "circle-stroke-opacity": 0.5,
+          } as any,
+        });
+        map.addLayer({
+          id: "networks-dot",
+          type: "circle",
+          source: "networks",
+          paint: {
+            "circle-radius": 6,
+            "circle-color": [
+              "match",
+              ["get", "network"],
+              "miceli",
+              "#8B5A3C",
+              "keras-buti",
+              "#6B4EA3",
+              "#1d1a16",
+            ],
+            "circle-stroke-width": 1.5,
+            "circle-stroke-color": "#1d1a16",
+          } as any,
+        });
+        map.addLayer({
+          id: "networks-label",
+          type: "symbol",
+          source: "networks",
+          layout: {
+            "text-field": ["get", "label"],
+            "text-font": ["IBM Plex Mono Regular", "Open Sans Regular"],
+            "text-size": 10,
+            "text-letter-spacing": 0.1,
+            "text-offset": [0, 1.8],
+            "text-anchor": "top",
+            "text-allow-overlap": true,
+            "text-padding": 6,
+          },
+          paint: {
+            "text-color": "#1d1a16",
+            "text-halo-color": "#fbf9f3",
+            "text-halo-width": 2,
+            "text-opacity": 0.85,
+          },
+        });
+
+        // Project markers
+        map.addSource("projects", { type: "geojson", data: markersGeo });
+        map.addLayer({
+          id: "projects-halo",
+          type: "circle",
+          source: "projects",
+          paint: {
+            "circle-radius": 14,
+            "circle-color": "#fbf9f3",
+            "circle-stroke-width": 1,
+            "circle-stroke-color": "#1d1a16",
+            "circle-stroke-opacity": 0.5,
+          },
+        });
+        map.addLayer({
+          id: "projects-dot",
+          type: "circle",
+          source: "projects",
+          paint: {
+            "circle-radius": 8,
+            "circle-color": [
+              "match",
+              ["get", "network"],
+              "miceli",
+              "#8B5A3C",
+              "keras-buti",
+              "#6B4EA3",
+              "#1d1a16",
+            ] as unknown as maplibregl.ColorSpecification,
+            "circle-stroke-width": 2,
+            "circle-stroke-color": "#1d1a16",
+          },
+        });
+
+        // Active marker emphasis — driven by a filter on the active project id.
+        map.addLayer({
+          id: "projects-dot-active",
+          type: "circle",
+          source: "projects",
+          filter: ["==", ["get", "id"], ""],
+          paint: {
+            "circle-radius": 11,
+            "circle-color": [
+              "match",
+              ["get", "network"],
+              "miceli",
+              "#8B5A3C",
+              "keras-buti",
+              "#6B4EA3",
+              "#1d1a16",
+            ] as unknown as maplibregl.ColorSpecification,
+            "circle-stroke-width": 3,
+            "circle-stroke-color": "#1d1a16",
+          },
+        });
+
+        // Project name labels — offset below marker, zoom-gated at 8+
+        map.addLayer({
+          id: "projects-label",
+          type: "symbol",
+          source: "projects",
+          minzoom: 8,
+          layout: {
+            "text-field": ["get", "name"],
+            "text-font": ["IBM Plex Mono Regular", "Open Sans Regular"],
+            "text-size": 11,
+            "text-letter-spacing": 0.04,
+            "text-offset": [0, 1.4],
+            "text-anchor": "top",
+            "text-allow-overlap": false,
+            "text-padding": 6,
+          },
+          paint: {
+            "text-color": "#1d1a16",
+            "text-halo-color": "#fbf9f3",
+            "text-halo-width": 2,
+          },
+        });
+
+        // Click + hover handlers
+        map.on("click", "projects-dot", (e) => {
+          const f = e.features?.[0];
+          if (!f) return;
+          const id = f.properties?.id as string | undefined;
+          if (id) openPopover(id);
+        });
+        map.on(
+          "mouseenter",
+          "projects-dot",
+          () => (map.getCanvas().style.cursor = "pointer"),
+        );
+        map.on(
+          "mouseleave",
+          "projects-dot",
+          () => (map.getCanvas().style.cursor = ""),
+        );
+
+        // Click anywhere else on the map = close popover
+        map.on("click", (e) => {
+          const features = map.queryRenderedFeatures(e.point, {
+            layers: ["projects-dot"],
+          });
+          if (features.length === 0) closePopovers();
+        });
+      });
+
+      function desaturateBaseStyle(m: maplibregl.Map) {
+        // Walk through the loaded style, mute color saturation on non-essential layers.
+        // Keeps land + water; reduces road weight.
+        try {
+          const layers = m.getStyle().layers ?? [];
+          for (const layer of layers) {
+            const id = (layer as { id?: string }).id;
+            if (!id) continue;
+            // Roads: thin them out
+            if (id.startsWith("road") || id.includes("highway")) {
+              try {
+                m.setPaintProperty(id, "line-opacity", 0.4);
+              } catch {
+                /* skip */
+              }
+            }
+            // Parks / vegetation: subdue
+            if (
+              id.includes("park") ||
+              id.includes("landuse") ||
+              id.includes("forest")
+            ) {
+              try {
+                m.setPaintProperty(id, "fill-opacity", 0.3);
+              } catch {
+                /* skip */
+              }
+            }
+          }
+        } catch {
+          // Best-effort; if the style schema differs, just skip.
+        }
+      }
+
+      function hideOsmPlaceLabels(m: maplibregl.Map) {
+        // Hide OSM city/town/village/place labels — we only want comarca + our own project labels.
+        try {
+          const layers = m.getStyle().layers ?? [];
+          for (const layer of layers) {
+            if (layer.type !== "symbol") continue;
+            const id = (layer as any).id ?? "";
+            const sourceLayer: string = (layer as any)["source-layer"] ?? "";
+            const looksLikePlace =
+              /place|city|town|village|hamlet|country|state|locality|suburb|neighbourhood/i.test(
+                id,
+              ) || /place|locality/i.test(sourceLayer);
+            if (looksLikePlace) {
+              try {
+                m.setLayoutProperty(id, "visibility" as any, "none");
+              } catch {}
+            }
+          }
+        } catch {
+          // Best-effort
+        }
+      }
+
+      // ===== Network filter =====
+      function setNetworkFilter(network: string | null) {
+        if (!map.getLayer("projects-dot")) return;
+        const opacityExpr: any = network
+          ? ["case", ["==", ["get", "network"], network], 1, 0.22]
+          : 1;
+        const haloOpacityExpr: any = network
+          ? ["case", ["==", ["get", "network"], network], 1, 0.22]
+          : 1;
+        map.setPaintProperty(
+          "projects-dot",
+          "circle-opacity" as any,
+          opacityExpr,
+        );
+        map.setPaintProperty(
+          "projects-halo",
+          "circle-opacity" as any,
+          haloOpacityExpr,
+        );
+        if (map.getLayer("projects-label")) {
+          map.setPaintProperty(
+            "projects-label",
+            "text-opacity" as any,
+            network
+              ? ["case", ["==", ["get", "network"], network], 1, 0.25]
+              : 1,
+          );
+        }
+      }
+
+      // ===== Active marker filter =====
+      function setActiveMarker(id: string | null) {
+        if (!map.getLayer("projects-dot-active")) return;
+        const filter = id
+          ? ([
+              "==",
+              ["get", "id"],
+              id,
+            ] as unknown as maplibregl.FilterSpecification)
+          : ([
+              "==",
+              ["get", "id"],
+              "",
+            ] as unknown as maplibregl.FilterSpecification);
+        map.setFilter("projects-dot-active", filter);
+      }
+
+      // ===== Navigation =====
+      function fitBounds(prov: string) {
+        const b = PROVINCE_BOUNDS[prov];
+        if (!b) return;
+        map.fitBounds(b, {
+          padding: { top: 80, right: 80, bottom: 60, left: 80 },
+          duration: prefersReducedMotion() ? 0 : 600,
+          essential: true,
+        });
+      }
+
+      // Province chip handlers
+      const chips = host.querySelectorAll<HTMLButtonElement>(".prov-chip");
+      chips.forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const prov = chip.dataset.prov;
+          if (!prov || !PROVINCE_BOUNDS[prov]) return;
+          chips.forEach((c) => c.classList.toggle("active", c === chip));
+          fitBounds(prov);
+          if (chip.classList.contains("net-chip")) {
+            setNetworkFilter(chip.dataset.network ?? null);
+          } else {
+            setNetworkFilter(null);
+          }
+        });
+      });
+
+      // Zoom button handlers
+      host
+        .querySelector<HTMLButtonElement>("[data-zoom-in]")
+        ?.addEventListener("click", () => {
+          map.zoomIn({ duration: prefersReducedMotion() ? 0 : 220 });
+        });
+      host
+        .querySelector<HTMLButtonElement>("[data-zoom-out]")
+        ?.addEventListener("click", () => {
+          map.zoomOut({ duration: prefersReducedMotion() ? 0 : 220 });
+        });
+      host
+        .querySelector<HTMLButtonElement>("[data-zoom-reset]")
+        ?.addEventListener("click", () => {
+          chips.forEach((c) =>
+            c.classList.toggle("active", c.dataset.prov === "catalunya"),
+          );
+          fitBounds("catalunya");
+          setNetworkFilter(null);
+        });
+
+      // ===== POPOVER BEHAVIOR =====
+      const popovers = host.querySelectorAll<HTMLElement>("[data-popover-id]");
+      const hint = host.querySelector<HTMLElement>(".map-hint");
+
+      function closePopovers() {
+        popovers.forEach((p) => (p.hidden = true));
+        setActiveMarker(null);
+        if (hint) hint.style.opacity = "1";
+      }
+      function openPopover(id: string) {
+        closePopovers();
+        const target = host.querySelector<HTMLElement>(
+          `[data-popover-id="${id}"]`,
+        );
+        if (!target) return;
+        target.hidden = false;
+        setActiveMarker(id);
+        if (hint) hint.style.opacity = "0";
+      }
+
+      popovers.forEach((p) => {
+        const closeBtn = p.querySelector<HTMLButtonElement>(".popover-close");
+        closeBtn?.addEventListener("click", () => closePopovers());
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closePopovers();
+      });
+    });
+</script>
+
+<style>
+  .program-map {
+    position: relative;
+    width: 100%;
+    height: clamp(520px, 78vh, 880px);
+    background: var(--ivory);
+    border: 2px solid var(--ink);
+    overflow: hidden;
+  }
+  .maplibre-host {
+    width: 100%;
+    height: 100%;
+  }
+  /* Mute the tile palette toward warm paper feel without losing readability */
+  .maplibre-host :global(.maplibregl-canvas) {
+    filter: contrast(0.92) saturate(0.55);
+  }
+  .maplibre-host :global(.maplibregl-ctrl-attrib) {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 0.65rem;
+  }
+  .maplibre-host :global(.maplibregl-ctrl-attrib a) {
+    color: var(--ink);
+  }
+
+  .map-controls {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    right: 1rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+  .province-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    pointer-events: auto;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+  }
+  .prov-chip {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    background: var(--paper);
+    border: 0;
+    border-right: 1px solid var(--ink);
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    transition:
+      background var(--t-fast),
+      color var(--t-fast);
+    white-space: nowrap;
+  }
+  .prov-chip:last-child {
+    border-right: 0;
+  }
+  .prov-chip:hover {
+    background: var(--ivory);
+  }
+  .prov-chip.active {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .strip-divider {
+    display: inline-block;
+    width: 1px;
+    background: var(--ink);
+    align-self: stretch;
+    margin: 0 0.05rem;
+  }
+  .prov-chip.net-chip[data-network="miceli"].active {
+    background: #8b5a3c;
+    color: var(--paper);
+  }
+  .prov-chip.net-chip[data-network="keras-buti"].active {
+    background: #6b4ea3;
+    color: var(--paper);
+  }
+
+  .map-hint {
+    margin: 0;
+    padding: 0.45rem 0.75rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--rule);
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    pointer-events: none;
+    white-space: nowrap;
+    transition: opacity var(--t-fast);
+  }
+
+  .zoom-buttons {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    z-index: 2;
+  }
+  .zoom-btn {
+    width: 2.4rem;
+    height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--mono);
+    font-size: 1.05rem;
+    line-height: 1;
+    background: var(--paper);
+    color: var(--ink);
+    border: 0;
+    border-bottom: 1px solid var(--ink);
+    cursor: pointer;
+    transition:
+      background var(--t-fast),
+      color var(--t-fast);
+  }
+  .zoom-btn:last-child {
+    border-bottom: 0;
+  }
+  .zoom-btn:hover,
+  .zoom-btn:focus-visible {
+    background: var(--ink);
+    color: var(--paper);
+    outline: none;
+  }
+
+  .popover-stack {
+    position: absolute;
+    top: 4.5rem;
+    right: 1rem;
+    width: min(360px, calc(100% - 2rem));
+    pointer-events: none;
+    z-index: 3;
+  }
+  .popover-card {
+    pointer-events: auto;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    box-shadow: 6px 6px 0 var(--ink);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    animation: popover-in 220ms ease;
+  }
+  @keyframes popover-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  .popover-card[hidden] {
+    display: none;
+  }
+
+  .popover-close {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 1.7rem;
+    height: 1.7rem;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    font-family: var(--mono);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition:
+      background var(--t-fast),
+      color var(--t-fast);
+  }
+  .popover-close:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .popover-card .image-wrap {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--ivory);
+    border-bottom: 1px solid var(--ink);
+  }
+  .popover-card .image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .popover-card .network-chip {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--paper);
+    border: 1px solid var(--ink);
+  }
+  .popover-card .network-chip[data-accent="forest"] {
+    color: var(--forest);
+  }
+  .popover-card .network-chip[data-accent="rust"] {
+    color: var(--rust);
+  }
+
+  .popover-card .body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .popover-card .body h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.15rem;
+    margin: 0;
+  }
+  .popover-card .locality {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--rule);
+    margin: 0;
+  }
+  .popover-card .summary {
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--ink);
+    margin: 0;
+    line-height: 1.5;
+  }
+  .popover-card .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 0.5rem;
+    border-top: 1px dashed var(--rule);
+    padding-top: 0.5rem;
+    gap: 0.5rem;
+  }
+  .popover-card .theme-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--rule);
+  }
+  .popover-card .ext-link {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ink);
+  }
+  .popover-card .ext-link:hover {
+    color: var(--rust);
+    border-bottom-color: var(--rust);
+  }
+
+  @media (max-width: 880px) {
+    .map-controls {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .map-hint {
+      display: none;
+    }
+  }
+  @media (max-width: 720px) {
+    .popover-stack {
+      top: auto;
+      bottom: 1rem;
+      right: 1rem;
+      left: 1rem;
+      width: auto;
+    }
+    .popover-card {
+      box-shadow: 4px 4px 0 var(--ink);
+    }
+  }
+</style>

@@ -31,6 +31,22 @@ This is instance 2 of a three-instance model:
 | Commons review | `/commons-review` | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
 | Atlas          | `/atlas`          | Public. Catalunya map — comarques and territorial context.           |
 
+### Atlas data and assets
+
+`/atlas` renders `src/components/CatalunyaProgramMap.astro` — MapLibre GL over
+OpenFreeMap's hosted "positron" vector tiles (no API key), clamped to Catalunya.
+Two things it loads from `public/`:
+
+- `public/geo/catalunya-comarques.geojson` — the comarca boundary overlay, fetched at
+  runtime via the `data-geo-url` attribute. Kept minified; see `.prettierignore`.
+- `public/images/projects/*.png` — popover card images. A project without one falls
+  back to a generated inline-SVG initial tile (`src/lib/initial-tile.ts`), so the set
+  does not have to be complete.
+
+Markers currently come from the static `src/data/rc-cohort.yaml` snapshot, typed by the
+`cohort` collection in `src/content.config.ts`. Re-feeding them from the CRM, and the
+legend taxonomy, are separate follow-on work — not part of this port.
+
 ## Commands
 
 ```bash

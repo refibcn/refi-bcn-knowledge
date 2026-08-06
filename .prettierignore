@@ -5,6 +5,9 @@ node_modules/
 package-lock.json
 public/CNAME
 public/CNAME.pending
+# Minified deploy payload, not source: the atlas fetches this at runtime and
+# pretty-printing it inflates the download 118 KB -> 210 KB.
+public/geo/
 data/kb-public/
 
 # prettier-plugin-astro cannot parse this file: its whole body is one JSX

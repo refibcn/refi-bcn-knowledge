@@ -1,0 +1,52 @@
+---
+import Layout from "../components/Layout.astro";
+import CatalunyaProgramMap from "../components/CatalunyaProgramMap.astro";
+import { getCollection } from "astro:content";
+
+// Ported from refibcn-site. Two adaptations for this repo:
+//   - `current="atlas"` — this site's nav has its own Atlas item, where the
+//     sibling folded the atlas under Commons.
+//   - The sibling's "Program dashboard" / "Article view" links are dropped:
+//     /projects/regenerant-catalunya/* lives on refibcn.cat and has no route
+//     here, so keeping them would ship two known-dead links.
+// Markers still come from the static rc-cohort snapshot; re-feeding them from
+// the CRM and applying Giulio's legend taxonomy is Task 13, not this port.
+const entries = await getCollection("cohort");
+const doc = entries[0]!.data;
+---
+
+<Layout
+  title="Atlas"
+  current="atlas"
+  section="Knowledge"
+  dataset="Catalunya"
+  description="A living atlas of Catalunya's regenerative territory — actors, cohorts, and bioregional signals."
+>
+  <section class="atlas-head">
+    <h1>Atlas</h1>
+    <p class="lede">
+      Catalunya's regenerative territory, mapped — the Regenerant Catalunya
+      cohort across its comarques, scouted by the Miceli (rural) and La Fundició
+      / Keras Buti (urban) networks.
+    </p>
+  </section>
+  <section class="atlas-map">
+    <CatalunyaProgramMap projects={doc.projects} networks={doc.networks} />
+  </section>
+</Layout>
+
+<style>
+  .atlas-head {
+    max-width: var(--container-default, 1120px);
+    margin: 0 auto;
+    padding: 28px 20px 10px;
+  }
+  .atlas-map {
+    max-width: var(--container-wide, 1360px);
+    margin: 0 auto 56px;
+    padding: 0 20px;
+  }
+  .atlas-map :global(.program-map) {
+    height: min(78vh, 880px);
+  }
+</style>

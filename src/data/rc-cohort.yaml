@@ -1,0 +1,227 @@
+# Regenerant Catalunya cohort — canonical entries.
+# Source: repos/Regenerant-Catalunya/content/program/partners-projects.md
+# Schema: see src/content.config.ts (Astro content collection definition).
+
+networks:
+  miceli:
+    name: "Miceli Social"
+    role: "Rural network · scout · co-funder"
+    contribution_eur: 6000
+    web: "https://miceli.social"
+    accent: forest
+    summary: >
+      A cooperative service hub within the social economy focused on rural resilience,
+      based in Ripoll (Girona). Catalyzes regenerative development in rural areas by
+      supporting municipalities and community groups.
+  keras-buti:
+    name: "La Fundició / Keras Buti"
+    role: "Urban network · scout · co-funder"
+    contribution_eur: 5000
+    web: "https://lafundicio.net"
+    accent: rust
+    summary: >
+      A cultural and social innovation cooperative and official hub within the Xarxa
+      d'Ateneus Cooperatius, based in L'Hospitalet de Llobregat. Brings a strong urban
+      and peri-urban lens to the cohort.
+
+projects:
+  - id: regeneracio-xyz
+    name: "Regeneració.XYZ"
+    network: miceli
+    theme: narrative
+    locality: "La Garrotxa"
+    geo: { lat: 42.18, lng: 2.49 }
+    image: "/images/projects/regeneracio-xyz.png"
+    summary: >
+      Creative agency at the intersection of art, regeneration, and rural narratives.
+      Recognized by Culture Hack Labs' Rhizome program for bioregional community governance.
+    links:
+      web: null
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: resilience-earth
+    name: "Resilience Earth & Simbiosi Fluvial"
+    network: miceli
+    theme: river
+    locality: "Fluvià basin"
+    geo: { lat: 42.20, lng: 2.55 }
+    image: "/images/projects/resilience-earth.png"
+    summary: >
+      Worker cooperative on bioregional governance and digital river stewardship.
+      The Fluvià River project applies blockchain and AI for environmental data
+      collection and basin governance.
+    links:
+      web: "https://resilience.earth/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: de-bat-a-bat
+    name: "De Bat a Bat"
+    network: miceli
+    theme: health
+    locality: "Catalunya · rural"
+    geo: { lat: 42.0, lng: 1.7 }
+    image: "/images/projects/de-bat-a-bat.png"
+    summary: >
+      A regenerative model of community health — holistic, participatory, rooted in
+      nature. Supported by Erasmus+ and LIFE; collaborates with health centers, schools,
+      and associations.
+    links:
+      web: "http://www.debatabat.org/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: chapter-2
+    name: "Chapter#2"
+    network: miceli
+    theme: education
+    locality: "Catalunya · schools"
+    geo: { lat: 41.55, lng: 1.61 }
+    image: "/images/projects/chapter-2.png"
+    summary: >
+      Brings regenerative storytelling into schools — recovering links with place and
+      co-creating artistic figures that celebrate each school's identity.
+    links:
+      web: "https://chapter2.cat/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: anigami
+    name: "Anigami"
+    network: miceli
+    theme: tourism
+    locality: "Catalunya · rural"
+    geo: { lat: 42.05, lng: 1.85 }
+    image: "/images/projects/anigami.png"
+    summary: >
+      Advancing regenerative tourism models in Catalonia — combining Erasmus+ funding
+      with a training program shared with Balkar.Earth's learning community.
+    links:
+      web: "https://www.anigami.cat/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: mixite
+    name: "Mixité"
+    network: miceli
+    theme: housing
+    locality: "Catalunya · rural"
+    geo: { lat: 41.85, lng: 1.55 }
+    image: "/images/projects/mixite.png"
+    summary: >
+      Designs new policies and strategies for rural housing — services for municipalities
+      and community groups, with a manual planned to share methodology with the wider
+      ecosystem.
+    links:
+      web: "https://www.mixite.cat/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: laurel-31
+    name: "Laurel 31"
+    network: keras-buti
+    theme: textile
+    locality: "L'Hospitalet · neighborhood"
+    geo: { lat: 41.36, lng: 2.09 }
+    image: "/images/projects/laurel-31.png"
+    summary: >
+      A space for textile creation and production guided by environmental sustainability
+      and political thought.
+    links:
+      web: "https://www.instagram.com/laurel31_economiassilvestres/?hl=es"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: la-marmita
+    name: "La Marmita"
+    network: keras-buti
+    theme: food-sovereignty
+    locality: "L'Hospitalet · La Florida"
+    geo: { lat: 41.36, lng: 2.10 }
+    image: "/images/projects/la-marmita.png"
+    summary: >
+      Low-cost, healthy, ecological meals for the La Florida neighborhood, using
+      thermopol cooking technology. Managed by the Keras Buti consumer cooperative.
+    links:
+      web: null
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: les-juntes
+    name: "Les Juntes"
+    network: keras-buti
+    theme: cooperative-housing
+    locality: "L'Hospitalet · north"
+    geo: { lat: 41.37, lng: 2.11 }
+    image: "/images/projects/les-juntes.png"
+    summary: >
+      Cooperative housing under a "use-right" model — recovering housing held by
+      investment funds in northern L'Hospitalet to guarantee secure, collective housing.
+    links:
+      web: "https://www.lesjuntes.coop/"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: la-suculenta
+    name: "La Suculenta"
+    network: keras-buti
+    theme: food-sovereignty
+    locality: "L'Hospitalet · Bellvitge"
+    geo: { lat: 41.34, lng: 2.11 }
+    image: "/images/projects/la-suculenta.png"
+    summary: >
+      Community dining at Casal Cívic Comunitari de Bellvitge — affordable meals with
+      ecological local ingredients, plus hospitality training and employment for people
+      with rights violations in their history.
+    links:
+      web: "https://www.instagram.com/suculentalh/?hl=es"
+      karma: null
+      rc_page: null
+    status: confirmed
+
+  - id: la-granja-del-tilo
+    name: "La Granja del Tilo"
+    network: keras-buti
+    theme: agroecology
+    locality: "Parc Agrari del Baix Llobregat"
+    geo: { lat: 41.33, lng: 2.05 }
+    image: "/images/projects/la-granja-del-tilo.png"
+    summary: >
+      Worker cooperative running an organic egg farm in the Delta del Llobregat —
+      generational renewal in farming, recovering agricultural land, resisting urban
+      development pressure.
+    links:
+      web: null
+      karma: null
+      rc_page: null
+    status: confirmed
+
+# Pending cohort (3 TBC, ReFi BCN-invited per partners-projects.md)
+pending:
+  - name: "Fundació Emprius"
+  - name: "Arran de Terra"
+  - name: "Decolonizing Permaculture"
+
+funders:
+  - name: "Regen Coordination"
+    role: "Global Partner"
+    web: "https://www.regencoordination.xyz/"
+  - name: "Celo Public Goods"
+    role: "Global Funder"
+    web: "https://celo.org/"
+  - name: "Gitcoin"
+    role: "Global Funder"
+    web: "https://www.gitcoin.co/"
+  - name: "Ethereum Foundation"
+    role: "Global Funder"
+    web: "https://ethereum.org/"

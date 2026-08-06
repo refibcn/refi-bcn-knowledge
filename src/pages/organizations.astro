@@ -11,6 +11,9 @@ import {
   priorityColor,
 } from "../lib/crm";
 import type { CrmActor } from "../lib/crm";
+// Shared with the atlas: marker popups link to `#<actorAnchor(name)>` on this
+// page, so both sides must derive the anchor from the one helper.
+import { actorAnchor } from "../lib/atlas-data.mjs";
 
 const sections = loadSectionConfig();
 const actorsSection = sections.find((s) => s.id === "actors");
@@ -177,7 +180,11 @@ const safeJson = (obj: any) =>
     <div class="actor-grid" id="actor-gallery">
       {
         actors.map((actor) => (
-          <article class="actor-card" data-actor={safeJson(actor)}>
+          <article
+            class="actor-card"
+            id={actorAnchor(actor.name)}
+            data-actor={safeJson(actor)}
+          >
             <div class="actor-card__main">
               <div class="actor-card__header">
                 <h3 class="actor-name">{actor.name}</h3>

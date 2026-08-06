@@ -2,6 +2,12 @@
 import Layout from "../components/Layout.astro";
 import CatalunyaProgramMap from "../components/CatalunyaProgramMap.astro";
 import { getCollection } from "astro:content";
+import { withBase } from "../lib/paths";
+import {
+  fetchAtlasRecords,
+  toMarkers,
+  legendEntries,
+} from "../lib/atlas-data.mjs";
 
 // Ported from refibcn-site. Two adaptations for this repo:
 //   - `current="atlas"` — this site's nav has its own Atlas item, where the
@@ -9,10 +15,38 @@ import { getCollection } from "astro:content";
 //   - The sibling's "Program dashboard" / "Article view" links are dropped:
 //     /projects/regenerant-catalunya/* lives on refibcn.cat and has no route
 //     here, so keeping them would ship two known-dead links.
-// Markers still come from the static rc-cohort snapshot; re-feeding them from
-// the CRM and applying Giulio's legend taxonomy is Task 13, not this port.
 const entries = await getCollection("cohort");
 const doc = entries[0]!.data;
+
+// ── CRM marker layer (Task 13) ────────────────────────────────────────────
+// Actors come from the ReFi BCN CRM at build time. A missing NOTION_API_KEY or
+// an API failure degrades to the cohort-only map rather than failing the build,
+// matching how the directory pages handle the same seam.
+//
+// NOTE ON THE CURRENT STATE: the CRM actors database has no Lat/Lng properties
+// yet — verified against all 608 live records — so `toMarkers()` legitimately
+// yields zero markers and the layer stays dormant. The count below is rendered
+// from the real numbers precisely so that gap is visible on the page instead of
+// looking like an empty map. It lights up on its own once actors are geocoded.
+let crmRecordCount = 0;
+let crmMarkers: ReturnType<typeof toMarkers> = [];
+let crmError: string | null = null;
+try {
+  const records = await fetchAtlasRecords();
+  crmRecordCount = records.length;
+  crmMarkers = toMarkers(records);
+} catch (e) {
+  crmError = e instanceof Error ? e.message : "CRM feed unavailable.";
+}
+
+const directoryHref = withBase("organizations/");
+
+// The legend is derived from AGENCY_PRECEDENCE in src/lib/atlas-data.mjs — the
+// same array that decides each marker's category. Do not restate it here.
+const legend = legendEntries();
+const countFor = (id: string) =>
+  crmMarkers.filter((m) => m.category === id).length;
+const uncategorized = crmMarkers.filter((m) => m.category === null).length;
 ---
 
 <Layout
@@ -31,7 +65,69 @@ const doc = entries[0]!.data;
     </p>
   </section>
   <section class="atlas-map">
-    <CatalunyaProgramMap projects={doc.projects} networks={doc.networks} />
+    <CatalunyaProgramMap
+      projects={doc.projects}
+      networks={doc.networks}
+      crmMarkers={crmMarkers}
+      crmDirectoryHref={directoryHref}
+    />
+  </section>
+
+  <section class="atlas-legend">
+    <div class="legend-head">
+      <h2>Actor legend</h2>
+      <p class="legend-note">
+        Actors carry more than one <code>agency</code> value, so each is placed in
+        the first bucket it matches, reading down this list.
+      </p>
+    </div>
+
+    <ul class="legend-list">
+      {
+        legend.map((entry) => (
+          <li class="legend-item">
+            <span
+              class="legend-swatch"
+              style={`--swatch:${entry.color}`}
+              aria-hidden="true"
+            />
+            <span class="legend-label">{entry.label}</span>
+            <span class="legend-count">{countFor(entry.id)}</span>
+          </li>
+        ))
+      }
+      {
+        uncategorized > 0 && (
+          <li class="legend-item">
+            <span
+              class="legend-swatch legend-swatch--none"
+              aria-hidden="true"
+            />
+            <span class="legend-label">Uncategorised</span>
+            <span class="legend-count">{uncategorized}</span>
+          </li>
+        )
+      }
+    </ul>
+
+    <p class="provenance">
+      {
+        crmError
+          ? `CRM layer unavailable at build time — ${crmError} The cohort map above is unaffected.`
+          : `${crmMarkers.length} of ${crmRecordCount} CRM actor records carry coordinates and are plotted above.`
+      }
+      {
+        !crmError && crmMarkers.length === 0 && (
+          <>
+            {" "}
+            The CRM has no <code>Lat</code>/<code>Lng</code> fields yet, so the
+            actor layer is empty pending geocoding — it populates automatically
+            once those fields exist.{" "}
+            <a href={directoryHref}>Browse the directory</a> in the meantime.
+          </>
+        )
+      }
+    </p>
   </section>
 </Layout>
 
@@ -43,10 +139,67 @@ const doc = entries[0]!.data;
   }
   .atlas-map {
     max-width: var(--container-wide, 1360px);
-    margin: 0 auto 56px;
+    margin: 0 auto 28px;
     padding: 0 20px;
   }
   .atlas-map :global(.program-map) {
     height: min(78vh, 880px);
+  }
+  .atlas-legend {
+    max-width: var(--container-default, 1120px);
+    margin: 0 auto 56px;
+    padding: 0 20px;
+  }
+  .legend-head h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .legend-note {
+    margin: 0.35rem 0 0;
+    font-size: 0.8rem;
+    color: var(--rule);
+    max-width: 60ch;
+  }
+  .legend-list {
+    list-style: none;
+    margin: 0.9rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+  .legend-swatch {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    border: 1px solid var(--ink);
+    background: var(--swatch);
+    flex: none;
+  }
+  .legend-swatch--none {
+    background: #8a8378;
+  }
+  .legend-label {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .legend-count {
+    color: var(--rule);
+  }
+  .provenance {
+    margin: 1rem 0 0;
+    font-size: 0.78rem;
+    color: var(--rule);
+    max-width: 70ch;
   }
 </style>

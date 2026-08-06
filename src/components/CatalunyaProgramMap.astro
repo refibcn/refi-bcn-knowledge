@@ -7,12 +7,35 @@
 import type { Project, NetworkMeta } from "../content.config";
 import { initialTileDataUrl } from "../lib/initial-tile";
 import { withBase } from "../lib/paths";
+import {
+  AGENCY_COLORS,
+  UNCATEGORIZED_COLOR,
+  actorAnchor,
+} from "../lib/atlas-data.mjs";
+
+interface CrmMarker {
+  name: string;
+  lat: number;
+  lng: number;
+  category: string | null;
+  tags: string[];
+}
 
 interface Props {
   projects: Project[];
   networks: Record<"miceli" | "keras-buti", NetworkMeta>;
+  /** CRM actor markers (Task 13). Optional and additive — omit them and the
+   *  map renders exactly as ported. */
+  crmMarkers?: CrmMarker[];
+  /** Page the popup "view in directory" link points at. */
+  crmDirectoryHref?: string;
 }
-const { projects, networks } = Astro.props;
+const {
+  projects,
+  networks,
+  crmMarkers = [],
+  crmDirectoryHref = "",
+} = Astro.props;
 // Ported from refibcn-site; the only change is that public-asset URLs go
 // through withBase() per this repo's convention instead of hand-trimming
 // BASE_URL. The client script reads the resolved URL off `data-geo-url`, so it
@@ -71,6 +94,27 @@ const networkNodesGeoJson = {
       },
     },
   ],
+};
+
+// CRM actor layer (Task 13). The per-feature `color` is resolved here from the
+// shared AGENCY_COLORS map so the client script needs no taxonomy knowledge and
+// the legend swatches cannot drift from the marker fills.
+const crmGeoJson = {
+  type: "FeatureCollection" as const,
+  features: crmMarkers.map((m) => ({
+    type: "Feature" as const,
+    geometry: { type: "Point" as const, coordinates: [m.lng, m.lat] },
+    properties: {
+      name: m.name,
+      category: m.category ?? "",
+      // Pipe-joined: MapLibre feature properties are flat scalars, not arrays.
+      tags: m.tags.join(" | "),
+      color:
+        (m.category && (AGENCY_COLORS as Record<string, string>)[m.category]) ||
+        UNCATEGORIZED_COLOR,
+      href: `${crmDirectoryHref}#${actorAnchor(m.name)}`,
+    },
+  })),
 };
 
 const cardImage = (p: Project): string => {
@@ -195,11 +239,27 @@ const cardImage = (p: Project): string => {
     data-network-nodes
     set:html={JSON.stringify(networkNodesGeoJson)}
   />
+  <script
+    type="application/json"
+    data-crm-markers
+    set:html={JSON.stringify(crmGeoJson)}
+  />
 </div>
 
 <script>
   import maplibregl from "maplibre-gl";
   import "maplibre-gl/dist/maplibre-gl.css";
+
+  // CRM popup content is built as an HTML string for MapLibre's setHTML, so
+  // every interpolated value goes through here first.
+  function escapeHtml(value: string): string {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   // Tile source — free, no API key, OSM-based, MapLibre-compatible.
   // Swap to a Protomaps PMTiles or MapTiler URL later if we want self-hosted / branded styling.
@@ -268,6 +328,12 @@ const cardImage = (p: Project): string => {
       );
       const networkNodesGeo = JSON.parse(
         networkNodesEl?.textContent ??
+          '{"type":"FeatureCollection","features":[]}',
+      );
+      const crmMarkersEl =
+        host.querySelector<HTMLScriptElement>("[data-crm-markers]");
+      const crmGeo = JSON.parse(
+        crmMarkersEl?.textContent ??
           '{"type":"FeatureCollection","features":[]}',
       );
 
@@ -459,6 +525,77 @@ const cardImage = (p: Project): string => {
             "text-opacity": 0.85,
           },
         });
+
+        // CRM actor markers (Task 13). Added BEFORE the cohort project layers
+        // so it renders underneath them — the cohort stays the primary read of
+        // the map and this is context around it. No-ops when the CRM feed is
+        // empty, which is the current state (see atlas.astro).
+        if (crmGeo.features.length > 0) {
+          map.addSource("crm-actors", { type: "geojson", data: crmGeo });
+          map.addLayer({
+            id: "crm-actors-dot",
+            type: "circle",
+            source: "crm-actors",
+            paint: {
+              "circle-radius": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                7,
+                3,
+                12,
+                7,
+              ] as unknown as number,
+              // Colour is baked onto the feature server-side from AGENCY_COLORS.
+              "circle-color": [
+                "get",
+                "color",
+              ] as unknown as maplibregl.ColorSpecification,
+              "circle-stroke-width": 1,
+              "circle-stroke-color": "#fbf9f3",
+              "circle-opacity": 0.9,
+            },
+          });
+
+          map.on("click", "crm-actors-dot", (e) => {
+            const f = e.features?.[0];
+            if (!f) return;
+            if (f.geometry.type !== "Point") return;
+            const props = (f.properties ?? {}) as Record<string, string>;
+            const coordinates = f.geometry.coordinates as [number, number];
+            const tags = String(props.tags ?? "")
+              .split("|")
+              .map((t) => t.trim())
+              .filter(Boolean);
+            const html = [
+              '<div class="crm-popup">',
+              `<p class="crm-popup__name">${escapeHtml(props.name ?? "")}</p>`,
+              tags.length
+                ? `<ul class="crm-popup__tags">${tags
+                    .map((t) => `<li>${escapeHtml(t)}</li>`)
+                    .join("")}</ul>`
+                : "",
+              props.href
+                ? `<a class="crm-popup__link" href="${escapeHtml(props.href)}">View in directory &rarr;</a>`
+                : "",
+              "</div>",
+            ].join("");
+            new maplibregl.Popup({ closeButton: true, offset: 10 })
+              .setLngLat(coordinates.slice() as [number, number])
+              .setHTML(html)
+              .addTo(map);
+          });
+          map.on(
+            "mouseenter",
+            "crm-actors-dot",
+            () => (map.getCanvas().style.cursor = "pointer"),
+          );
+          map.on(
+            "mouseleave",
+            "crm-actors-dot",
+            () => (map.getCanvas().style.cursor = ""),
+          );
+        }
 
         // Project markers
         map.addSource("projects", { type: "geojson", data: markersGeo });
@@ -1058,5 +1195,52 @@ const cardImage = (p: Project): string => {
     .popover-card {
       box-shadow: 4px 4px 0 var(--ink);
     }
+  }
+
+  /* CRM actor popups (Task 13). MapLibre builds these at runtime, outside the
+     scoped-style rewrite, so they have to be :global. */
+  .program-map :global(.maplibregl-popup-content) {
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    border-radius: 0;
+    box-shadow: 3px 3px 0 var(--ink);
+    padding: 0.7rem 0.85rem;
+    font-family: var(--mono);
+  }
+  .program-map :global(.maplibregl-popup-tip) {
+    border-top-color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  .program-map :global(.crm-popup__name) {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+  .program-map :global(.crm-popup__tags) {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+  .program-map :global(.crm-popup__tags li) {
+    border: 1px solid var(--rule);
+    padding: 0.05rem 0.35rem;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--rule);
+  }
+  .program-map :global(.crm-popup__link) {
+    display: inline-block;
+    margin-top: 0.55rem;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--ink);
   }
 </style>

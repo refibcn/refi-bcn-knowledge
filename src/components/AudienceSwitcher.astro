@@ -1,0 +1,128 @@
+---
+interface Props {
+  current?: string;
+}
+
+const { current = "public" } = Astro.props;
+
+const audiences = [
+  { id: "public", label: "Curious public" },
+  { id: "funder", label: "Funder" },
+  { id: "administration", label: "Public administration" },
+  { id: "organiser", label: "Movement / organiser" },
+];
+---
+
+<div class="audience-switcher" role="group" aria-label="Reading this as">
+  <span class="audience-switcher__label">Reading this as:</span>
+  <div class="audience-switcher__options" role="tablist" aria-label="Audience">
+    {
+      audiences.map((audience) => (
+        <button
+          type="button"
+          class={`audience-switcher__btn ${audience.id === current ? "active" : ""}`}
+          role="tab"
+          aria-selected={audience.id === current ? "true" : "false"}
+          data-audience={audience.id}
+        >
+          {audience.label}
+        </button>
+      ))
+    }
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    const buttons = document.querySelectorAll("[data-audience]");
+    const blocks = document.querySelectorAll("[data-audience-block]");
+
+    function setAudience(id) {
+      buttons.forEach((btn) => {
+        const active = btn.dataset.audience === id;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", String(active));
+      });
+      blocks.forEach((block) => {
+        const blockAudience = block.dataset.audienceBlock;
+        block.classList.toggle("is-hidden", blockAudience !== id);
+      });
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.set("read", id);
+        history.replaceState(null, "", "?" + params.toString());
+        sessionStorage.setItem("rcm-audience", id);
+      } catch (e) {}
+    }
+
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", () => setAudience(btn.dataset.audience));
+    });
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const initial =
+        params.get("read") ||
+        sessionStorage.getItem("rcm-audience") ||
+        "public";
+      if (initial && initial !== "public") {
+        setAudience(initial);
+      }
+    } catch (e) {}
+  })();
+</script>
+
+<style>
+  .audience-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+  }
+  .audience-switcher__label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .audience-switcher__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+  }
+  .audience-switcher__btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: var(--space-2) var(--space-3);
+    background: var(--paper);
+    color: var(--text-primary);
+    border: 1px solid var(--border-subtle);
+    cursor: pointer;
+    transition:
+      background-color var(--t-fast),
+      color var(--t-fast),
+      border-color var(--t-fast);
+  }
+  .audience-switcher__btn + .audience-switcher__btn {
+    margin-left: -1px;
+  }
+  .audience-switcher__btn:hover {
+    z-index: 1;
+    border-color: var(--ink);
+  }
+  .audience-switcher__btn.active {
+    z-index: 2;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--primary);
+  }
+  [data-audience-block].is-hidden {
+    display: none;
+  }
+</style>

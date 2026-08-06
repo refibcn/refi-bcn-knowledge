@@ -1,0 +1,156 @@
+# Static indicator values for the initial priorities section.
+# These are placeholders pending verified live data sources.
+# Each entry is keyed to a priority and displayed in the scoreboard.
+
+indicators:
+  - id: eco_habitats_unfavourable
+    priority: Ecosystems
+    label:
+      en: Habitats of EU interest in unfavourable status
+      ca: Hàbitats d'interès comunitari en estat desfavorable
+    value: "65"
+    unit: "%"
+    status: in_overshoot
+    trend: worsening
+    threshold: "30"
+    thresholdLabel:
+      en: Favourable status target
+      ca: Objectiu d'estat favorable
+    confidence: medium
+    source:
+      type: static
+      label: Catalan Biodiversity Monitoring — placeholder
+      url: https://mediambient.gencat.cat/ca/05_ambits_dactuacio/patrimoni_natural/biodiversitat
+      license: Public — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Live feed to be wired to the Catalan biodiversity monitoring programme.
+      ca: La connexió en temps real s'ha de connectar al programa de monitoratge de biodiversitat català.
+
+  - id: food_import_dependency
+    priority: Food
+    label:
+      en: Caloric import dependency
+      ca: Dependència calòrica d'importacions
+    value: "75"
+    unit: "%"
+    status: under_strain
+    trend: worsening
+    threshold: "50"
+    thresholdLabel:
+      en: Regional food security threshold
+      ca: Llindar de seguretat alimentària regional
+    confidence: medium
+    source:
+      type: static
+      label: Eurostat / Spanish agricultural statistics — placeholder
+      url: https://ec.europa.eu/eurostat
+      license: Public — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Source and method to be verified against Catalan agricultural accounts.
+      ca: La font i el mètode s'han de verificar amb els comptes agrícoles catalans.
+
+  - id: energy_renewable_share
+    priority: Energy
+    label:
+      en: Share of electricity from renewables
+      ca: Quota d'electricitat d'origen renovable
+    value: "28"
+    unit: "%"
+    status: under_strain
+    trend: improving
+    threshold: "55"
+    thresholdLabel:
+      en: 2030 climate target
+      ca: Objectiu climàtic 2030
+    confidence: high
+    source:
+      type: static
+      label: Red Eléctrica / Catalan Energy Plan — placeholder
+      url: https://www.ree.es/es
+      license: Public — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Live daily data available from Red Eléctrica; to be wired in next increment.
+      ca: Dades diàries disponibles de Red Eléctrica; es connectaran en el següent increment.
+
+  - id: water_reservoir_status
+    priority: Water
+    label:
+      en: Reservoir storage, internal basins
+      ca: Embassaments, conques internes
+    value: "42"
+    unit: "%"
+    status: under_strain
+    trend: worsening
+    threshold: "25"
+    thresholdLabel:
+      en: Drought emergency threshold
+      ca: Llindar d'emergència per sequera
+    confidence: high
+    source:
+      type: socrata
+      domain: analisi.transparenciacatalunya.cat
+      dataset: gn9e-3qhr
+      label: Catalan Water Agency — live feed pending
+      url: https://analisi.transparenciacatalunya.cat/Medi-Ambient/Quantitat-d-aigua-als-embassaments-de-les-Conques-/gn9e-3qhr
+      license: CC0 — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Snapshot value; live Socrata feed to be implemented in next increment.
+      ca: Valor d'instantània; feed Socrata en viu per implementar en el següent increment.
+
+  - id: circular_waste_recycling
+    priority: Circular
+    label:
+      en: Municipal waste selectively collected
+      ca: Residus municipals recollits selectivament
+    value: "41"
+    unit: "%"
+    status: holding
+    trend: improving
+    threshold: "55"
+    thresholdLabel:
+      en: EU target for 2025
+      ca: Objectiu UE 2025
+    confidence: medium
+    source:
+      type: static
+      label: Catalan Waste Agency — placeholder
+      url: https://arc.gencat.cat/ca/inici
+      license: Public — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Construction and demolition waste indicators to be added.
+      ca: S'han d'afegir indicadors de residus de construcció i demolició.
+
+  - id: social_energy_poverty
+    priority: Social
+    label:
+      en: Households in energy poverty
+      ca: Habitatges en pobresa energètica
+    value: "13"
+    unit: "%"
+    status: under_strain
+    trend: worsening
+    threshold: "5"
+    thresholdLabel:
+      en: Just transition floor
+      ca: Pis de transició justa
+    confidence: medium
+    source:
+      type: static
+      label: Catalan Energy Poverty Observatory — placeholder
+      url: https://www.ohb.cat/
+      license: Public — to be verified
+      accessed: "2026-08-01"
+    lastVerified: "2026-08-01"
+    note:
+      en: Definition and most recent survey year to be verified.
+      ca: S'ha de verificar la definició i l'any d'enquesta més recent.

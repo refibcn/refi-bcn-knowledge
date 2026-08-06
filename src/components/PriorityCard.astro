@@ -1,0 +1,103 @@
+---
+import type { Priority } from "../lib/priorities";
+
+interface Props {
+  priority: Priority;
+  href: string;
+  actorCount: number;
+  programCount: number;
+}
+
+const { priority, href, actorCount, programCount } = Astro.props;
+const t = (obj: { en: string }) => obj.en;
+---
+
+<a
+  href={href}
+  class="priority-card"
+  style={`--priority-color: ${priority.color}`}
+>
+  <span class="priority-card__accent" aria-hidden="true"></span>
+  <h3 class="priority-card__title">{t(priority.name)}</h3>
+  <p class="priority-card__one-liner">{t(priority.oneLiner || { en: "" })}</p>
+  <div class="priority-card__counts">
+    <span class="priority-card__count">
+      <strong>{actorCount}</strong> organizations
+    </span>
+    <span class="priority-card__count">
+      <strong>{programCount}</strong> programs
+    </span>
+  </div>
+  <span class="priority-card__action">Explore →</span>
+</a>
+
+<style>
+  .priority-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: inherit;
+    transition:
+      border-color var(--t-fast),
+      background-color var(--t-fast),
+      transform var(--t-fast);
+    overflow: hidden;
+  }
+  .priority-card:hover {
+    border-color: var(--priority-color);
+    background: var(--paper);
+    transform: translateY(-3px);
+  }
+  .priority-card__accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--priority-color);
+  }
+  .priority-card__title {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--ink);
+  }
+  .priority-card__one-liner {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0;
+    flex: 1 1 auto;
+  }
+  .priority-card__counts {
+    display: flex;
+    gap: var(--space-4);
+    margin-top: var(--space-2);
+  }
+  .priority-card__count {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .priority-card__count strong {
+    color: var(--priority-color);
+    font-size: 1rem;
+    margin-right: 0.25rem;
+  }
+  .priority-card__action {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--primary);
+    margin-top: var(--space-1);
+  }
+</style>

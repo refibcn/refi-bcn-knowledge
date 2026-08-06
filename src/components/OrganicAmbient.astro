@@ -1,0 +1,83 @@
+---
+// Decorative, low-contrast organic motion layer.
+// Place inside a positioned parent (e.g. .hero). Hidden from screen readers.
+---
+
+<div class="organic-ambient" aria-hidden="true">
+  <div class="organic-orb organic-orb--1"></div>
+  <div class="organic-orb organic-orb--2"></div>
+  <div class="organic-orb organic-orb--3"></div>
+</div>
+
+<style>
+  .organic-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.28;
+    overflow: hidden;
+  }
+  .organic-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(70px);
+    animation: organic-drift 18s ease-in-out infinite alternate;
+  }
+  .organic-orb--1 {
+    width: 55vw;
+    height: 55vw;
+    max-width: 700px;
+    max-height: 700px;
+    background: radial-gradient(
+      circle at 40% 40%,
+      var(--pillar-tissue-light) 0%,
+      transparent 65%
+    );
+    top: -22%;
+    left: -12%;
+    animation-duration: 24s;
+  }
+  .organic-orb--2 {
+    width: 45vw;
+    height: 45vw;
+    max-width: 600px;
+    max-height: 600px;
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--pillar-neural-light) 0%,
+      transparent 60%
+    );
+    top: 5%;
+    right: -18%;
+    animation-duration: 19s;
+  }
+  .organic-orb--3 {
+    width: 35vw;
+    height: 35vw;
+    max-width: 500px;
+    max-height: 500px;
+    background: radial-gradient(
+      circle at 50% 50%,
+      color-mix(in srgb, var(--pillar-flow-mid) 55%, var(--pillar-flow-light))
+        0%,
+      transparent 60%
+    );
+    bottom: -12%;
+    left: 28%;
+    animation-duration: 21s;
+  }
+  @keyframes organic-drift {
+    0% {
+      transform: translate(0, 0) scale(1);
+    }
+    100% {
+      transform: translate(3%, 5%) scale(1.06);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .organic-orb {
+      animation: none;
+    }
+  }
+</style>

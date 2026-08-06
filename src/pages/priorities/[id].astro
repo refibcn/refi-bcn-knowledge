@@ -1,0 +1,454 @@
+---
+import Layout from "../../components/Layout.astro";
+import OrganicAmbient from "../../components/OrganicAmbient.astro";
+import AudienceSwitcher from "../../components/AudienceSwitcher.astro";
+import DataProvenance from "../../components/DataProvenance.astro";
+import CapitalStack from "../../components/CapitalStack.astro";
+import { getPriorityById, loadPriorities } from "../../lib/priorities";
+import {
+  getHeadlineIndicator,
+  getIndicatorsByPriority,
+} from "../../lib/indicators";
+import { loadSectionConfig, fetchDatabaseRecords } from "../../lib/notion";
+import {
+  hasCatbis,
+  normalizeRecord,
+  normalizeProgram,
+  inferPriorityTags,
+} from "../../lib/crm";
+import { withBase } from "../../lib/paths";
+import type { Priority } from "../../lib/priorities";
+
+export async function getStaticPaths() {
+  const priorities = loadPriorities();
+  return priorities.map((priority) => ({
+    params: { id: priority.slug },
+    props: { priority },
+  }));
+}
+
+interface Props {
+  priority: Priority;
+}
+
+const { priority } = Astro.props;
+
+const t = (obj?: { en: string }) => obj?.en ?? "";
+
+const sections = loadSectionConfig();
+const actorsSection = sections.find((s) => s.id === "actors");
+const programsSection = sections.find((s) => s.id === "programs");
+
+let actorRecords: any[] = [];
+let programRecords: any[] = [];
+let notionError: string | null = null;
+
+try {
+  if (actorsSection?.database_id) {
+    actorRecords = await fetchDatabaseRecords(actorsSection.database_id);
+  }
+  if (programsSection?.database_id) {
+    programRecords = await fetchDatabaseRecords(programsSection.database_id);
+  }
+} catch (e: any) {
+  notionError = e.message ?? "Failed to fetch records from Notion.";
+}
+
+const relatedActors = actorRecords
+  .filter(hasCatbis)
+  .map(normalizeRecord)
+  .filter((a) => a.thirdTags.includes(priority.id));
+
+const relatedPrograms = programRecords
+  .filter(hasCatbis)
+  .map(normalizeProgram)
+  .map((p) => ({ ...p, priorityTags: inferPriorityTags(p) }))
+  .filter((p) => p.priorityTags.includes(priority.id));
+
+const headlineIndicator = getHeadlineIndicator(priority.id);
+const indicators = getIndicatorsByPriority(priority.id);
+
+const safeJson = (obj: any) =>
+  JSON.stringify(obj)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e")
+    .replace(/&/g, "\\u0026");
+---
+
+<Layout
+  title={t(priority.name)}
+  current="priorities"
+  description={t(priority.oneLiner)}
+>
+  <header
+    class="hero hero--priority"
+    style={`--priority-color: ${priority.color}`}
+  >
+    <OrganicAmbient />
+    <div class="hero__inner section">
+      <p class="eyebrow">Priority · {priority.order} of 6</p>
+      <h1 class="display">{t(priority.name)}</h1>
+      <p class="lede">{t(priority.oneLiner)}</p>
+    </div>
+  </header>
+
+  <section class="section section--wide">
+    <AudienceSwitcher />
+
+    {
+      notionError && (
+        <div class="error-banner">
+          <p>
+            <strong>Data error:</strong> {notionError}
+          </p>
+        </div>
+      )
+    }
+
+    <div class="framing" data-audience-block="public">
+      <p>{t(priority.framings?.public)}</p>
+    </div>
+    <div class="framing is-hidden" data-audience-block="funder">
+      <p>{t(priority.framings?.funder)}</p>
+    </div>
+    <div class="framing is-hidden" data-audience-block="administration">
+      <p>{t(priority.framings?.administration)}</p>
+    </div>
+    <div class="framing is-hidden" data-audience-block="organiser">
+      <p>{t(priority.framings?.organiser)}</p>
+    </div>
+
+    <h2 class="section-title">Diagnosis</h2>
+    <div
+      class="diagnosis"
+      set:html={t(priority.diagnosis)?.replace(/\n/g, "<br/>")}
+    />
+
+    {
+      headlineIndicator && (
+        <>
+          <h2 class="section-title">Indicator</h2>
+          <div
+            class="indicator-tile"
+            style={`--priority-color: ${priority.color}`}
+          >
+            <div class="indicator-tile__value">
+              <span class="indicator-tile__number">
+                {headlineIndicator.value}
+              </span>
+              <span class="indicator-tile__unit">{headlineIndicator.unit}</span>
+            </div>
+            <p class="indicator-tile__label">{t(headlineIndicator.label)}</p>
+            <div class="indicator-tile__meta">
+              <span
+                class={`indicator-tile__status status-${headlineIndicator.status}`}
+              >
+                {headlineIndicator.status.replace(/_/g, " ")}
+              </span>
+              <span class="indicator-tile__trend">
+                Trend: {headlineIndicator.trend}
+              </span>
+            </div>
+            <DataProvenance
+              source={headlineIndicator.source}
+              lastVerified={headlineIndicator.lastVerified}
+              confidence={headlineIndicator.confidence}
+              note={headlineIndicator.note}
+            />
+          </div>
+        </>
+      )
+    }
+
+    <h2 class="section-title">Leverage</h2>
+    <div
+      class="leverage"
+      set:html={t(priority.leverage)?.replace(/\n/g, "<br/>")}
+    />
+
+    <h2 class="section-title">Capital stack</h2>
+    <CapitalStack capital={priority.capital} color={priority.color} />
+
+    <h2 class="section-title">Who is already doing it</h2>
+    <p class="section-lede">
+      {relatedActors.length} organizations and {relatedPrograms.length} programs mapped
+      on this site are tagged with this priority.
+    </p>
+    <div class="related-grid">
+      {
+        relatedActors.slice(0, 6).map((actor) => (
+          <a href={withBase("organizations/")} class="related-card">
+            <span class="related-card__type">Organization</span>
+            <h3 class="related-card__name">{actor.name}</h3>
+            <p class="related-card__desc">
+              {actor.description ||
+                actor.whyItMatters ||
+                "No description available."}
+            </p>
+          </a>
+        ))
+      }
+      {
+        relatedPrograms.slice(0, 6).map((program) => (
+          <a href={withBase("programs/")} class="related-card">
+            <span class="related-card__type">Program</span>
+            <h3 class="related-card__name">{program.name}</h3>
+            <p class="related-card__desc">
+              {program.description ||
+                program.whatItIs ||
+                "No description available."}
+            </p>
+          </a>
+        ))
+      }
+    </div>
+
+    <h2 class="section-title">Sources</h2>
+    <ul class="source-list">
+      {
+        priority.sources?.map((source) => (
+          <li>
+            <a href={source.url} target="_blank" rel="noopener noreferrer">
+              {source.label}
+            </a>
+            <span class="source-list__date">accessed {source.accessed}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  .hero--priority {
+    position: relative;
+    padding: var(--space-12) var(--gutter) var(--space-8);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .hero--priority::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: var(--priority-color);
+  }
+  .hero__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--container-default);
+    margin: 0 auto;
+  }
+  .hero--priority .eyebrow {
+    margin-bottom: var(--space-3);
+  }
+  .hero--priority h1 {
+    margin-bottom: var(--space-4);
+  }
+  .hero--priority .lede {
+    max-width: 70ch;
+  }
+
+  .framing {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-5);
+    margin-bottom: var(--space-8);
+  }
+  .framing p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    font-weight: 500;
+    margin: var(--space-10) 0 var(--space-4);
+    color: var(--ink);
+  }
+  .section-lede {
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    max-width: 70ch;
+    margin: 0 0 var(--space-6);
+  }
+
+  .diagnosis,
+  .leverage {
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+    max-width: 70ch;
+  }
+  .diagnosis br,
+  .leverage br {
+    content: "";
+    display: block;
+    margin-bottom: var(--space-4);
+  }
+
+  .indicator-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-6);
+    max-width: 40rem;
+    margin-bottom: var(--space-8);
+  }
+  .indicator-tile__value {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+  .indicator-tile__number {
+    font-family: var(--serif);
+    font-size: 3rem;
+    font-weight: 500;
+    color: var(--priority-color);
+    line-height: 1;
+  }
+  .indicator-tile__unit {
+    font-family: var(--mono);
+    font-size: 1rem;
+    color: var(--text-muted);
+  }
+  .indicator-tile__label {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 0 0 var(--space-4);
+  }
+  .indicator-tile__meta {
+    display: flex;
+    gap: var(--space-4);
+    margin-bottom: var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .indicator-tile__status {
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+  }
+  .status-in_overshoot {
+    background: color-mix(in srgb, var(--priority-color) 14%, var(--surface-2));
+    color: var(--priority-color);
+    border-color: var(--priority-color);
+  }
+  .status-under_strain {
+    background: color-mix(in srgb, var(--priority-color) 10%, var(--surface-2));
+    color: var(--priority-color);
+    border-color: var(--priority-color);
+  }
+  .status-holding {
+    background: color-mix(
+      in srgb,
+      var(--pillar-neural-mid) 10%,
+      var(--surface-2)
+    );
+    color: var(--pillar-neural-dark);
+    border-color: var(--pillar-neural-mid);
+  }
+  .status-improving {
+    background: color-mix(
+      in srgb,
+      var(--pillar-tissue-mid) 12%,
+      var(--surface-2)
+    );
+    color: var(--pillar-tissue-dark);
+    border-color: var(--pillar-tissue-mid);
+  }
+  .indicator-tile__trend {
+    color: var(--text-muted);
+  }
+
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+  }
+  .related-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-5);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color var(--t-fast);
+  }
+  .related-card:hover {
+    border-color: var(--ink);
+  }
+  .related-card__type {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .related-card__name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: var(--space-2) 0;
+    color: var(--ink);
+  }
+  .related-card__desc {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .source-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    max-width: 60ch;
+  }
+  .source-list li {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .source-list a {
+    font-size: 1rem;
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--t-fast);
+  }
+  .source-list a:hover {
+    border-bottom-color: var(--primary);
+  }
+  .source-list__date {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+  }
+
+  .error-banner {
+    background: var(--surface-2);
+    border: 1px solid var(--primary);
+    padding: var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    margin-bottom: var(--space-6);
+  }
+
+  @media (max-width: 720px) {
+    .related-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

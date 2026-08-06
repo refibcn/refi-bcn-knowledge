@@ -1,0 +1,370 @@
+---
+import Layout from "../../components/Layout.astro";
+import OrganicAmbient from "../../components/OrganicAmbient.astro";
+import AudienceSwitcher from "../../components/AudienceSwitcher.astro";
+import PriorityCard from "../../components/PriorityCard.astro";
+import PriorityScoreboard from "../../components/PriorityScoreboard.astro";
+import InterdependenceDiagram from "../../components/InterdependenceDiagram.astro";
+import CapitalStack from "../../components/CapitalStack.astro";
+import { loadPriorities } from "../../lib/priorities";
+import { loadIndicators } from "../../lib/indicators";
+import { loadSectionConfig, fetchDatabaseRecords } from "../../lib/notion";
+import {
+  hasCatbis,
+  normalizeRecord,
+  normalizeProgram,
+  inferPriorityTags,
+} from "../../lib/crm";
+import { withBase } from "../../lib/paths";
+
+const priorities = loadPriorities().sort((a, b) => a.order - b.order);
+const indicators = loadIndicators();
+
+const sections = loadSectionConfig();
+const actorsSection = sections.find((s) => s.id === "actors");
+const programsSection = sections.find((s) => s.id === "programs");
+
+let actorRecords: any[] = [];
+let programRecords: any[] = [];
+let notionError: string | null = null;
+
+try {
+  if (actorsSection?.database_id) {
+    actorRecords = await fetchDatabaseRecords(actorsSection.database_id);
+  }
+  if (programsSection?.database_id) {
+    programRecords = await fetchDatabaseRecords(programsSection.database_id);
+  }
+} catch (e: any) {
+  notionError = e.message ?? "Failed to fetch records from Notion.";
+}
+
+const actors = actorRecords.filter(hasCatbis).map(normalizeRecord);
+const programs = programRecords
+  .filter(hasCatbis)
+  .map(normalizeProgram)
+  .map((p) => ({ ...p, priorityTags: inferPriorityTags(p) }));
+
+function countsForPriority(priorityId: string) {
+  return {
+    actors: actors.filter((a) => a.thirdTags.includes(priorityId)).length,
+    programs: programs.filter((p) => p.priorityTags.includes(priorityId))
+      .length,
+  };
+}
+
+const t = (obj: { en: string }) => obj.en;
+
+const defaultCapital = [
+  {
+    vehicle: "trust",
+    instrument: "Grant / endowment",
+    horizon: "10-50 years",
+    ticket: "\u20ac50k-\u20ac5M per holding",
+    rationale: {
+      en: "Land, water, and social commons held for long-term regenerative outcomes outside speculative markets.",
+    },
+    returns: ["ecological", "social", "cultural", "inspirational"],
+  },
+  {
+    vehicle: "bank",
+    instrument: "Patient debt / project finance",
+    horizon: "5-25 years",
+    ticket: "\u20ac500k-\u20ac50M per system",
+    rationale: {
+      en: "Retrofit, infrastructure, and cooperative facilities that conventional banks cannot price.",
+    },
+    returns: ["financial", "ecological", "social"],
+  },
+  {
+    vehicle: "venture-studio",
+    instrument: "Equity / revenue share",
+    horizon: "3-10 years",
+    ticket: "\u20ac20k-\u20ac1M per venture",
+    rationale: {
+      en: "Regenerative enterprises, platforms, and monitoring ventures that can scale across territories.",
+    },
+    returns: ["financial", "ecological", "inspirational"],
+  },
+  {
+    vehicle: "investment-company",
+    instrument: "Blended finance / equity",
+    horizon: "5-20 years",
+    ticket: "\u20ac1M-\u20ac50M per portfolio",
+    rationale: {
+      en: "Larger portfolios of public and community assets with measurable impact and community-anchored governance.",
+    },
+    returns: ["financial", "ecological", "social"],
+  },
+];
+---
+
+<Layout
+  title="Priorities"
+  current="priorities"
+  description="Six priorities for a living Catalunya: diagnosis, leverage, and capital."
+>
+  <header class="hero hero--compact">
+    <OrganicAmbient />
+    <div class="hero__inner section">
+      <p class="eyebrow">Regenerant Catalunya</p>
+      <h1 class="display">Six priorities for a living Catalunya</h1>
+      <p class="lede">
+        A diagnosis of the bioregion across six interdependent systems, plus the
+        leverage and capital vehicles that can move each toward regeneration.
+      </p>
+    </div>
+  </header>
+
+  <section class="section section--wide">
+    {
+      notionError && (
+        <div class="error-banner">
+          <p>
+            <strong>Data error:</strong> {notionError}
+          </p>
+        </div>
+      )
+    }
+
+    <AudienceSwitcher />
+
+    <div class="content-block" data-audience-block="public">
+      <p class="content-block__text">
+        This section shows where Catalunya is living beyond its limits, and what
+        is already being done about it. The scoreboard below is the quickest way
+        to see the state of the six priorities.
+      </p>
+    </div>
+    <div class="content-block is-hidden" data-audience-block="funder">
+      <p class="content-block__text">
+        Each priority links live actors, programs, and a capital stack. The
+        numbers are sourced and dated; the capital horizons and ticket sizes are
+        indicative starting points for due diligence.
+      </p>
+    </div>
+    <div class="content-block is-hidden" data-audience-block="administration">
+      <p class="content-block__text">
+        The priorities align with Catalan, Spanish, and EU strategies already in
+        force. The territorial and actor data can help identify delivery
+        partners and co-financing routes.
+      </p>
+    </div>
+    <div class="content-block is-hidden" data-audience-block="organiser">
+      <p class="content-block__text">
+        Use the diagnosis as a shared argument, and the actor maps to find peers
+        already working on each priority. The interdependence diagram shows why
+        these fights cannot be separated.
+      </p>
+    </div>
+
+    <h2 class="section-title">Scoreboard</h2>
+    <PriorityScoreboard priorities={priorities} indicators={indicators} />
+
+    <h2 class="section-title">The six priorities</h2>
+    <div class="priority-grid">
+      {
+        priorities.map((priority) => {
+          const counts = countsForPriority(priority.id);
+          return (
+            <PriorityCard
+              priority={priority}
+              href={withBase(`priorities/${priority.slug}/`)}
+              actorCount={counts.actors}
+              programCount={counts.programs}
+            />
+          );
+        })
+      }
+    </div>
+  </section>
+
+  <section class="section section--wide section--alt">
+    <div class="split-panel">
+      <div class="split-panel__text">
+        <h2 class="section-title">Interdependence</h2>
+        <p class="lede">
+          The six priorities are not a menu. They are a system: restoring
+          watersheds increases food resilience; reducing energy demand lowers
+          pressure on water; social commons create the capacity to act across
+          all of them.
+        </p>
+      </div>
+      <div class="split-panel__media">
+        <InterdependenceDiagram priorities={priorities} />
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--wide">
+    <h2 class="section-title">Where money should go</h2>
+    <p class="section-lede">
+      Catalunya needs a layered capital stack: patient trusts and banks for land
+      and infrastructure, venture studios for regenerative enterprises, and
+      investment companies for larger blended portfolios.
+    </p>
+    <div class="audience-block" data-audience-block="public">
+      <p class="audience-block__text">
+        Public money, philanthropic grants, and private capital each have a
+        place — but only when matched to the right time horizon, asset, and
+        governance structure.
+      </p>
+    </div>
+    <div class="audience-block is-hidden" data-audience-block="funder">
+      <p class="audience-block__text">
+        The four BioFi vehicles are sized for different risk, return, and
+        governance profiles. Detailed capital memos per priority are linked from
+        each priority page.
+      </p>
+    </div>
+    <div class="audience-block is-hidden" data-audience-block="administration">
+      <p class="audience-block__text">
+        Public co-investment and guarantees can crowd in private capital where
+        market failures are highest — especially land, water, and social
+        infrastructure.
+      </p>
+    </div>
+    <div class="audience-block is-hidden" data-audience-block="organiser">
+      <p class="audience-block__text">
+        The capital stack is not neutral. Trusts and commons institutions keep
+        assets out of speculative markets; banks and venture instruments must be
+        designed to reinforce, not extract from, the underlying commons.
+      </p>
+    </div>
+    <CapitalStack capital={defaultCapital} color="var(--ink)" />
+  </section>
+
+  <section class="section section--wide section--alt">
+    <h2 class="section-title">Method and provenance</h2>
+    <p class="section-lede">
+      The priorities were derived from ongoing research on the Catalan bioregion
+      and from the actor database already mapped on this site. Every indicator
+      shown carries a source, a date, and a confidence badge. Where data is
+      missing, we say so.
+    </p>
+    <p class="section-body">
+      Indicators will be refreshed on a schedule that matches their upstream
+      source: daily for reservoir and weather data, monthly for many economic
+      and environmental series, annually for census and survey-based indicators.
+      The full snapshot is rebuilt every six hours via GitHub Actions.
+    </p>
+  </section>
+</Layout>
+
+<style>
+  .hero--compact {
+    position: relative;
+    padding: var(--space-12) var(--gutter) var(--space-8);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .hero__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--container-default);
+    margin: 0 auto;
+  }
+  .hero--compact .eyebrow {
+    margin-bottom: var(--space-3);
+  }
+  .hero--compact h1 {
+    margin-bottom: var(--space-4);
+  }
+  .hero--compact .lede {
+    max-width: 70ch;
+  }
+
+  .section-title {
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    font-weight: 500;
+    margin: var(--space-10) 0 var(--space-4);
+    color: var(--ink);
+  }
+  .section--alt {
+    background: var(--surface-1);
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+  }
+  .section--alt .section-title {
+    margin-top: 0;
+  }
+  .section-lede {
+    font-size: 1.05rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    max-width: 70ch;
+    margin: 0 0 var(--space-6);
+  }
+  .section-body {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    max-width: 70ch;
+  }
+
+  .content-block {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-5);
+    margin-bottom: var(--space-8);
+  }
+  .content-block__text {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.55;
+    color: var(--text-primary);
+  }
+
+  .priority-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  .split-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-10);
+    align-items: center;
+  }
+  .split-panel__text {
+    max-width: 55ch;
+  }
+  .split-panel__media {
+    display: flex;
+    justify-content: center;
+  }
+
+  .audience-block {
+    margin-bottom: var(--space-6);
+  }
+  .audience-block__text {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    max-width: 70ch;
+  }
+
+  .error-banner {
+    background: var(--surface-2);
+    border: 1px solid var(--primary);
+    padding: var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    margin-bottom: var(--space-6);
+  }
+
+  @media (max-width: 1024px) {
+    .split-panel {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (max-width: 720px) {
+    .priority-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

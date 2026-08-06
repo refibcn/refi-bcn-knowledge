@@ -1,0 +1,26 @@
+# Notion database mappings for rc2 — Regenerant Catalunya
+# Database IDs are not sensitive — only the NOTION_API_KEY is secret.
+# Replace the placeholder database_id with your real Notion database ID.
+
+sections:
+  - id: actors
+    name: Regenerative Actors
+    description: Regenerative actors and initiatives across Catalunya
+    database_id: ebc1441510e182638180014a4851dbb0
+    route: /organizations
+    icon: map-pin
+    # Properties the UI expects: Name, Lat, Lng, Type/Tags, Description, URL
+  - id: programs
+    name: Programs and Initiatives
+    description: Programs and initiatives related to regeneration in Catalunya
+    database_id: 4da8003266a34efd96321ac616d6c5a4
+    route: /programs
+    icon: layers
+    # Properties the UI expects: Name, 2NDTAG, Description, Website, Area2
+  - id: events
+    name: Events
+    description: Events related to regeneration in Catalunya
+    database_id: 753f19a5ba9d4da69e7d0b1813106fd3
+    route: /events
+    icon: calendar
+    # Properties the UI expects: Event, About, Date, Location, Link, Type, Select/2NDTAG

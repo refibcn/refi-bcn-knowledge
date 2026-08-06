@@ -1,0 +1,642 @@
+# Priorities registry for Regenerant Catalunya Maps
+# Single source of truth for priority identity, colours, and keywords.
+
+priorities:
+  - id: Ecosystems
+    slug: ecosystems
+    order: 1
+    name:
+      en: Ecosystems
+      ca: Ecosistemes
+    shortName:
+      en: Ecosystems
+      ca: Ecosistemes
+    color: "#447932"
+    keywords:
+      - ecosystem
+      - ecosystems
+      - biodiversity
+      - forest
+      - forests
+      - habitat
+      - habitats
+      - nature
+      - ecological
+      - ecosistemes
+      - biodiversitat
+      - boscos
+      - hàbitat
+      - natura
+    oneLiner:
+      en: Living systems are under pressure from fire, drought, fragmentation, and invasive species.
+      ca: Els sistemes vius estan sota pressió pel foc, la sequera, la fragmentació i les espècies invasores.
+    diagnosis:
+      en: |
+        Mediterranean ecosystems in Catalunya are already operating outside safe boundaries in several places. Fire regimes are intensifying, drought stress is raising mortality in forests and maquis, and habitats of community interest are in unfavourable conservation status across large areas.
+
+        The fragmentation of the territory by urban expansion, transport corridors, and industrial farming reduces the capacity of species and ecological processes to move and adapt. Invasive species, amplified by trade and climate change, add a further destabilising pressure.
+
+        Protection exists on paper, but effective protection — with adequate management, monitoring, and connectivity — covers a much smaller fraction of the territory than the nominal protected-area statistic suggests.
+      ca: |
+        Els ecosistemes mediterranis de Catalunya ja funcionen fora de límits segurs en diversos llocs. Els règims d'incendis s'intensifiquen, l'estrès per sequera augmenta la mortalitat dels boscos i matollars, i els hàbitats d'interès comunitari estan en estat de conservació desfavorable a grans àrees.
+
+        La fragmentació del territori per l'expansió urbana, els corredors de transport i l'agricultura industrial redueix la capacitat de les espècies i els processos ecològics de moure's i adaptar-se. Les espècies invasores, amplificades pel comerç i el canvi climàtic, afegeixen una pressió desestabilitzadora addicional.
+    leverage:
+      en: |
+        The highest-return interventions are those that increase the *effective* area under ecological management: restoring riparian corridors, rewilding fire-scarred watersheds, and shifting marginal farmland to mosaic landscapes that combine production with habitat.
+
+        Stewardship agreements, commons institutions, and land trusts can hold and manage land for long-term ecological outcomes rather than short-term extraction. These are undercapitalised compared to their potential impact.
+
+        Monitoring and citizen science are force multipliers: they turn protection from a line on a map into a verifiable process, which is what funders and public auditors both need to see.
+      ca: |
+        Les intervencions amb més rendiment són les que augmenten l'àrea *efectiva* sota gestió ecològica: restaurar corredors fluvials, retornar la vida salvatge a les conques marxades pel foc, i transformar terres agrícoles marginals en paisatges mosaic que combinin producció i hàbitat.
+    framings:
+      funder:
+        en: Ecosystems offer the clearest natural-capital story in the region. Land under stewardship, hectares restored, and habitat quality are all auditable outcomes. Patient capital through land trusts and endowments is the most appropriate vehicle.
+        ca: Els ecosistemes ofereixen la història de capital natural més clara de la regió. Les terres sota custòdia, les hectàrees restaurades i la qualitat de l'hàbitat són resultats auditables. El capital pacient a través de fideïcomisos i dotacions és el vehicle més adequat.
+      administration:
+        en: This priority aligns with the EU Biodiversity Strategy, the Catalan Strategy for Biodiversity, and municipal green infrastructure plans. The evidence base is strongest here, making it suitable for co-financing with Next Generation funds and regional ecological transition instruments.
+        ca: Aquesta prioritat s'alinea amb l'Estratègia de Biodiversitat de la UE, l'Estratègia Catalana de Biodiversitat i els plans d'infraestructura verda municipals. La base de evidència és més sòlida aquí, cosa que la fa adequada per a la co-finançació amb fons Next Generation i instruments de transició ecològica regional.
+      organiser:
+        en: "The ecosystem argument is the entry point for many people: forests, fire, water, and wildlife are tangible. Use it to connect rural and urban constituencies, and to show that regenerative land management is a form of local jobs and resilience."
+        ca: "L'argument dels ecosistemes és el punt d'entrada per a moltes persones: boscos, foc, aigua i fauna són tangibles. Utilitzeu-lo per connectar constituències rurals i urbanes, i per demostrar que la gestió regenerativa del territori és una forma de treball local i resiliència."
+      public:
+        en: "Healthy ecosystems are the foundation: they clean water, buffer fire, harbour pollinators, and cool the city. When they degrade, the costs show up as flood damage, water treatment, and lost recreation."
+        ca: "Els ecosistemes saludables són la base: netegen l'aigua, amortiguen el foc, acullen pol·linitzadors i refresquen la ciutat. Quan es degraden, els costos apareixen com a danys per inundacions, tractament d'aigües i pèrdua de recreació."
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 10-30 years
+        ticket: "€50k-€2M per land holding"
+        rationale:
+          en: Land trusts and stewardship commons are the right holders for long-term restoration and connectivity outcomes.
+          ca: Els fideïcomisos de terres i els comuns de custòdia són els titulars adequats per a resultats de restauració i connectivitat a llarg termini.
+        returns: [ecological, social, cultural, inspirational]
+      - vehicle: bank
+        instrument: Recoverable grant / patient debt
+        horizon: 5-15 years
+        ticket: "€100k-€5M per landscape"
+        rationale:
+          en: Landscape-scale restoration and agroforestry need upfront capital that conventional banks will not provide.
+          ca: La restauració a escala de paisatge i l'agroforesteria necessiten capital inicial que els bancs convencionals no proporcionaran.
+        returns: [ecological, social, financial]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 3-10 years
+        ticket: "€25k-€500k per venture"
+        rationale:
+          en: Ecological monitoring, biochar, native nurseries, and restoration tech can be financed as regenerative enterprises.
+          ca: El monitoratge ecològic, el biochar, els vivers d'espècies natives i la tecnologia de restauració es poden finançar com a empreses regeneratives.
+        returns: [ecological, financial, inspirational]
+      - vehicle: investment-company
+        instrument: Blended finance / equity
+        horizon: 5-20 years
+        ticket: "€1M-€20M per project"
+        rationale:
+          en: Larger projects with measurable biodiversity and carbon outcomes can absorb structured capital.
+          ca: Projectes més grans amb resultats mesurables de biodiversitat i carboni poden absorbir capital estructurat.
+        returns: [ecological, financial, inspirational]
+    sources:
+      - label: "EU Biodiversity Strategy for 2030"
+        url: "https://environment.ec.europa.eu/strategy/biodiversity-strategy-2030"
+        accessed: "2026-08-01"
+      - label: "Stratègia Catalana de Biodiversitat"
+        url: "https://mediambient.gencat.cat/ca/05_ambits_dactuacio/patrimoni_natural/biodiversitat/estrategia-catalana-biodiversitat"
+        accessed: "2026-08-01"
+
+  - id: Food
+    slug: food
+    order: 2
+    name:
+      en: Food
+      ca: Alimentació
+    shortName:
+      en: Food
+      ca: Alimentació
+    color: "#DC7221"
+    keywords:
+      - food
+      - alimentació
+      - alimentacion
+      - agriculture
+      - agroecology
+      - agroecologia
+      - farming
+      - farm
+      - farms
+      - food sovereignty
+      - soberania alimentària
+      - organic
+      - ecològic
+    oneLiner:
+      en: "The food system is structurally fragile: high import dependency, ageing farmers, and squeezed margins."
+      ca: "El sistema alimentari és estructuralment fràgil: alta dependència d'importacions, pagesos envellits i marges estretits."
+    diagnosis:
+      en: |
+        Catalunya imports a large share of the calories and protein its residents consume. Local production is concentrated in a few commodities, while fruit, vegetables, and animal feed often travel long distances before reaching the region.
+
+        The farming population is ageing rapidly, and the succession crisis is acute: many farms have no identified next generation. Without new entrants, knowledge, seeds, and landscape-maintaining practices disappear.
+
+        Prices at the farm gate rarely cover the full cost of ecological production, while supermarkets and processors capture most of the value. The result is a squeeze that drives consolidation, specialisation, and environmental degradation.
+      ca: |
+        Catalunya importa una gran part de les calories i proteïnes que consumeixen els seus residents. La producció local està concentrada en pocs productes, mentre que la fruita, les verdures i els pinsos per a animals sovint recorren llargues distàncies abans d'arribar a la regió.
+
+        La població pagesa envellix ràpidament, i la crisi de successió és aguda: moltes granges no tenen una generació següent identificada. Sense nova entrada, desapareixen coneixements, llavors i pràctiques de manteniment del paisatge.
+
+        Els preus a l'origen rarament cobreixen el cost total de la producció ecològica, mentre que els supermercats i processadors capten la major part del valor. El resultat és una compressió que impulsa la consolidació, la especialització i la degradació ambiental.
+    leverage:
+      en: |
+        The most direct leverage is shortening the value chain and redirecting procurement: public canteens, hospitals, and food-distribution platforms that aggregate demand for local, ecological produce.
+
+        Agroecological training, land access, and cooperative infrastructure are the inputs that let new farmers enter. Land tenure and community ownership models reduce the capital barrier that currently blocks succession.
+
+        Seed sovereignty, local mills, and processing facilities are critical infrastructure: without them, farmers cannot capture value, and consumers cannot choose regional food.
+      ca: |
+        La palanca més directa és escurçar la cadena de valor i redirigir les compres: menjadors públics, hospitals i plataformes de distribució d'aliments que agreguin la demanda de productes locals i ecològics.
+
+        La formació agroecològica, l'accés a la terra i la infraestructura cooperativa són les entrades que permeten l'entrada de nous pagesos. Els models de tinença de la terra i propietat comunitària redueixen la barrera de capital que actualment bloqueja la successió.
+    framings:
+      funder:
+        en: Food is the most relatable entry point for public and philanthropic capital. Outcomes — hectares converted, farmers supported, procurement shifted — are concrete and easy to communicate. The strongest case is for supply-chain and infrastructure finance.
+        ca: L'alimentació és el punt d'entrada més comprensible per al capital públic i filantròpic. Els resultats — hectàrees convertides, pagesos recolzats, compres desviades — són concrets i fàcils de comunicar. El cas més fort és per al finançament de la cadena de subministrament i infraestructura.
+      administration:
+        en: Food sovereignty aligns with the Catalan Law on Food Sovereignty, the Plan for Agroecological Transition, and municipal food councils. It is a defensible area for public procurement reform and rural-development co-financing.
+        ca: La sobirania alimentària s'alinea amb la Llei Catalana de Sobirania Alimentària, el Pla de Transició Agroecològica i els consells alimentaris municipals. És una àrea defensible per a la reforma de la compra pública i la co-finançació del desenvolupament rural.
+      organiser:
+        en: "Food connects everyone: eaters, cooks, farmers, activists, and municipalities. It is the easiest priority to build coalitions around, and the one where everyday choices translate into systemic demand."
+        ca: "L'alimentació connecta tothom: menjadors, cuiners, pagesos, activistes i municipis. És la prioritat més fàcil al voltant de la qual construir coalicions, i on les eleccions quotidianes es tradueixen en demanda sistèmica."
+      public:
+        en: "A resilient food system means fresher food, more local jobs, and landscapes that are farmed rather than abandoned. It is also a daily way to participate: what we buy shapes what is grown."
+        ca: "Un sistema alimentari resilient significa aliments més frescos, més llocs de treball locals i paisatges que es conreen en lloc d'abandonar-se. També és una manera diària de participar: el que comprem determina el que es conrea."
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 10-25 years
+        ticket: "€25k-€1M per commons"
+        rationale:
+          en: Community land trusts and cooperative farms need patient capital to secure land outside speculative markets.
+          ca: Els fideïcomisos de terres comunitàries i les granges cooperatives necessiten capital pacient per assegurar terres fora dels mercats especulatius.
+        returns: [social, ecological, cultural, inspirational]
+      - vehicle: bank
+        instrument: Patient debt / guarantee fund
+        horizon: 3-10 years
+        ticket: "€50k-€2M per cooperative"
+        rationale:
+          en: Cooperatives, shared processing, and logistics need working capital and equipment finance that conventional banks cannot price.
+          ca: Les cooperatives, el processament compartit i la logística necessiten capital de treball i finançament d'equipament que els bancs convencionals no poden valorar.
+        returns: [social, financial, ecological]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 3-7 years
+        ticket: "€20k-€500k per venture"
+        rationale:
+          en: Food tech, distribution platforms, and circular packaging ventures can be financed with early-stage equity.
+          ca: Les empreses de tecnologia alimentària, plataformes de distribució i envasos circulars es poden finançar amb capital inicial.
+        returns: [financial, ecological, social]
+      - vehicle: investment-company
+        instrument: Blended finance / equity
+        horizon: 5-15 years
+        ticket: "€1M-€10M per platform"
+        rationale:
+          en: Regional aggregation platforms and processing hubs can absorb larger, structured capital with measurable impact.
+          ca: Les plataformes regionals d'agregació i els hubs de processament poden absorbir capital estructurat més gran amb impacte mesurable.
+        returns: [financial, ecological, social]
+    sources:
+      - label: "Llei de Sobirania Alimentària i Drets dels Pagesos"
+        url: "https://parlament.cat/web/actualitat/activitat-parlamentaria/activitat-legislativa/ley-de-soberania-alimentaria-y-derechos-de-los-pagadores"
+        accessed: "2026-08-01"
+      - label: "Pla de Transició Agroecològica de Catalunya"
+        url: "https://agricultura.gencat.cat/ca/detalls/Pla-transicio-agroecologica-Catalunya"
+        accessed: "2026-08-01"
+
+  - id: Energy
+    slug: energy
+    order: 3
+    name:
+      en: Energy
+      ca: Energia
+    shortName:
+      en: Energy
+      ca: Energia
+    color: "#C92637"
+    keywords:
+      - energy
+      - energia
+      - renewable
+      - renovable
+      - renewables
+      - solar
+      - wind
+      - eòlica
+      - community energy
+      - energy communities
+      - transició energètica
+      - energy transition
+    oneLiner:
+      en: Energy remains the largest source of emissions and the arena where public and community ownership can make the fastest gains.
+      ca: L'energia segueix sent la font més gran d'emissions i l'arena on la propietat pública i comunitària pot aconseguir els guanys més ràpids.
+    diagnosis:
+      en: |
+        Catalunya's electricity mix still relies heavily on fossil gas and nuclear imports for large parts of the year. The share of renewables is rising, but not fast enough to meet climate targets, and the new capacity is mostly large-scale solar and wind owned by incumbent utilities.
+
+        Community and citizen energy remain a small fraction of generation. The regulatory and administrative burden on energy communities is high, and access to grid connection, land, and capital remains tilted toward large developers.
+
+        The demand side is underused. Efficiency, flexibilisation, and demand reduction are treated as secondary to supply expansion, even though they are the fastest and cheapest way to reduce emissions and grid stress.
+      ca: |
+        La mix elèctrica de Catalunya encara depèn fortament del gas fòssil i les importacions nuclears durant grans parts de l'any. La quota d'energies renovables augmenta, però no prou ràpid per complir els objectius climàtics, i la nova capacitat és principalment solar i eòlica a gran escala propietat de les utilities establertes.
+
+        L'energia comunitària i ciutadana segueix sent una fracció petita de la generació. La càrrega regulatòria i administrativa de les comunitats energètiques és alta, i l'accés a la connexió de xarxa, terra i capital roman inclinat cap als grans promotors.
+
+        El costat de la demanda està sotautilitzat. L'eficiència, la flexibilització i la reducció de la demanda es tracten com a secundàries a l'expansió de l'oferta, tot i que són la manera més ràpida i barata de reduir les emissions i l'estrès de la xarxa.
+    leverage:
+      en: |
+        The fastest leverage is on the demand side: deep retrofit of public and social housing, municipal-led bulk procurement of efficiency, and tariff reform that rewards flexibility rather than consumption.
+
+        Scaling community and cooperative energy ownership changes the politics of the grid. It keeps value locally, builds constituencies for more ambitious targets, and can deploy faster than large projects because it is rooted in existing social infrastructure.
+
+        Strategic storage, microgrids, and sector coupling (heat, transport, cooling) turn the energy system from a one-way supply chain into a resilient web. The public and cooperative sectors are the natural owners of these assets.
+      ca: |
+        La palanca més ràpida és al costat de la demanda: rehabilitació profunda d'habitatge públic i social, compra agregada municipal d'eficiència, i reforma tarifària que recompensi la flexibilitat en lloc del consum.
+
+        Escalar la propietat comunitària i cooperativa de l'energia canvia la política de la xarxa. Manté el valor local, construeix constituències per a objectius més ambiciosos, i pot desplegar-se més ràpid que els grans projectes perquè està arrelat en la infraestructura social existent.
+
+        L'emmagatzematge estratègic, les microxarxes i l'acoblament sectorial (calor, transport, refrigeració) transformen el sistema energètic d'una cadena de subministrament unidireccional en una xarxa resilient. Els sectors públic i cooperatiu són els propietaris naturals d'aquests actius.
+    framings:
+      funder:
+        en: "Energy offers measurable, time-bound outcomes: tonnes avoided, MWh community-owned, buildings retrofitted. The case for concessional and patient capital is strong because market-rate finance overvalues quick supply-side projects and undervalues demand reduction."
+        ca: "L'energia ofereix resultats mesurables amb terminis: tones evitades, MWh en propietat comunitària, edificis rehabilitats. El cas per a capital concessionari i pacient és fort perquè el finançament a tipus de mercé sobrevalora els projectes ràpids del costat de l'oferta i infravalora la reducció de la demanda."
+      administration:
+        en: Energy communities and municipal utilities are recognised in Spanish and Catalan law. This priority is a natural fit for public procurement, planning authority, and infrastructure co-investment.
+        ca: Les comunitats energètiques i les utilities municipals estan reconegudes en la legislació espanyola i catalana. Aquesta prioritat s'adapta naturalment a la compra pública, l'autoritat de planificació i la co-inversió en infraestructura.
+      organiser:
+        en: Energy is where collective action produces fast, visible wins. Rooftop solar, community batteries, and street-by-street retrofitting build solidarity and show that another energy system is possible.
+        ca: L'energia és on l'acció col·lectiva produeix victòries ràpides i visibles. La solar a les teulades, les bateries comunitàries i la rehabilitació carrer per carrer construeixen solidaritat i mostren que un altre sistema energètic és possible.
+      public:
+        en: Cheaper, cleaner, more local energy is an easy win to explain. It also means less dependence on volatile global markets and more resilience during extreme heat and cold spells.
+        ca: L'energia més barata, neta i local és una victòria fàcil d'explicar. També significa menys dependència de mercats globals volàtils i més resiliència durant onades de calor i fred extremes.
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 10-30 years
+        ticket: "€100k-€5M per community fund"
+        rationale:
+          en: Community energy funds and research endowments build the social and technical capacity that markets do not price.
+          ca: Els fons d'energia comunitària i les dotacions de recerca construeixen la capacitat social i tècnica que els mercats no valoren.
+        returns: [social, inspirational, ecological]
+      - vehicle: bank
+        instrument: Patient debt / project finance
+        horizon: 5-20 years
+        ticket: "€500k-€20M per facility"
+        rationale:
+          en: Retrofit, district heating, and community-owned generation need long-term, low-cost capital that conventional banks rarely offer.
+          ca: La rehabilitació, la calefacció districtual i la generació en propietat comunitària necessiten capital a llarg termini i baix cost que els bancs convencionals rarament ofereixen.
+        returns: [financial, ecological, social]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 3-10 years
+        ticket: "€50k-€1M per venture"
+        rationale:
+          en: Energy management, flex services, and efficiency platforms are venture-ready and can scale across territories.
+          ca: La gestió energètica, els serveis de flexibilitat i les plataformes d'eficiència estan preparats per a empreses i poden escalar a través de territoris.
+        returns: [financial, ecological, inspirational]
+      - vehicle: investment-company
+        instrument: Equity / blended finance
+        horizon: 5-20 years
+        ticket: "€2M-€50M per platform"
+        rationale:
+          en: Larger portfolios of community and public assets can absorb institutional capital with clear impact metrics.
+          ca: Carteres més grans d'actius comunitaris i públics poden absorbir capital institucional amb mètriques d'impacte clares.
+        returns: [financial, ecological, social]
+    sources:
+      - label: "Pla de l'energia i canvi climàtic 2021-2030"
+        url: "https://canviclimatic.gencat.cat/ca/pla-energia-canvi-climatic-2021-2030"
+        accessed: "2026-08-01"
+      - label: "Som Comunitats Energètiques"
+        url: "https://somcomunitatsenergetiques.org/"
+        accessed: "2026-08-01"
+
+  - id: Water
+    slug: water
+    order: 4
+    name:
+      en: Water
+      ca: Aigua
+    shortName:
+      en: Water
+      ca: Aigua
+    color: "#4C6BC1"
+    keywords:
+      - water
+      - aigua
+      - watershed
+      - river
+      - riu
+      - reservoir
+      - embassament
+      - aquifer
+      - aqüífer
+      - drought
+      - sequera
+      - irrigation
+      - regadiu
+      - hydrology
+      - hydrological
+    oneLiner:
+      en: "Water is the most visible boundary: reservoirs, aquifers, and river flows are all under sustained stress."
+      ca: "L'aigua és el límit més visible: embassaments, aqüífers i cabals fluvials estan sota estrès sostingut."
+    diagnosis:
+      en: |
+        Internal Catalan river basins are chronically vulnerable. Reservoir levels fluctuate dramatically, and drought decrees are becoming more frequent and more severe. The hydrological cycle is amplified by higher temperatures, which increase evaporation and reduce soil moisture retention.
+
+        Groundwater over-extraction is widespread in agricultural areas, particularly where irrigation intensity is high. Nitrate contamination from livestock and fertiliser use affects many monitoring points, with consequences for drinking water and aquatic ecosystems.
+
+        Urban demand, tourism, and industrial use compete with agricultural and ecological needs. The legal and administrative framework for sharing scarcity is weak relative to the emerging reality of prolonged drought.
+      ca: |
+        Les conques internes dels rius catalans són crònicament vulnerables. Els nivells dels embassaments fluctuen dramàticament, i els decrets de sequera són més freqüents i més greus. El cicle hidrològic s'amplifica per temperatures més altes, que augmenten l'evaporació i redueixen la retenció d'humitat del sòl.
+
+        La sobre-explotació d'aigües subterrànies és estesa a les zones agrícoles, especialment on la intensitat de regadiu és alta. La contaminació per nitrats de la ramaderia i els fertilitzants afecta molts punts de monitoratge, amb conseqüències per a l'aigua potable i els ecosistemes aquàtics.
+
+        La demanda urbana, el turisme i l'ús industrial competeixen amb les necessitats agrícoles i ecològiques. El marc legal i administratiu per compartir l'escassetat és feble respecte a la realitat emergent de sequera prolongada.
+    leverage:
+      en: |
+        The highest leverage is reducing demand before it reaches the tap or the field: efficiency, leakage reduction, greywater reuse, and shifting crops and irrigation practices to lower-water alternatives.
+
+        Watershed restoration — riparian reforestation, wetland recovery, and soil regeneration — increases the natural storage and infiltration that reservoirs cannot provide. It is slow, but it is the only intervention that increases the system's total capacity.
+
+        Governance and transparency are force multipliers: open, real-time data on reservoirs, aquifers, and allocations lets scarcity be managed fairly and lets the public hold decision-makers accountable.
+      ca: |
+        La palanca més alta és reduir la demanda abans que arribi a l'aixeta o al camp: eficiència, reducció de fugues, reutilització d'aigües grises, i canvi de conreus i pràctiques de regadiu a alternatives de menor consum.
+
+        La restauració de conques — repoblació forestal de riberes, recuperació d'humitals i regeneració del sòl — augmenta l'emmagatzematge natural i la infiltració que els embassaments no poden proporcionar. És lent, però és l'única intervenció que augmenta la capacitat total del sistema.
+
+        La governança i la transparència són multiplicadors de força: dades obertes i en temps real sobre embassaments, aqüífers i assignacions permeten gestionar l'escassetat amb equitat i que el públic responsabilitzi els responsables polítics.
+    framings:
+      funder:
+        en: Water is a clear systems-limit issue. Investments in efficiency, metering, and watershed restoration have measurable returns in reduced scarcity risk and avoided infrastructure cost. Patient, outcome-linked capital is appropriate.
+        ca: L'aigua és un tema clar de límit de sistemes. Les inversions en eficiència, mesurament i restauració de conques tenen rendiments mesurables en reducció de risc d'escassetat i costos d'infraestructura evitats. És adequat capital pacient lligat a resultats.
+      administration:
+        en: Water planning is highly regulated, which creates both constraint and opportunity. Municipal water utilities, river basin authorities, and drought plans are the natural partners for efficiency and governance interventions.
+        ca: La planificació de l'aigua està molt regulada, cosa que crea tant restricció com oportunitat. Les utilitats municipals d'aigua, les autoritats de conca i els plans de sequera són els socis naturals per a intervencions d'eficiència i governança.
+      organiser:
+        en: Water is the issue that connects rural and urban Catalunya most directly. Everyone depends on the same reservoirs and aquifers. Use transparency and citizen monitoring to build pressure for fair allocation and against over-extraction.
+        ca: L'aigua és el tema que connecta el Catalunya rural i urbana més directament. Tothom depèn dels mateixos embassaments i aqüífers. Utilitzeu la transparència i el monitoratge ciutadà per construir pressió per una assignació justa i contra la sobre-explotació.
+      public:
+        en: "Water is the most concrete limit: when reservoirs are low, it is visible to everyone. A resilient water system means less waste, healthier rivers, and fewer drought restrictions."
+        ca: "L'aigua és el límit més concret: quan els embassaments estan baixos, és visible per a tothom. Un sistema d'aigua resilient significa menys malbaratament, rius més saludables i menys restriccions per sequera."
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 10-30 years
+        ticket: "€100k-€3M per watershed"
+        rationale:
+          en: Watershed restoration and conservation easements require long-term, non-extractive holding structures.
+          ca: La restauració de conques i les servituds de conservació necessiten estructures de tinença a llarg termini i no extractives.
+        returns: [ecological, social, cultural]
+      - vehicle: bank
+        instrument: Project finance / green bond
+        horizon: 5-25 years
+        ticket: "€1M-€50M per system"
+        rationale:
+          en: Leakage reduction, treatment upgrades, and irrigation modernisation are bankable at scale.
+          ca: La reducció de fugues, les millores de tractament i la modernització del regadiu són finançables a escala.
+        returns: [financial, ecological, social]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 3-10 years
+        ticket: "€25k-€1M per venture"
+        rationale:
+          en: Smart metering, efficiency platforms, and water-quality monitoring ventures can scale across utilities and farms.
+          ca: Les empreses de comptadors intel·ligents, plataformes d'eficiència i monitoratge de la qualitat de l'aigua poden escalar a través de utilities i granges.
+        returns: [financial, ecological, social]
+      - vehicle: investment-company
+        instrument: Blended finance / equity
+        horizon: 5-20 years
+        ticket: "€2M-€30M per portfolio"
+        rationale:
+          en: Integrated water portfolios combining efficiency, restoration, and reuse can absorb larger capital with measurable outcomes.
+          ca: Les carteres d'aigua integrades que combinen eficiència, restauració i reutilització poden absorbir capital més gran amb resultats mesurables.
+        returns: [financial, ecological, social]
+    sources:
+      - label: "Agència Catalana de l'Aigua"
+        url: "https://aca.gencat.cat/ca/inici"
+        accessed: "2026-08-01"
+      - label: "Observatori de la Sequera"
+        url: "https://observatorisequera.com/"
+        accessed: "2026-08-01"
+
+  - id: Circular
+    slug: circular
+    order: 5
+    name:
+      en: Circular
+      ca: Economia circular
+    shortName:
+      en: Circular
+      ca: Circular
+    color: "#8161BF"
+    keywords:
+      - circular
+      - waste
+      - residus
+      - recycling
+      - reciclatge
+      - reuse
+      - reutilitzar
+      - materials
+      - industrial ecology
+      - ecologia industrial
+      - zero waste
+      - residu zero
+    oneLiner:
+      en: "Material throughput is still mostly linear: extract, use, landfill. The circular economy is underinvested and underscaled."
+      ca: "El flux de materials encara és majoritàriament lineal: extreure, usar, abocar. L'economia circular està infrafinançada i infraescalada."
+    diagnosis:
+      en: |
+        Catalunya generates high levels of waste per capita, particularly construction and demolition waste, industrial waste, and municipal residual waste. Selective collection rates have improved, but a large fraction of materials still ends up in landfill or incineration.
+
+        The construction sector is the largest material consumer and waste producer. Renovation, reuse, and deconstruction practices are marginal compared to new-build demolition. The embedded carbon and resource cost of this pattern is enormous.
+
+        Industrial symbiosis, repair networks, and product-as-a-service models exist as pilots but rarely scale. They lack coordinated infrastructure, standards, and procurement pull from public and large private buyers.
+      ca: |
+        Catalunya genera nivells elevats de residus per càpita, especialment residus de construcció i demolició, residus industrials i residus residuals municipals. Les taxes de recollida selectiva han millorat, però una gran fracció de materials encara acaba en abocadors o incineració.
+
+        El sector de la construcció és el major consumidor de materials i productor de residus. Les pràctiques de rehabilitació, reutilització i deconstrucció són marginals comparades amb la demolició de nova construcció. El carboni incorporat i el cost de recursos d'aquest patró són enormes.
+
+        La simbiosi industrial, les xarxes de reparació i els models de producte com a servei existeixen com a pilots però rarament escale. Els falta infraestructura coordinada, estàndards i demanda de compra pública i grans compradors privats.
+    leverage:
+      en: |
+        The fastest lever is public procurement: requiring reused, repairable, and recyclable materials and products in public works, canteens, and IT. Procurement creates the demand that makes circular infrastructure viable.
+
+        Construction and demolition is the highest-impact sector. Deconstruction standards, reuse marketplaces, and materials passports can divert the largest waste stream from landfill while creating local jobs.
+
+        Repair, reuse, and sharing platforms need distributed logistics and visibility. Libraries of things, repair cafés, and industrial symbiosis exchanges are low-capital, high-network-effect interventions.
+      ca: |
+        La palanca més ràpida és la compra pública: exigir materials i productes reutilitzats, reparables i reciclables en obres públiques, menjadors i TI. La compra pública crea la demanda que fa viable la infraestructura circular.
+
+        La construcció i demolició és el sector d'impacte més alt. Els estàndards de deconstrucció, els mercats de reutilització i els passaports de materials poden desviar el flux de residus més gran de l'abocador tot creant llocs de treball locals.
+
+        Les plataformes de reparació, reutilització i compartició necessiten logística distribuïda i visibilitat. Les biblioteques de coses, els cafès de reparació i els intercanvis de simbiosi industrial són intervencions de baix capital i alt efecte de xarxa.
+    framings:
+      funder:
+        en: Circular economy investments are often smaller and more distributed than energy or water projects. They fit well with venture-studio and bank instruments, particularly when tied to public procurement pipelines.
+        ca: Les inversions en economia circular són sovint més petites i distribuïdes que els projectes d'energia o aigua. S'adapten bé a instruments d'estudi de riscos i bancaris, especialment quan estan lligats a pipelines de compra pública.
+      administration:
+        en: Circular economy is embedded in EU and Catalan waste and climate plans. Public buyers, waste consortia, and urban planning departments are the natural implementers.
+        ca: L'economia circular està integrada en els plans de residus i clima de la UE i Catalunya. Els compradors públics, els consorcis de residus i els departaments d'urbanisme són els implementadors naturals.
+      organiser:
+        en: "Circular economy is where everyday action becomes systemic: repair, sharing, reducing, and reusing. It is a good entry point for people who want to act without waiting for policy."
+        ca: "L'economia circular és on l'acció quotidiana esdevé sistèmica: reparar, compartir, reduir i reutilitzar. És un bon punt d'entrada per a persones que volen actuar sense esperar polítiques."
+      public:
+        en: Less waste means cleaner neighbourhoods, fewer trucks, and more jobs in repair and reuse. It also means less dependence on extracted raw materials from elsewhere.
+        ca: Menys residus significa barris més nets, menys camions i més llocs de treball en reparació i reutilització. També significa menys dependència de matèries primeres extretes d'altres llocs.
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 5-20 years
+        ticket: "€50k-€1M per commons"
+        rationale:
+          en: Reuse libraries, repair networks, and material commons need patient capital that does not extract profit.
+          ca: Les biblioteques de reutilització, les xarxes de reparació i els comuns de materials necessiten capital pacient que no extregui benefici.
+        returns: [social, ecological, cultural, inspirational]
+      - vehicle: bank
+        instrument: Debt / project finance
+        horizon: 3-15 years
+        ticket: "€500k-€10M per facility"
+        rationale:
+          en: Sorting, reuse, and recycling facilities can be financed once public procurement creates predictable feedstock.
+          ca: Les instal·lacions de tria, reutilització i reciclatge es poden finançar una vegada que la compra pública crea una matèria primera previsible.
+        returns: [financial, ecological, social]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 2-7 years
+        ticket: "€20k-€500k per venture"
+        rationale:
+          en: Marketplace, tracking, and reuse-tech ventures are highly scalable and fit early-stage equity.
+          ca: Les empreses de mercat, seguiment i tecnologia de reutilització són altament escalables i s'adapten a capital inicial.
+        returns: [financial, ecological, inspirational]
+      - vehicle: investment-company
+        instrument: Equity / blended finance
+        horizon: 5-15 years
+        ticket: "€1M-€20M per platform"
+        rationale:
+          en: Larger circular platforms and infrastructure portfolios can absorb institutional capital with proven procurement contracts.
+          ca: Les plataformes circulars més grans i les carteres d'infraestructura poden absorbir capital institucional amb contractes de compra provats.
+        returns: [financial, ecological, social]
+    sources:
+      - label: "Pla d'acció de l'economia circular de Catalunya"
+        url: "https://mediambient.gencat.cat/ca/05_ambits_dactuacio/economia-circular/"
+        accessed: "2026-08-01"
+      - label: "Estratègia Catalana de Residus"
+        url: "https://mediambient.gencat.cat/ca/05_ambits_dactuacio/residus/estrategia-catalana-residus"
+        accessed: "2026-08-01"
+
+  - id: Social
+    slug: social
+    order: 6
+    name:
+      en: Social
+      ca: Social
+    shortName:
+      en: Social
+      ca: Social
+    color: "#DC697F"
+    keywords:
+      - social
+      - housing
+      - habitatge
+      - cooperatives
+      - cooperative
+      - cooperativa
+      - commons
+      - comuns
+      - community
+      - comunitat
+      - justice
+      - justícia
+      - equity
+      - equity
+      - rural
+      - depopulation
+      - despoblament
+    oneLiner:
+      en: Regeneration requires institutions that distribute power, land, and care more equitably.
+      ca: La regeneració requereix institucions que distribueixin poder, terra i cures més equitativament.
+    diagnosis:
+      en: |
+        Housing affordability, energy poverty, and rural depopulation are worsening in parallel. The same economic pressures that degrade ecosystems also hollow out communities and concentrate wealth.
+
+        The formal cooperative and commons sector is small relative to the economy, but it carries a disproportionate share of innovation in care, housing, land stewardship, and democratic ownership. It is undercapitalised and often constrained by legal and administrative complexity.
+
+        The social infrastructure of regeneration — community kitchens, mutual aid networks, neighbourhood assemblies, care cooperatives — is largely volunteer-dependent and lacks the stable core funding that would let it professionalise without being captured by market logic.
+      ca: |
+        L'accessibilitat de l'habitatge, la pobresa energètica i el despoblament rural empitjoren en paral·lel. Les mateixes pressions econòmiques que degraden els ecosistemes també buiden les comunitats i concentren la riquesa.
+
+        El sector cooperatiu i dels comuns formal és petit respecte a l'economia, però porta una quota desproporcionada d'innovació en cures, habitatge, custòdia de la terra i propietat democràtica. Està infrafinançat i sovint restringit per la complexitat legal i administrativa.
+
+        La infraestructura social de la regeneració — cuines comunitàries, xarxes d'ajuda mútua, assemblees de barri, cooperatives de cures — depèn majoritàriament del voluntariat i li falta el finançament estable central que li permetria professionalitzar-se sense ser capturada per la lògica de mercat.
+    leverage:
+      en: |
+        The most structural intervention is land and housing commons: taking land and buildings out of speculative markets and holding them for long-term community benefit. This stabilises every other regenerative effort.
+
+        Cooperative finance and mutual credit systems let communities invest in themselves without depending on extractive lenders. They are small but scalable, especially when anchored by public deposits or guarantees.
+
+        Care and reproductive labour are the hidden economy of regeneration. Funding care cooperatives, community health, and education is not a side issue; it is what makes participation and resilience possible.
+      ca: |
+        La intervenció més estructural és els comuns de terra i habitatge: treure la terra i els edificis dels mercats especulatius i mantenir-los per al benefici comunitari a llarg termini. Això estabilitza tots els altres esforços regeneratius.
+
+        Les finances cooperatives i els sistemes de crèdit mutu permeten a les comunitats invertir en elles mateixes sense dependre de prestadors extractius. Són petits però escalables, especialment quan estan ancorats per dipòsits o garanties públiques.
+
+        Les cures i el treball reproductiu són l'economia oculta de la regeneració. Finançar cooperatives de cures, salut comunitària i educació no és un tema secundari; és el que fa possible la participació i la resiliència.
+    framings:
+      funder:
+        en: Social infrastructure is the highest-leverage, hardest-to-measure category. It is best funded through trust and bank instruments with long horizons and loose outcome metrics, rather than venture-style returns.
+        ca: La infraestructura social és la categoria de més palanca i més difícil de mesurar. És millor finançar-la a través de fideïcomisos i instruments bancaris amb horitzons llargs i mètriques de resultat flexibles, en lloc de retorns d'estil de risc.
+      administration:
+        en: Social priorities cut across housing, health, rural development, and democratic participation. They are natural partners for public-social partnerships and community-based contracts.
+        ca: Les prioritats socials travessen habitatge, salut, desenvolupament rural i participació democràtica. Són socis naturals per a associacions público-socials i contractes basats en la comunitat.
+      organiser:
+        en: "The social priority is the why: regeneration must be just, or it is not regeneration. Use it to connect every other priority to questions of power, access, and care."
+        ca: "La prioritat social és el perquè: la regeneració ha de ser justa, o no és regeneració. Utilitzeu-la per connectar totes les altres prioritats a preguntes de poder, accés i cures."
+      public:
+        en: Regeneration is not just about nature; it is about who owns the land, who decides, and who is cared for. A regenerative Catalunya is one where communities can stay and thrive.
+        ca: La regeneració no és només sobre la natura; és sobre qui és propietari de la terra, qui decideix i qui és cuidat. Una Catalunya regenerativa és aquella on les comunitats poden quedar-se i prosperar.
+    capital:
+      - vehicle: trust
+        instrument: Grant / endowment
+        horizon: 10-50 years
+        ticket: "€100k-€5M per holding"
+        rationale:
+          en: Land and housing trusts, care commons, and community endowments are the permanent institutions of a just transition.
+          ca: Els fideïcomisos de terra i habitatge, els comuns de cures i les dotacions comunitàries són les institucions permanents d'una transició justa.
+        returns: [social, cultural, ecological, inspirational]
+      - vehicle: bank
+        instrument: Patient debt / guarantee fund
+        horizon: 5-25 years
+        ticket: "€250k-€10M per cooperative"
+        rationale:
+          en: Housing cooperatives, care cooperatives, and community-owned facilities need long-term capital that conventional banks cannot provide.
+          ca: Les cooperatives d'habitatge, cooperatives de cures i instal·lacions en propietat comunitària necessiten capital a llarg termini que els bancs convencionals no poden proporcionar.
+        returns: [social, financial, ecological]
+      - vehicle: venture-studio
+        instrument: Equity / revenue share
+        horizon: 3-10 years
+        ticket: "€25k-€500k per venture"
+        rationale:
+          en: Platforms for cooperative housing, mutual aid, and community governance can scale with early-stage equity.
+          ca: Les plataformes per a habitatge cooperatiu, ajuda mútua i governança comunitària poden escalar amb capital inicial.
+        returns: [social, financial, inspirational]
+      - vehicle: investment-company
+        instrument: Blended finance / equity
+        horizon: 5-20 years
+        ticket: "€1M-€20M per portfolio"
+        rationale:
+          en: Larger portfolios of social infrastructure can absorb structured capital with community-anchored governance.
+          ca: Les carteres més grans d'infraestructura social poden absorbir capital estructurat amb governança ancorada en la comunitat.
+        returns: [social, financial, ecological]
+    sources:
+      - label: "Cooperatives de Catalunya"
+        url: "https://www.cooperativescatalunya.coop/"
+        accessed: "2026-08-01"
+      - label: "Observatori Metropolità de l'Habitatge"
+        url: "https://www.ohb.cat/"
+        accessed: "2026-08-01"

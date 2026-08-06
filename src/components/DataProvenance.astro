@@ -1,0 +1,135 @@
+---
+import type { Indicator } from "../lib/indicators";
+
+interface Props {
+  source: Indicator["source"];
+  lastVerified: string;
+  confidence?: string;
+  note?: { en: string };
+}
+
+const { source, lastVerified, confidence, note } = Astro.props;
+---
+
+<details class="provenance">
+  <summary class="provenance__summary">
+    <span class="provenance__label">Source and method</span>
+    {
+      confidence && (
+        <span class={`provenance__badge provenance__badge--${confidence}`}>
+          {confidence} confidence
+        </span>
+      )
+    }
+  </summary>
+  <div class="provenance__body">
+    <p class="provenance__item">
+      <span class="provenance__key">Source</span>
+      <a
+        href={source.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="provenance__link"
+      >
+        {source.label}
+      </a>
+    </p>
+    <p class="provenance__item">
+      <span class="provenance__key">Licence</span>
+      <span>{source.license}</span>
+    </p>
+    <p class="provenance__item">
+      <span class="provenance__key">Last verified</span>
+      <span>{lastVerified}</span>
+    </p>
+    {note && <p class="provenance__note">{note.en}</p>}
+  </div>
+</details>
+
+<style>
+  .provenance {
+    border: 1px solid var(--border-subtle);
+    background: var(--paper);
+  }
+  .provenance__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    cursor: pointer;
+    list-style: none;
+  }
+  .provenance__summary::-webkit-details-marker {
+    display: none;
+  }
+  .provenance__summary::before {
+    content: "▸";
+    margin-right: var(--space-2);
+  }
+  .provenance[open] .provenance__summary::before {
+    content: "▾";
+  }
+  .provenance__badge {
+    font-size: 0.62rem;
+    padding: 0.15rem 0.4rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    text-transform: uppercase;
+  }
+  .provenance__badge--high {
+    color: var(--pillar-tissue-dark);
+    border-color: var(--pillar-tissue-mid);
+  }
+  .provenance__badge--medium {
+    color: var(--pillar-flow-dark);
+    border-color: var(--pillar-flow-mid);
+  }
+  .provenance__badge--low {
+    color: var(--rule);
+    border-color: var(--rule);
+  }
+  .provenance__body {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px dashed var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  .provenance__item {
+    display: flex;
+    gap: var(--space-3);
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+  .provenance__key {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    min-width: 6rem;
+  }
+  .provenance__link {
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--t-fast);
+  }
+  .provenance__link:hover {
+    border-bottom-color: var(--primary);
+  }
+  .provenance__note {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: var(--space-2) 0 0;
+    padding-top: var(--space-2);
+    border-top: 1px dashed var(--border-subtle);
+  }
+</style>

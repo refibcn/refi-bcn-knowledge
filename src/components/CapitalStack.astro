@@ -1,0 +1,118 @@
+---
+import type { Priority } from "../lib/priorities";
+
+interface Props {
+  capital: Priority["capital"];
+  color: string;
+}
+
+const { capital, color } = Astro.props;
+
+if (!capital || capital.length === 0) return null;
+
+const vehicleLabels: Record<string, string> = {
+  trust: "Bioregional Trust",
+  bank: "Bioregional Bank",
+  "venture-studio": "Venture Studio",
+  "investment-company": "Investment Company",
+};
+
+const returnLabels: Record<string, string> = {
+  ecological: "Ecological",
+  social: "Social",
+  cultural: "Cultural",
+  financial: "Financial",
+  inspirational: "Inspirational",
+};
+---
+
+<div class="capital-stack">
+  {
+    capital.map((item) => (
+      <div class="capital-stack__item">
+        <div class="capital-stack__meta">
+          <span
+            class="capital-stack__vehicle"
+            style={`--vehicle-color: ${color}`}
+          >
+            {vehicleLabels[item.vehicle] ?? item.vehicle}
+          </span>
+          <span class="capital-stack__instrument">{item.instrument}</span>
+        </div>
+        <div class="capital-stack__details">
+          <span class="capital-stack__horizon">{item.horizon}</span>
+          <span class="capital-stack__ticket">{item.ticket}</span>
+        </div>
+        <p class="capital-stack__rationale">{item.rationale?.en ?? ""}</p>
+        <div class="capital-stack__returns">
+          {item.returns.map((r) => (
+            <span class="capital-stack__return">{returnLabels[r] ?? r}</span>
+          ))}
+        </div>
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .capital-stack {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+    gap: var(--space-4);
+  }
+  .capital-stack__item {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  .capital-stack__meta {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  .capital-stack__vehicle {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--vehicle-color);
+  }
+  .capital-stack__instrument {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .capital-stack__details {
+    display: flex;
+    gap: var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .capital-stack__rationale {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--text-muted);
+    margin: 0;
+    flex: 1 1 auto;
+  }
+  .capital-stack__returns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .capital-stack__return {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.4rem;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+  }
+</style>

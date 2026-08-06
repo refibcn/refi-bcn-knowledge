@@ -1,0 +1,492 @@
+---
+import Layout from "../components/Layout.astro";
+import OrganicAmbient from "../components/OrganicAmbient.astro";
+import { loadSectionConfig, fetchDatabaseRecords } from "../lib/notion";
+import { normalizeEvent, hasCatbis } from "../lib/crm";
+import type { CrmEvent } from "../lib/crm";
+
+const sections = loadSectionConfig();
+const eventsSection = sections.find((s) => s.id === "events");
+
+let records: any[] = [];
+let error: string | null = null;
+if (eventsSection?.database_id) {
+  try {
+    records = await fetchDatabaseRecords(eventsSection.database_id);
+  } catch (e: any) {
+    error = e.message ?? "Failed to fetch events from Notion.";
+  }
+} else {
+  error = "No database_id configured for events section.";
+}
+
+const sortedEvents: CrmEvent[] = records
+  .filter(hasCatbis)
+  .map(normalizeEvent)
+  .sort((a, b) => {
+    const da = a.startDate ? new Date(a.startDate).getTime() : 0;
+    const db = b.startDate ? new Date(b.startDate).getTime() : 0;
+    return db - da;
+  });
+
+interface MonthGroup {
+  key: string;
+  label: string;
+  events: CrmEvent[];
+}
+
+const monthGroups = new Map<string, MonthGroup>();
+for (const event of sortedEvents) {
+  if (!event.startDate) continue;
+  const date = new Date(event.startDate);
+  const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+  const label = date.toLocaleDateString("en-GB", {
+    year: "numeric",
+    month: "long",
+    timeZone: "UTC",
+  });
+  if (!monthGroups.has(key)) {
+    monthGroups.set(key, { key, label, events: [] });
+  }
+  monthGroups.get(key)!.events.push(event);
+}
+
+const calendarGroups = Array.from(monthGroups.values()).sort((a, b) =>
+  b.key.localeCompare(a.key),
+);
+
+function eventDay(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const date = new Date(dateStr);
+  return String(date.getUTCDate());
+}
+
+function eventDateLabel(dateStr: string | null): string {
+  if (!dateStr) return "Date TBC";
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+---
+
+<Layout title="Events" current="events">
+  <header class="hero hero--compact">
+    <OrganicAmbient />
+    <div class="hero__inner section">
+      <p class="eyebrow">Regenerant Catalunya</p>
+      <h1 class="display">Events</h1>
+      <p class="lede">
+        Gatherings, conferences, workshops, and community events related to
+        regeneration in Catalunya.
+      </p>
+    </div>
+  </header>
+
+  <section class="section section--wide">
+    {
+      error && (
+        <div class="error-banner">
+          <p>
+            <strong>Data error:</strong> {error}
+          </p>
+        </div>
+      )
+    }
+
+    <div class="view-toggle">
+      <button
+        type="button"
+        class="view-toggle__btn active"
+        data-view="calendar"
+        aria-pressed="true"
+      >
+        Calendar
+      </button>
+      <button
+        type="button"
+        class="view-toggle__btn"
+        data-view="list"
+        aria-pressed="false"
+      >
+        List
+      </button>
+    </div>
+
+    <p class="count">{sortedEvents.length} events mapped</p>
+
+    <div class="calendar-view view" data-view-panel="calendar">
+      {
+        calendarGroups.length === 0 && (
+          <p class="empty-state">No dated events found.</p>
+        )
+      }
+      {
+        calendarGroups.map((group) => (
+          <div class="month-block">
+            <h2 class="month-title">{group.label}</h2>
+            <div class="month-events">
+              {group.events.map((event) => (
+                <article class="event-card event-card--calendar">
+                  <span class="event-day">{eventDay(event.startDate)}</span>
+                  <div class="event-body">
+                    <div class="event-card__header">
+                      <h3 class="item-name">{event.name}</h3>
+                      {event.type && (
+                        <span class="item-type">{event.type}</span>
+                      )}
+                    </div>
+                    <p class="event-meta">
+                      {eventDateLabel(event.startDate)}
+                      {event.location && <span> · {event.location}</span>}
+                    </p>
+                    <p class="item-description">
+                      {event.about ||
+                        event.whatItIs ||
+                        "No description available."}
+                    </p>
+                    {event.link && (
+                      <a
+                        href={event.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="item-link"
+                      >
+                        Link →
+                      </a>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="list-view view is-hidden" data-view-panel="list">
+      <div class="item-grid">
+        {
+          sortedEvents.map((event) => (
+            <article class="item-card">
+              <div class="item-card__header">
+                <h3 class="item-name">{event.name}</h3>
+                {event.type && <span class="item-type">{event.type}</span>}
+              </div>
+
+              <div class="item-meta">
+                {event.startDate && (
+                  <span class="meta-item">
+                    <span class="meta-label">Date</span>
+                    <span class="meta-value">
+                      {eventDateLabel(event.startDate)}
+                    </span>
+                  </span>
+                )}
+                {event.location && (
+                  <span class="meta-item">
+                    <span class="meta-label">Location</span>
+                    <span class="meta-value">{event.location}</span>
+                  </span>
+                )}
+              </div>
+
+              <p class="item-description">
+                {event.about || event.whatItIs || "No description available."}
+              </p>
+
+              {event.link && (
+                <a
+                  href={event.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="item-link"
+                >
+                  Link →
+                </a>
+              )}
+            </article>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    (function () {
+      const buttons = document.querySelectorAll(".view-toggle__btn");
+      const panels = document.querySelectorAll("[data-view-panel]");
+
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const view = btn.dataset.view;
+          buttons.forEach((b) => {
+            b.classList.toggle("active", b.dataset.view === view);
+            b.setAttribute("aria-pressed", String(b.dataset.view === view));
+          });
+          panels.forEach((panel) => {
+            panel.classList.toggle(
+              "is-hidden",
+              panel.dataset.viewPanel !== view,
+            );
+          });
+        });
+      });
+    })();
+  </script>
+</Layout>
+
+<style>
+  .hero--compact {
+    position: relative;
+    padding: var(--space-12) var(--gutter) var(--space-8);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .hero__inner {
+    position: relative;
+    z-index: 1;
+    max-width: var(--container-default);
+    margin: 0 auto;
+  }
+  .hero--compact .eyebrow {
+    margin-bottom: var(--space-3);
+  }
+  .hero--compact h1 {
+    margin-bottom: var(--space-4);
+  }
+  .hero--compact .lede {
+    max-width: 70ch;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    gap: 0;
+    margin-bottom: var(--space-6);
+    border: 1px solid var(--border-subtle);
+  }
+  .view-toggle__btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: var(--space-2) var(--space-4);
+    background: var(--paper);
+    color: var(--text-primary);
+    border: none;
+    cursor: pointer;
+    transition:
+      background-color var(--t-fast),
+      color var(--t-fast);
+  }
+  .view-toggle__btn + .view-toggle__btn {
+    border-left: 1px solid var(--border-subtle);
+  }
+  .view-toggle__btn.active {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+
+  .count {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin: 0 0 var(--space-6);
+  }
+
+  .view.is-hidden {
+    display: none;
+  }
+
+  .calendar-view {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  .month-block {
+    border-top: 1px solid var(--ink);
+    padding-top: var(--space-4);
+  }
+  .month-title {
+    font-family: var(--serif);
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0 0 var(--space-4);
+    color: var(--ink);
+  }
+  .month-events {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  .event-card {
+    display: flex;
+    gap: var(--space-4);
+    padding: var(--space-4);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    transition: border-color var(--t-fast);
+  }
+  .event-card:hover {
+    border-color: var(--ink);
+  }
+  .event-day {
+    flex: 0 0 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--primary);
+    background: var(--paper);
+    border: 1px solid var(--border-subtle);
+  }
+  .event-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    flex: 1;
+  }
+  .event-card__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .event-meta {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .item-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(28rem, 1fr));
+    gap: var(--space-4);
+  }
+
+  .item-card {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    transition: border-color var(--t-fast);
+  }
+  .item-card:hover {
+    border-color: var(--ink);
+  }
+
+  .item-card__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .item-name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin: 0;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .item-type {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.5rem;
+    background: var(--surface-2);
+    color: var(--text-muted);
+    border: 1px solid var(--border-subtle);
+    white-space: nowrap;
+  }
+
+  .item-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+  }
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .meta-label {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .meta-value {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+  }
+
+  .item-description {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .item-link {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color var(--t-fast);
+    align-self: flex-start;
+    margin-top: var(--space-1);
+  }
+  .item-link:hover {
+    border-bottom-color: var(--primary);
+  }
+
+  .empty-state {
+    font-size: var(--text-base);
+    color: var(--text-muted);
+    margin: var(--space-8) 0;
+  }
+
+  .error-banner {
+    background: var(--surface-2);
+    border: 1px solid var(--primary);
+    padding: var(--space-4);
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    margin-bottom: var(--space-6);
+  }
+
+  @media (max-width: 720px) {
+    .month-events {
+      grid-template-columns: 1fr;
+    }
+    .item-grid {
+      grid-template-columns: 1fr;
+    }
+    .item-card__header,
+    .event-card__header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

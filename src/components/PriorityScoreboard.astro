@@ -1,0 +1,200 @@
+---
+import type { Priority } from "../lib/priorities";
+import type { Indicator } from "../lib/indicators";
+
+interface Props {
+  priorities: Priority[];
+  indicators: Indicator[];
+}
+
+const { priorities, indicators } = Astro.props;
+
+const t = (obj: { en: string }) => obj.en;
+
+const statusLabels: Record<string, string> = {
+  in_overshoot: "In overshoot",
+  under_strain: "Under strain",
+  holding: "Holding",
+  improving: "Improving",
+};
+
+const trendArrows: Record<string, string> = {
+  improving: "→",
+  worsening: "→",
+  stable: "—",
+};
+
+const scoreboardItems = priorities.map((priority) => {
+  const indicator = indicators.find((i) => i.priority === priority.id);
+  return { priority, indicator };
+});
+---
+
+<div class="scoreboard" role="region" aria-label="Priority scoreboard">
+  {
+    scoreboardItems.map(({ priority, indicator }) => (
+      <a
+        href={`/priorities/${priority.slug}/`}
+        class="scoreboard-item"
+        style={`--priority-color: ${priority.color}`}
+      >
+        <div class="scoreboard-item__header">
+          <span class="scoreboard-item__name">{t(priority.shortName)}</span>
+          {indicator && (
+            <span class={`scoreboard-item__status status-${indicator.status}`}>
+              {statusLabels[indicator.status]}
+            </span>
+          )}
+        </div>
+        {indicator ? (
+          <div class="scoreboard-item__value">
+            <span class="scoreboard-item__number">{indicator.value}</span>
+            <span class="scoreboard-item__unit">{indicator.unit}</span>
+          </div>
+        ) : (
+          <div class="scoreboard-item__value">
+            <span class="scoreboard-item__missing">No data yet</span>
+          </div>
+        )}
+        {indicator && (
+          <p class="scoreboard-item__label">{t(indicator.label)}</p>
+        )}
+        {indicator && (
+          <span
+            class="scoreboard-item__trend"
+            aria-label={`Trend: ${indicator.trend}`}
+          >
+            {trendArrows[indicator.trend]}
+          </span>
+        )}
+      </a>
+    ))
+  }
+</div>
+
+<style>
+  .scoreboard {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-4);
+    margin-bottom: var(--space-8);
+  }
+  .scoreboard-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-5);
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    text-decoration: none;
+    color: inherit;
+    transition:
+      border-color var(--t-fast),
+      background-color var(--t-fast),
+      transform var(--t-fast);
+  }
+  .scoreboard-item:hover {
+    border-color: var(--priority-color);
+    background: var(--paper);
+    transform: translateY(-3px);
+  }
+  .scoreboard-item__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .scoreboard-item__name {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  .scoreboard-item__status {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    color: var(--text-muted);
+  }
+  .status-in_overshoot {
+    background: color-mix(in srgb, var(--priority-color) 14%, var(--surface-2));
+    color: var(--priority-color);
+    border-color: var(--priority-color);
+  }
+  .status-under_strain {
+    background: color-mix(in srgb, var(--priority-color) 10%, var(--surface-2));
+    color: var(--priority-color);
+    border-color: var(--priority-color);
+  }
+  .status-holding {
+    background: color-mix(
+      in srgb,
+      var(--pillar-neural-mid) 10%,
+      var(--surface-2)
+    );
+    color: var(--pillar-neural-dark);
+    border-color: var(--pillar-neural-mid);
+  }
+  .status-improving {
+    background: color-mix(
+      in srgb,
+      var(--pillar-tissue-mid) 12%,
+      var(--surface-2)
+    );
+    color: var(--pillar-tissue-dark);
+    border-color: var(--pillar-tissue-mid);
+  }
+  .scoreboard-item__value {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+  .scoreboard-item__number {
+    font-family: var(--serif);
+    font-size: 2.8rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--priority-color);
+  }
+  .scoreboard-item__unit {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .scoreboard-item__missing {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .scoreboard-item__label {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  .scoreboard-item__trend {
+    position: absolute;
+    top: var(--space-5);
+    right: var(--space-5);
+    font-family: var(--mono);
+    font-size: 1.2rem;
+    color: var(--priority-color);
+    opacity: 0.4;
+  }
+
+  @media (max-width: 1024px) {
+    .scoreboard {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 640px) {
+    .scoreboard {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

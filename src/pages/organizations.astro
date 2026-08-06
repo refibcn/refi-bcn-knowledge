@@ -13,7 +13,7 @@ import {
 import type { CrmActor } from "../lib/crm";
 // Shared with the atlas: marker popups link to `#<actorAnchor(name)>` on this
 // page, so both sides must derive the anchor from the one helper.
-import { actorAnchor } from "../lib/atlas-data.mjs";
+import { actorAnchor, assertUniqueAnchors } from "../lib/atlas-data.mjs";
 
 const sections = loadSectionConfig();
 const actorsSection = sections.find((s) => s.id === "actors");
@@ -32,6 +32,19 @@ if (actorsSection?.database_id) {
 
 const actors: CrmActor[] = records.filter(hasCatbis).map(normalizeRecord);
 
+// Card ids are `actorAnchor(name)`, and the atlas links to them. Two actors
+// with the same name would emit duplicate DOM ids and silently break every
+// link to that anchor, so stop the build instead. 121 records, 121 anchors
+// today; 15 names are duplicated elsewhere in the CRM.
+// `actor-gallery` is the grid container's id; an actor named "Gallery" would
+// slug onto it. The JSON payload below uses a non-`actor-` id for the same
+// reason, so it needs no entry here.
+assertUniqueAnchors(
+  actors.map((a) => a.name),
+  "the /organizations directory",
+  ["actor-gallery"],
+);
+
 const activePriorityAreas = priorityAreaOptions.filter((p) =>
   actors.some((a) => a.thirdTags.includes(p)),
 );
@@ -41,6 +54,22 @@ const activeTerritories = territoryOptions.filter((t) =>
 const actorRoles = uniqueValues(actors, "actorRoles").filter(Boolean);
 const ontologyTags = uniqueValues(actors, "ontologyTags").filter(Boolean);
 const themes = uniqueValues(actors, "themes").filter(Boolean);
+
+// The client only filters and searches; it never re-renders a card. So the
+// payload carries just the fields the script reads — the five filter facets
+// plus the three search fields — instead of the whole record. Dropping the
+// unused half (Notion relation id arrays especially, which are 36 chars per
+// entry) is most of the weight. Card N corresponds to filterIndex[N].
+const filterIndex = actors.map((a) => ({
+  name: a.name,
+  description: a.description,
+  whyItMatters: a.whyItMatters,
+  thirdTags: a.thirdTags,
+  area2: a.area2,
+  actorRoles: a.actorRoles,
+  ontologyTags: a.ontologyTags,
+  themes: a.themes,
+}));
 
 const safeJson = (obj: any) =>
   JSON.stringify(obj)
@@ -180,11 +209,7 @@ const safeJson = (obj: any) =>
     <div class="actor-grid" id="actor-gallery">
       {
         actors.map((actor) => (
-          <article
-            class="actor-card"
-            id={actorAnchor(actor.name)}
-            data-actor={safeJson(actor)}
-          >
+          <article class="actor-card" id={actorAnchor(actor.name)}>
             <div class="actor-card__main">
               <div class="actor-card__header">
                 <h3 class="actor-name">{actor.name}</h3>
@@ -342,12 +367,23 @@ const safeJson = (obj: any) =>
         ))
       }
     </div>
+
+    <script
+      type="application/json"
+      id="directory-filter-data"
+      is:inline
+      set:html={safeJson(filterIndex)}
+    />
   </section>
 
   <script is:inline>
     (function () {
       const cards = Array.from(document.querySelectorAll(".actor-card"));
-      const actors = cards.map((el) => JSON.parse(el.dataset.actor || "{}"));
+      // One shared payload rather than a copy per card. Card N corresponds to
+      // actors[N] — both come from the same server-side array, in order.
+      const actors = JSON.parse(
+        document.getElementById("directory-filter-data").textContent,
+      );
       const countLabel = document.getElementById("gallery-count");
       const searchInput = document.getElementById("search-input");
       const clearBtn = document.getElementById("clear-filters");

@@ -9,7 +9,11 @@ import {
   toComarcaPlacements,
   largestRingCentroid,
   legendEntries,
+  classifyUnplaced,
+  assertUniqueAnchors,
+  actorAnchor,
 } from "../lib/atlas-data.mjs";
+import { hasCatbis } from "../lib/crm";
 // Bundle-time read of the comarca geometry, per the `?raw` convention in
 // src/lib/site.ts. This is build-only — the browser still fetches the same file
 // from public/ via the map's data-geo-url, so nothing extra ships to the client.
@@ -39,8 +43,10 @@ const doc = entries[0]!.data;
 //      same territorial divisions as the geojson's `nom_comar` values, so the
 //      two join by name. This is the geography the CRM actually has.
 //
-// Province-level and `regional` Area2 values carry no polygon and are left
-// unplaced rather than guessed at; the count is surfaced below.
+// Area2 values that carry no polygon are left unplaced rather than guessed at.
+// `classifyUnplaced()` says WHY each one is unplaced — province/regional scope,
+// a comarca missing from this geojson, or an enum option the map has never seen
+// — so the page can state the reason instead of assuming it.
 
 // Comarca name set + centroids, read off the same geojson the map draws.
 // Nine comarques appear as two features (mainland + exclave), so features are
@@ -78,7 +84,19 @@ let crmComarcas: {
   centroid: [number, number] | null;
 }[] = [];
 let placedActorCount = 0;
-let unplacedCount = 0;
+let unplaced: ReturnType<typeof classifyUnplaced> = {
+  total: 0,
+  scopeOnly: 0,
+  absentComarca: 0,
+  unrecognised: 0,
+  unrecognisedValues: [],
+};
+let unplacedMissingFromDirectory = 0;
+// Anchors the directory page actually renders. The atlas draws every CRM
+// actor, but /organizations filters through hasCatbis, so an atlas popup can
+// point at an anchor that does not exist. Links are emitted only for anchors
+// in this set; the rest render as plain text.
+let directoryAnchors: string[] = [];
 let crmError: string | null = null;
 try {
   const records = await fetchAtlasRecords();
@@ -97,17 +115,38 @@ try {
     placements.flatMap((p) => p.actors.map((a) => a.name)),
   ).size;
 
-  // Records that named a territory the map cannot draw: `regional` and the
-  // four province values. Counted so the gap is stated rather than implied.
+  // hasCatbis is imported from the directory's own module rather than
+  // reimplemented, so "what the directory renders" has one definition.
+  const directoryNames = records
+    .filter(hasCatbis)
+    .map((r) => String(r.properties?.["Name"] ?? "").trim())
+    .filter(Boolean);
+  assertUniqueAnchors(directoryNames, "the /organizations directory");
+  const anchorSet = new Set(directoryNames.map((n) => actorAnchor(n)));
+  directoryAnchors = [...anchorSet];
+
+  unplaced = classifyUnplaced(records, comarcaIndex);
+
+  // Verify the claim before making it: how many unplaced actors are also
+  // absent from the directory, so the page cannot promise a page they are
+  // not on.
   const placedNames = new Set(
     placements.flatMap((p) => p.actors.map((a) => a.name)),
   );
-  unplacedCount = records.filter((r) => {
+  unplacedMissingFromDirectory = records.filter((r) => {
+    const name = String(r.properties?.["Name"] ?? "").trim();
+    if (!name || placedNames.has(name)) return false;
     const area2 = r.properties?.["Area2"];
     const values = Array.isArray(area2) ? area2 : area2 ? [area2] : [];
-    const name = String(r.properties?.["Name"] ?? "").trim();
-    return values.length > 0 && name && !placedNames.has(name);
+    return values.length > 0 && !anchorSet.has(actorAnchor(name));
   }).length;
+
+  if (unplaced.unrecognisedValues.length > 0) {
+    console.warn(
+      `[atlas] Unrecognised Area2 value(s), not drawn and not described as ` +
+        `province/regional: ${unplaced.unrecognisedValues.join(", ")}`,
+    );
+  }
 } catch (e) {
   crmError = e instanceof Error ? e.message : "CRM feed unavailable.";
 }
@@ -131,6 +170,20 @@ for (const entry of [
 }
 const countFor = (id: string | null) => placedByCategory.get(id)?.size ?? 0;
 const uncategorized = countFor(null);
+
+// Built as text rather than nested JSX so the punctuation stays tight — each
+// clause is only emitted when its bucket is non-empty, and every number here is
+// computed by classifyUnplaced() rather than assumed.
+const unplacedReasons = [
+  unplaced.scopeOnly > 0 &&
+    `${unplaced.scopeOnly} name only a province or regional scope`,
+  unplaced.absentComarca > 0 &&
+    `${unplaced.absentComarca} name a comarca missing from this geojson`,
+  unplaced.unrecognised > 0 &&
+    `${unplaced.unrecognised} name an unrecognised value (${unplaced.unrecognisedValues.join(", ")})`,
+].filter((clause): clause is string => typeof clause === "string");
+const unplacedReasonText =
+  unplacedReasons.length > 0 ? ` — ${unplacedReasons.join("; ")}` : "";
 ---
 
 <Layout
@@ -155,6 +208,7 @@ const uncategorized = countFor(null);
       crmMarkers={crmMarkers}
       crmComarcas={crmComarcas}
       crmDirectoryHref={directoryHref}
+      directoryAnchors={directoryAnchors}
     />
   </section>
 
@@ -208,13 +262,24 @@ const uncategorized = countFor(null);
             so an actor is shaded across its whole comarca rather than pinned to
             an address — precise coordinates would replace that with an exact
             location.
-            {unplacedCount > 0 && (
+            {unplaced.total > 0 && (
               <>
                 {" "}
-                A further <strong>{unplacedCount}</strong> actors name only a
-                province or <code>regional</code> scope, which has no polygon to
-                place them on; they are listed in the{" "}
-                <a href={directoryHref}>directory</a> but not drawn here.
+                A further <strong>{unplaced.total}</strong> actors carry an{" "}
+                <code>Area2</code> the map cannot draw{unplacedReasonText}.{" "}
+                {unplacedMissingFromDirectory > 0 ? (
+                  <>
+                    Most appear in the <a href={directoryHref}>directory</a> —{" "}
+                    <strong>{unplacedMissingFromDirectory}</strong> do not,
+                    because it lists only CATBIS-tagged actors while the atlas
+                    counts the whole CRM.
+                  </>
+                ) : (
+                  <>
+                    They are listed in the <a href={directoryHref}>directory</a>{" "}
+                    but not drawn here.
+                  </>
+                )}
               </>
             )}
           </>

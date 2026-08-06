@@ -4,11 +4,8 @@ import OrganicAmbient from "../../components/OrganicAmbient.astro";
 import AudienceSwitcher from "../../components/AudienceSwitcher.astro";
 import DataProvenance from "../../components/DataProvenance.astro";
 import CapitalStack from "../../components/CapitalStack.astro";
-import { getPriorityById, loadPriorities } from "../../lib/priorities";
-import {
-  getHeadlineIndicator,
-  getIndicatorsByPriority,
-} from "../../lib/indicators";
+import { loadPriorities } from "../../lib/priorities";
+import { getHeadlineIndicator } from "../../lib/indicators";
 import { loadSectionConfig, fetchDatabaseRecords } from "../../lib/notion";
 import {
   hasCatbis,
@@ -66,13 +63,6 @@ const relatedPrograms = programRecords
   .filter((p) => p.priorityTags.includes(priority.id));
 
 const headlineIndicator = getHeadlineIndicator(priority.id);
-const indicators = getIndicatorsByPriority(priority.id);
-
-const safeJson = (obj: any) =>
-  JSON.stringify(obj)
-    .replace(/</g, "\\u003c")
-    .replace(/>/g, "\\u003e")
-    .replace(/&/g, "\\u0026");
 ---
 
 <Layout

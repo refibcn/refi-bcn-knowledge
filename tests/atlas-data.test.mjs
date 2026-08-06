@@ -6,6 +6,10 @@ import {
   actorAnchor,
   toComarcaPlacements,
   largestRingCentroid,
+  classifyUnplaced,
+  classifyAreaValue,
+  assertUniqueAnchors,
+  COMARQUES_ABSENT_FROM_GEOJSON,
 } from "../src/lib/atlas-data.mjs";
 
 // `atlas-data` is .mjs rather than .ts for the same reason `kb.mjs` is: the
@@ -300,4 +304,103 @@ test("largestRingCentroid handles a plain Polygon and rejects junk", () => {
     null,
   );
   assert.equal(largestRingCentroid(null), null);
+});
+
+// ── Unplaced classification ───────────────────────────────────────────────
+// The page states why unplaced actors are unplaced. That claim has to be
+// checked, not assumed: before this, the code only knew "had an Area2, wasn't
+// placed", which would describe an unrecognised new enum option exactly the
+// same way as `regional`.
+
+test("scope-only, absent-comarca and unrecognised are counted apart", () => {
+  const summary = classifyUnplaced(
+    [
+      rec({ Name: "Region", Area2: ["regional"] }),
+      rec({ Name: "Prov", Area2: ["Lleida province"] }),
+      rec({ Name: "Absent", Area2: ["Lluçanès"] }),
+      rec({ Name: "New", Area2: ["Comarca del Futur"] }),
+      rec({ Name: "Placed", Area2: ["Osona"] }),
+      rec({ Name: "NoArea" }),
+    ],
+    INDEX,
+  );
+  assert.equal(
+    summary.total,
+    4,
+    "the placed and area-less records are excluded",
+  );
+  assert.equal(summary.scopeOnly, 2);
+  assert.equal(summary.absentComarca, 1);
+  assert.equal(summary.unrecognised, 1);
+  assert.deepEqual(summary.unrecognisedValues, ["Comarca del Futur"]);
+});
+
+test("a record is counted under its most alarming class, so nothing hides", () => {
+  const summary = classifyUnplaced(
+    [rec({ Name: "Mixed", Area2: ["regional", "Comarca del Futur"] })],
+    INDEX,
+  );
+  assert.equal(summary.total, 1);
+  assert.equal(summary.scopeOnly, 0, "must not be filed as province/regional");
+  assert.equal(summary.unrecognised, 1);
+});
+
+test("a record placed in any comarca is never counted as unplaced", () => {
+  const summary = classifyUnplaced(
+    [rec({ Name: "Both", Area2: ["Osona", "regional"] })],
+    INDEX,
+  );
+  assert.equal(summary.total, 0);
+});
+
+test("the live Area2 enum contains no value the map cannot classify", () => {
+  // This is the closed-world check. The CRM's Area2 enum is 41 comarques plus
+  // these seven. If someone adds a new option, it classifies as `unrecognised`
+  // and the atlas surfaces it instead of silently calling it a province.
+  const knownUnplaceable = [
+    "regional",
+    "Barcelona province",
+    "Girona province",
+    "Lleida province",
+    "Tarragona province",
+    ...COMARQUES_ABSENT_FROM_GEOJSON,
+  ];
+  const lookup = new Map(
+    INDEX.map((n) => [n.toLowerCase(), n]).concat([["aran", "Val d'Aran"]]),
+  );
+  for (const value of knownUnplaceable) {
+    assert.notEqual(
+      classifyAreaValue(value, lookup),
+      "unrecognised",
+      `${value} should be a known non-comarca value`,
+    );
+  }
+  assert.equal(classifyAreaValue("Osona", lookup), "comarca");
+  assert.equal(classifyAreaValue("Somewhere Else", lookup), "unrecognised");
+});
+
+// ── Anchor collisions ─────────────────────────────────────────────────────
+
+test("assertUniqueAnchors passes on distinct anchors and throws on collisions", () => {
+  assert.doesNotThrow(() => assertUniqueAnchors(["Coop57", "Aethnic"]));
+  // Real pairs from the CRM that slug identically.
+  assert.throws(
+    () => assertUniqueAnchors(["Akasha Hub", "AKASHA Hub"], "directory"),
+    /Duplicate actor anchors in directory/,
+  );
+  assert.throws(
+    () => assertUniqueAnchors(["Ana Belén", "Ana Belen"]),
+    /actor-ana-bel/,
+  );
+});
+
+test("assertUniqueAnchors also rejects collisions with reserved element ids", () => {
+  // `actor-gallery` is the id of the directory's grid container.
+  assert.throws(
+    () => assertUniqueAnchors(["Gallery"], "directory", ["actor-gallery"]),
+    /collides with a reserved element id/,
+  );
+  assert.doesNotThrow(() =>
+    assertUniqueAnchors(["Coop57"], "directory", ["actor-gallery"]),
+  );
 });

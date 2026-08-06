@@ -40,6 +40,10 @@ interface Props {
   crmComarcas?: CrmComarca[];
   /** Page the popup "view in directory" link points at. */
   crmDirectoryHref?: string;
+  /** Anchors that page actually renders. An actor whose anchor is absent gets
+   *  plain text instead of a link — /organizations filters through hasCatbis,
+   *  so not every CRM actor on the map has a card to link to. */
+  directoryAnchors?: string[];
 }
 const {
   projects,
@@ -47,7 +51,15 @@ const {
   crmMarkers = [],
   crmComarcas = [],
   crmDirectoryHref = "",
+  directoryAnchors = [],
 } = Astro.props;
+const directoryAnchorSet = new Set(directoryAnchors);
+/** Link target for an actor, or null when the directory has no such card. */
+const actorHref = (name: string): string | null => {
+  const anchor = actorAnchor(name);
+  if (!crmDirectoryHref || !directoryAnchorSet.has(anchor)) return null;
+  return `${crmDirectoryHref}#${anchor}`;
+};
 // Ported from refibcn-site; the only change is that public-asset URLs go
 // through withBase() per this repo's convention instead of hand-trimming
 // BASE_URL. The client script reads the resolved URL off `data-geo-url`, so it
@@ -124,7 +136,7 @@ const crmGeoJson = {
       color:
         (m.category && (AGENCY_COLORS as Record<string, string>)[m.category]) ||
         UNCATEGORIZED_COLOR,
-      href: `${crmDirectoryHref}#${actorAnchor(m.name)}`,
+      href: actorHref(m.name) ?? "",
     },
   })),
 };
@@ -148,7 +160,7 @@ const crmComarcaPayload = {
       color:
         (a.category && (AGENCY_COLORS as Record<string, string>)[a.category]) ||
         UNCATEGORIZED_COLOR,
-      href: `${crmDirectoryHref}#${actorAnchor(a.name)}`,
+      href: actorHref(a.name) ?? "",
     })),
   })),
   densityColor: COMARCA_DENSITY_COLOR,
@@ -412,19 +424,23 @@ const cardImage = (p: Project): string => {
           `<p class="crm-popup__meta">${entry.count} actor${entry.count === 1 ? "" : "s"} in the CRM</p>`,
           '<ul class="crm-popup__actors">',
           shown
-            .map(
-              (a) =>
-                `<li><a href="${escapeHtml(a.href)}"><span class="crm-popup__dot" style="background:${escapeHtml(a.color)}"></span>${escapeHtml(a.name)}</a>${
-                  a.tags.length
-                    ? `<span class="crm-popup__chips">${a.tags
-                        .map(
-                          (t) =>
-                            `<span class="crm-popup__chip">${escapeHtml(t)}</span>`,
-                        )
-                        .join("")}</span>`
-                    : ""
-                }</li>`,
-            )
+            .map((a) => {
+              const dot = `<span class="crm-popup__dot" style="background:${escapeHtml(a.color)}"></span>`;
+              // No href means the directory has no card for this actor, so it
+              // renders as plain text rather than a link to a missing anchor.
+              const label = a.href
+                ? `<a href="${escapeHtml(a.href)}">${dot}${escapeHtml(a.name)}</a>`
+                : `<span class="crm-popup__plain">${dot}${escapeHtml(a.name)}</span>`;
+              const chips = a.tags.length
+                ? `<span class="crm-popup__chips">${a.tags
+                    .map(
+                      (t) =>
+                        `<span class="crm-popup__chip">${escapeHtml(t)}</span>`,
+                    )
+                    .join("")}</span>`
+                : "";
+              return `<li>${label}${chips}</li>`;
+            })
             .join(""),
           "</ul>",
           rest > 0 && crmComarcaData.directoryHref
@@ -1483,7 +1499,8 @@ const cardImage = (p: Project): string => {
     flex-direction: column;
     gap: 0.4rem;
   }
-  .program-map :global(.crm-popup__actors a) {
+  .program-map :global(.crm-popup__actors a),
+  .program-map :global(.crm-popup__plain) {
     display: flex;
     align-items: baseline;
     gap: 0.35rem;
@@ -1494,6 +1511,10 @@ const cardImage = (p: Project): string => {
   }
   .program-map :global(.crm-popup__actors a:hover) {
     text-decoration: underline;
+  }
+  /* Not in the directory, so not a link — muted to say so. */
+  .program-map :global(.crm-popup__plain) {
+    color: var(--rule);
   }
   .program-map :global(.crm-popup__dot) {
     width: 0.5rem;

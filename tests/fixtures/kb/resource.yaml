@@ -1,0 +1,21 @@
+entries:
+  zeta-resource:
+    title: Zeta Resource
+    type: resource
+    domain: funding
+    high_risk: true
+    maturity: raw
+    summary: A test guide about funding.
+    related_concepts: [Quadratic Funding]
+    provenance:
+      { origin: "https://example.org/doc-a", transformation: summarized }
+    work_order: wo-aaa
+  alpha-resource:
+    title: Alpha Resource
+    type: resource
+    domain: governance
+    maturity: raw
+    short_description: A governance tool.
+    source_lineage: https://example.org/alpha
+    related_concepts: [Quadratic Funding]
+    work_order: wo-bbb

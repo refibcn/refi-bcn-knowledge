@@ -10,7 +10,14 @@
 // Runs under plain Node (unbundled), so `import.meta.url` is this file — but
 // paths still come from kb.mjs so there is one definition. See the path
 // resolution note in src/lib/kb.mjs.
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import yaml from "js-yaml";
 import {
@@ -20,8 +27,14 @@ import {
   PUBLIC_KB_DIR,
 } from "../src/lib/kb.mjs";
 
+// Compare canonically on both sides: resolveKbDir() realpath-resolves its input,
+// so an un-resolved PUBLIC_KB_DIR would miss the match if the checkout path
+// itself contains a symlink.
 const source = resolveKbDir();
-if (source === PUBLIC_KB_DIR) {
+const ownOutput = existsSync(PUBLIC_KB_DIR)
+  ? realpathSync(PUBLIC_KB_DIR)
+  : PUBLIC_KB_DIR;
+if (source === ownOutput) {
   console.error(
     "export-public-kb: no workspace store to export from " +
       "(resolved to data/kb-public/, which is this script's own output).\n" +

@@ -6,6 +6,7 @@
 // `import.meta.url`; see the comment block in src/lib/kb.mjs for why.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadKb, resolveKbDir } from "../src/lib/kb.mjs";
@@ -36,9 +37,15 @@ test("falls back to committed public store when workspace store is absent", () =
   assert.equal(resolveKbDir({ workspaceExists: false }), PUBLIC_DIR);
 });
 
-test("default probe reflects this checkout (workspace store present here)", () => {
-  assert.equal(resolveKbDir(), WORKSPACE_DIR);
-});
+// Only meaningful inside a refi-bcn-os checkout. A standalone CI clone has no
+// workspace store — that case is covered by the fallback test above.
+test(
+  "default probe reflects this checkout (workspace store present here)",
+  { skip: !existsSync(WORKSPACE_DIR) },
+  () => {
+    assert.equal(resolveKbDir(), WORKSPACE_DIR);
+  },
+);
 
 // What a standalone CI clone actually does: read the committed public store.
 // Nothing is `reviewed` yet, so the export is empty — that must load as an

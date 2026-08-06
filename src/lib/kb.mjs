@@ -2,7 +2,7 @@
 // Ported from repos/refibcn-site — keep pure + dependency-light.
 // Data path: this repo lives at repos/refi-bcn-knowledge inside the refi-bcn-os
 // checkout, so the workspace store is two levels up at ../../data/kb/.
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
@@ -65,9 +65,24 @@ export const PUBLIC_KB_DIR = resolve(REPO_ROOT, "data", "kb-public");
 export function resolveKbDir({
   workspaceExists = existsSync(DEFAULT_KB_DIR),
 } = {}) {
-  if (process.env.KB_DIR) return process.env.KB_DIR;
+  // Normalize the env override: the exporter compares this against PUBLIC_KB_DIR
+  // to refuse reading its own output as a source. A raw string compare is
+  // bypassable by a relative path, a trailing slash, or a symlinked prefix
+  // (/tmp vs /private/tmp), and re-exporting from the output silently drops
+  // objects whose pairings aren't in the subset. Resolve so the guard holds.
+  if (process.env.KB_DIR) return canonicalize(process.env.KB_DIR);
   if (workspaceExists) return DEFAULT_KB_DIR; // dev inside the refi-bcn-os checkout
   return PUBLIC_KB_DIR; // CI / standalone clone
+}
+
+/** Absolute + symlink-resolved when the path exists; absolute otherwise. */
+function canonicalize(p) {
+  const abs = resolve(p);
+  try {
+    return realpathSync(abs);
+  } catch {
+    return abs; // not created yet — absolute is the best we can do
+  }
 }
 
 export function loadKb(kbDir = resolveKbDir()) {

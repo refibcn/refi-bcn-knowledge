@@ -54,7 +54,23 @@ const REPO_ROOT = findRepoRoot();
 // The workspace KMS store, present only inside a refi-bcn-os checkout.
 const DEFAULT_KB_DIR = resolve(REPO_ROOT, "..", "..", "data", "kb");
 
-export function loadKb(kbDir = process.env.KB_DIR ?? DEFAULT_KB_DIR) {
+// The committed public subset — `npm run export:public-kb` writes exactly what
+// publishableKb() lets through, so committing it leaks nothing by construction.
+// CI clones this repo standalone and has no workspace store to read.
+export const PUBLIC_KB_DIR = resolve(REPO_ROOT, "data", "kb-public");
+
+/** Which store to read, in precedence order: env → workspace → committed public.
+ *  `workspaceExists` is injectable so the fallback is testable without moving
+ *  the real store around. */
+export function resolveKbDir({
+  workspaceExists = existsSync(DEFAULT_KB_DIR),
+} = {}) {
+  if (process.env.KB_DIR) return process.env.KB_DIR;
+  if (workspaceExists) return DEFAULT_KB_DIR; // dev inside the refi-bcn-os checkout
+  return PUBLIC_KB_DIR; // CI / standalone clone
+}
+
+export function loadKb(kbDir = resolveKbDir()) {
   const schemas = readdirSync(kbDir)
     .filter((f) => f.endsWith(".yaml"))
     .map((f) => f.replace(/\.yaml$/, ""));

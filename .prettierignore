@@ -5,3 +5,4 @@ node_modules/
 package-lock.json
 public/CNAME
 public/CNAME.pending
+data/kb-public/

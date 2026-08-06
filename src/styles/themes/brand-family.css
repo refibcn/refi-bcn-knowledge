@@ -4,13 +4,21 @@
 
 :root {
   /* Neutrals */
-  --paper: #FBF9F3; --ivory: #F6F1E8; --sand: #E6DFD7;
-  --ink: #1D1A16; --rule: #6B6660; --navy: #092045;
+  --paper: #fbf9f3;
+  --ivory: #f6f1e8;
+  --sand: #e6dfd7;
+  --ink: #1d1a16;
+  --rule: #6b6660;
+  --navy: #092045;
 
   /* Accents */
-  --purple: #6B4EA3; --purple-light: #8B6EC3;
-  --orange: #E67E50; --orange-light: #F49870;
-  --forest: #214033; --terracotta: #8B5A3C; --blue: #4A6B85;
+  --purple: #6b4ea3;
+  --purple-light: #8b6ec3;
+  --orange: #e67e50;
+  --orange-light: #f49870;
+  --forest: #214033;
+  --terracotta: #8b5a3c;
+  --blue: #4a6b85;
 
   /* Semantic mapping (ink-on-paper) */
   --bg: var(--paper);
@@ -27,18 +35,24 @@
   --accent-foreground: var(--ink);
 
   /* Status + foregrounds */
-  --success: var(--blue);    --success-foreground: var(--paper);
-  --warning: #D27A3A;        --warning-foreground: var(--ink);
-  --danger:  #B33A2A;        --danger-foreground: var(--paper);
-  --info:    #6b4a85;        --info-foreground: var(--paper);
+  --success: var(--blue);
+  --success-foreground: var(--paper);
+  --warning: #d27a3a;
+  --warning-foreground: var(--ink);
+  --danger: #b33a2a;
+  --danger-foreground: var(--paper);
+  --info: #6b4a85;
+  --info-foreground: var(--paper);
 
   --gradient-bridge: linear-gradient(135deg, var(--purple), var(--orange));
 
   /* Type — variable @fontsource families register with a " Variable" suffix */
-  --serif: "Fraunces Variable", "Fraunces", "Cormorant Garamond", Georgia, serif;
-  --sans: "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif:
+    "Fraunces Variable", "Fraunces", "Cormorant Garamond", Georgia, serif;
+  --sans:
+    "Inter Variable", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-headings: var(--serif);   /* serif headings */
+  --font-headings: var(--serif); /* serif headings */
   --font-display-weight: 400;
 
   /* Radius (straight) + shadow (flat) */

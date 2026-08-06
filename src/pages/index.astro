@@ -1,39 +1,39 @@
 ---
 import Layout from "../components/Layout.astro";
-
-const rawBase = import.meta.env.BASE_URL;
-const base = rawBase.endsWith("/") ? rawBase : `${rawBase}/`;
+import { withBase } from "../lib/paths";
 
 // Placeholder index — each section is scaffolded by a later task.
 const sections = [
   {
     label: "Commons",
-    href: `${base}commons/`,
+    href: withBase("commons/"),
     blurb: "Public knowledge base pages compiled from the org-os KB engine.",
   },
   {
     label: "Atlas",
-    href: `${base}atlas/`,
-    blurb: "Catalunya map — comarques, territories and where the work is happening.",
+    href: withBase("atlas/"),
+    blurb:
+      "Catalunya map — comarques, territories and where the work is happening.",
   },
   {
     label: "Organizations",
-    href: `${base}organizations/`,
-    blurb: "Directory of organizations in the network, fed from the Notion CRM.",
+    href: withBase("organizations/"),
+    blurb:
+      "Directory of organizations in the network, fed from the Notion CRM.",
   },
   {
     label: "Programs",
-    href: `${base}programs/`,
+    href: withBase("programs/"),
     blurb: "Programs and initiatives running across the bioregion.",
   },
   {
     label: "Events",
-    href: `${base}events/`,
+    href: withBase("events/"),
     blurb: "Gatherings, workshops and assemblies.",
   },
   {
     label: "Priorities",
-    href: `${base}priorities/`,
+    href: withBase("priorities/"),
     blurb: "Bioregional priorities and the indicators behind them.",
   },
 ];
@@ -44,8 +44,8 @@ const sections = [
     <p class="eyebrow">Knowledge Commons</p>
     <h1 class="display">A shared knowledge base for ReFi Barcelona.</h1>
     <p class="lede">
-      Two feeds — the local knowledge base compiled by the org-os KB engine, and the
-      Notion CRM behind the directory and the atlas. Published as a commons.
+      Two feeds — the local knowledge base compiled by the org-os KB engine, and
+      the Notion CRM behind the directory and the atlas. Published as a commons.
     </p>
   </header>
 

@@ -1,6 +1,7 @@
 /* src/styles/tokens.css — STRUCTURAL tokens only (direction-agnostic).
  * Palette, fonts, radius default, and shadows live in the active theme
- * (src/styles/theme.css → themes/{organic,brand-family}.css).
+ * (src/styles/theme.css → themes/{editorial-organic,organic,brand-family}.css;
+ * editorial-organic is the active one).
  * Realization of DESIGN.md §3.2 (scale) + §4 (spatial) + §4.5 (motion).
  */
 
@@ -58,5 +59,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root { --t-fast: 0ms; --t-med: 0ms; --t-slow: 0ms; }
+  :root {
+    --t-fast: 0ms;
+    --t-med: 0ms;
+    --t-slow: 0ms;
+  }
 }

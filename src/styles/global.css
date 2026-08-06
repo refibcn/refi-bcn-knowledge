@@ -2,8 +2,16 @@
  * Realization of DESIGN.md §6 (Small Primitives) + base body styles.
  */
 
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
 html {
   background: var(--bg);
   color: var(--text-primary);
@@ -21,11 +29,19 @@ body {
 main {
   flex: 1;
 }
-a { color: var(--text-primary); }
-img { max-width: 100%; display: block; }
+a {
+  color: var(--text-primary);
+}
+img {
+  max-width: 100%;
+  display: block;
+}
 
 /* Headings — serif, BIS convention (weight 400/500, tight letter spacing) */
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-family: var(--font-headings);
   font-weight: 500;
   letter-spacing: -0.01em;
@@ -37,9 +53,15 @@ h1 {
   font-weight: 400;
   line-height: var(--leading-display);
 }
-h2 { font-size: clamp(1.4rem, 2.5vw, 1.8rem); }
-h3 { font-size: 1.15rem; }
-h4 { font-size: 1rem; }
+h2 {
+  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+}
+h3 {
+  font-size: 1.15rem;
+}
+h4 {
+  font-size: 1rem;
+}
 
 /* Eyebrow (BIS pattern — mono caps + tracking) */
 .eyebrow {
@@ -62,7 +84,10 @@ h4 { font-size: 1rem; }
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
-  transition: background-color var(--t-fast), color var(--t-fast), border-color var(--t-fast);
+  transition:
+    background-color var(--t-fast),
+    color var(--t-fast),
+    border-color var(--t-fast);
   border: 1px solid transparent;
   text-decoration: none;
 }
@@ -70,7 +95,8 @@ h4 { font-size: 1rem; }
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
-.btn[disabled], .btn:disabled {
+.btn[disabled],
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -123,9 +149,17 @@ h4 { font-size: 1rem; }
   outline-offset: 0;
   border-color: var(--primary);
 }
-.field__hint { font-size: var(--text-sm); color: var(--text-muted); }
-.field--error .field__input { border-color: var(--danger); }
-.field__error { font-size: var(--text-sm); color: var(--danger); }
+.field__hint {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.field--error .field__input {
+  border-color: var(--danger);
+}
+.field__error {
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
 
 /* §6.3 CARD */
 .card {
@@ -133,7 +167,9 @@ h4 { font-size: 1rem; }
   border-radius: var(--radius);
   border: 1px solid var(--border-subtle);
   overflow: hidden;
-  transition: border-color var(--t-fast), background-color var(--t-fast);
+  transition:
+    border-color var(--t-fast),
+    background-color var(--t-fast);
   display: flex;
   flex-direction: column;
 }
@@ -173,7 +209,9 @@ h4 { font-size: 1rem; }
   text-decoration: none;
   margin-top: auto;
 }
-.card__action:hover { text-decoration: underline; }
+.card__action:hover {
+  text-decoration: underline;
+}
 
 /* §6.4 LINK */
 .link {
@@ -182,8 +220,12 @@ h4 { font-size: 1rem; }
   text-underline-offset: 2px;
   transition: color var(--t-fast);
 }
-.link:hover { color: var(--primary-hover); }
-.link:visited { color: color-mix(in srgb, var(--primary) 70%, var(--text-primary)); }
+.link:hover {
+  color: var(--primary-hover);
+}
+.link:visited {
+  color: color-mix(in srgb, var(--primary) 70%, var(--text-primary));
+}
 .link--external::after {
   content: " ↗";
   font-size: 0.8em;
@@ -203,10 +245,26 @@ h4 { font-size: 1rem; }
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
 }
-.badge--success { background: var(--success); color: var(--success-foreground); border-color: var(--success); }
-.badge--warning { background: var(--warning); color: var(--warning-foreground); border-color: var(--warning); }
-.badge--danger  { background: var(--danger);  color: var(--danger-foreground);  border-color: var(--danger); }
-.badge--info    { background: var(--info);    color: var(--info-foreground);    border-color: var(--info); }
+.badge--success {
+  background: var(--success);
+  color: var(--success-foreground);
+  border-color: var(--success);
+}
+.badge--warning {
+  background: var(--warning);
+  color: var(--warning-foreground);
+  border-color: var(--warning);
+}
+.badge--danger {
+  background: var(--danger);
+  color: var(--danger-foreground);
+  border-color: var(--danger);
+}
+.badge--info {
+  background: var(--info);
+  color: var(--info-foreground);
+  border-color: var(--info);
+}
 
 /* Display — Averia/Fraunces hero face per active theme */
 .display {
@@ -217,12 +275,26 @@ h4 { font-size: 1rem; }
 }
 
 /* Editorial helpers (BIS) */
-.lede { font-family: var(--serif); font-size: var(--text-md); color: var(--text-muted); line-height: 1.5; }
-.rule-ink { border: 0; border-top: 1px solid var(--ink); }
-.dashed { border: 0; border-top: 1px dashed var(--rule); }
+.lede {
+  font-family: var(--serif);
+  font-size: var(--text-md);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.rule-ink {
+  border: 0;
+  border-top: 1px solid var(--ink);
+}
+.dashed {
+  border: 0;
+  border-top: 1px dashed var(--rule);
+}
 
 /* Numbered section eyebrows (iteration 4) — mono index in primary */
-.eyebrow__num { color: var(--primary); margin-right: 0.6em; }
+.eyebrow__num {
+  color: var(--primary);
+  margin-right: 0.6em;
+}
 
 /* Sleekness pass (iteration 4) — hover, focus, reveal.
  * Motion durations come from tokens.css and collapse to 0ms under
@@ -232,21 +304,29 @@ a:focus-visible {
   outline-offset: 2px;
 }
 .btn {
-  transition: background-color var(--t-fast), color var(--t-fast),
-              border-color var(--t-fast), translate var(--t-fast),
-              box-shadow var(--t-fast);
+  transition:
+    background-color var(--t-fast),
+    color var(--t-fast),
+    border-color var(--t-fast),
+    translate var(--t-fast),
+    box-shadow var(--t-fast);
 }
 .btn:hover:not(:disabled) {
   translate: 0 -1px;
-  box-shadow: 2px 2px 0 color-mix(in srgb, var(--ink, var(--text-primary)) 18%, transparent);
+  box-shadow: 2px 2px 0
+    color-mix(in srgb, var(--ink, var(--text-primary)) 18%, transparent);
 }
 .card {
-  transition: border-color var(--t-fast), background-color var(--t-fast),
-              translate var(--t-med), box-shadow var(--t-med);
+  transition:
+    border-color var(--t-fast),
+    background-color var(--t-fast),
+    translate var(--t-med),
+    box-shadow var(--t-med);
 }
 .card:hover {
   translate: 0 -2px;
-  box-shadow: 4px 4px 0 color-mix(in srgb, var(--ink, var(--text-primary)) 12%, transparent);
+  box-shadow: 4px 4px 0
+    color-mix(in srgb, var(--ink, var(--text-primary)) 12%, transparent);
 }
 .card__text--clamp {
   display: -webkit-box;
@@ -257,6 +337,16 @@ a:focus-visible {
 
 /* Scroll reveal — the Layout script adds .reveal + .reveal--in; without JS
  * neither class exists and content renders normally. */
-.reveal { transition: opacity var(--t-slow), translate var(--t-slow); }
-.reveal:not(.reveal--in) { opacity: 0; translate: 0 14px; }
-.reveal--in { opacity: 1; translate: 0 0; }
+.reveal {
+  transition:
+    opacity var(--t-slow),
+    translate var(--t-slow);
+}
+.reveal:not(.reveal--in) {
+  opacity: 0;
+  translate: 0 14px;
+}
+.reveal--in {
+  opacity: 1;
+  translate: 0 0;
+}

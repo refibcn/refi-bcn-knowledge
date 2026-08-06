@@ -5,32 +5,47 @@
 
 :root {
   /* §2.1 Paper neutrals */
-  --paper-50: #F5F5F5; --paper-100: #F1F0EE; --paper-200: #DDD7CF;
-  --paper-700: #4B3B34; --paper-900: #2A1810;
+  --paper-50: #f5f5f5;
+  --paper-100: #f1f0ee;
+  --paper-200: #ddd7cf;
+  --paper-700: #4b3b34;
+  --paper-900: #2a1810;
 
   /* §2.2 Pillars (1 light -> 4 deep, 05-31 lock) */
-  --pillar-neural-1: #B8F4ED; --pillar-neural-2: #85C1BB;
-  --pillar-neural-3: #426EAF; --pillar-neural-4: #184B7A;
+  --pillar-neural-1: #b8f4ed;
+  --pillar-neural-2: #85c1bb;
+  --pillar-neural-3: #426eaf;
+  --pillar-neural-4: #184b7a;
   --pillar-neural-light: var(--pillar-neural-1);
   --pillar-neural-mid: var(--pillar-neural-3);
   --pillar-neural-dark: var(--pillar-neural-4);
 
-  --pillar-tissue-1: #DDF48A; --pillar-tissue-2: #ACB05E;
-  --pillar-tissue-3: #447932; --pillar-tissue-4: #2F4937;
+  --pillar-tissue-1: #ddf48a;
+  --pillar-tissue-2: #acb05e;
+  --pillar-tissue-3: #447932;
+  --pillar-tissue-4: #2f4937;
   --pillar-tissue-light: var(--pillar-tissue-1);
   --pillar-tissue-mid: var(--pillar-tissue-3);
   --pillar-tissue-dark: var(--pillar-tissue-4);
 
-  --pillar-flow-1: #FFDD80; --pillar-flow-2: #E58961;
-  --pillar-flow-3: #C92637; --pillar-flow-4: #613400;
+  --pillar-flow-1: #ffdd80;
+  --pillar-flow-2: #e58961;
+  --pillar-flow-3: #c92637;
+  --pillar-flow-4: #613400;
   --pillar-flow-light: var(--pillar-flow-1);
   --pillar-flow-mid: var(--pillar-flow-3);
   --pillar-flow-dark: var(--pillar-flow-4);
 
   /* §2.3 Library accents (data-viz, 05-31 set) */
-  --lib-gris: #AEADA5; --lib-ocean: #4C6BC1; --lib-blue: #6BB5B4;
-  --lib-green: #39A659; --lib-yellow: #D5AD1C; --lib-orange: #DC7221;
-  --lib-red: #CC4727; --lib-pink: #DC697F; --lib-purple: #8161BF;
+  --lib-gris: #aeada5;
+  --lib-ocean: #4c6bc1;
+  --lib-blue: #6bb5b4;
+  --lib-green: #39a659;
+  --lib-yellow: #d5ad1c;
+  --lib-orange: #dc7221;
+  --lib-red: #cc4727;
+  --lib-pink: #dc697f;
+  --lib-purple: #8161bf;
 
   /* Semantic mapping (Andrea's wiring) */
   --bg: var(--paper-50);
@@ -40,19 +55,27 @@
   --text-muted: var(--paper-700);
   --border-default: var(--paper-200);
   --border-subtle: color-mix(in srgb, var(--paper-200) 55%, var(--paper-50));
-  --primary: var(--pillar-flow-mid);          /* red #C92637 */
-  --primary-hover: var(--pillar-flow-dark);   /* deep brown #613400 */
-  --primary-foreground: var(--paper-50);      /* paper-50 on red — AA 5.05:1 */
+  --primary: var(--pillar-flow-mid); /* red #C92637 */
+  --primary-hover: var(--pillar-flow-dark); /* deep brown #613400 */
+  --primary-foreground: var(--paper-50); /* paper-50 on red — AA 5.05:1 */
   --accent: var(--pillar-neural-light);
   --accent-foreground: var(--pillar-neural-dark);
 
   /* Status + foregrounds */
-  --success: var(--pillar-tissue-dark);  --success-foreground: #F4F6F2;      /* 9.07:1 */
-  --warning: var(--pillar-flow-light);   --warning-foreground: var(--paper-900); /* 12.86:1 */
-  --danger:  #7A2618;                    --danger-foreground: #FFF8F6;       /* dark brick, distinct from primary */
-  --info:    var(--pillar-neural-mid);   --info-foreground: var(--paper-50); /* 4.72:1 */
+  --success: var(--pillar-tissue-dark);
+  --success-foreground: #f4f6f2; /* 9.07:1 */
+  --warning: var(--pillar-flow-light);
+  --warning-foreground: var(--paper-900); /* 12.86:1 */
+  --danger: #7a2618;
+  --danger-foreground: #fff8f6; /* dark brick, distinct from primary */
+  --info: var(--pillar-neural-mid);
+  --info-foreground: var(--paper-50); /* 4.72:1 */
 
-  --gradient-bridge: linear-gradient(135deg, var(--pillar-neural-mid), var(--pillar-flow-mid));
+  --gradient-bridge: linear-gradient(
+    135deg,
+    var(--pillar-neural-mid),
+    var(--pillar-flow-mid)
+  );
 
   /* Type — Geist headings, Averia for .display.
    * Variable @fontsource families register with a " Variable" suffix. */
@@ -66,8 +89,10 @@
   --radius: 0.5rem;
   --radius-sm: 0.25rem;
   --shadow-sm: 0 1px 2px 0 color-mix(in srgb, var(--paper-900) 6%, transparent);
-  --shadow-md: 0 4px 8px -2px color-mix(in srgb, var(--paper-900) 8%, transparent),
-               0 2px 4px -2px color-mix(in srgb, var(--paper-900) 5%, transparent);
-  --shadow-lg: 0 12px 24px -6px color-mix(in srgb, var(--paper-900) 10%, transparent),
-               0 4px 8px -4px color-mix(in srgb, var(--paper-900) 6%, transparent);
+  --shadow-md:
+    0 4px 8px -2px color-mix(in srgb, var(--paper-900) 8%, transparent),
+    0 2px 4px -2px color-mix(in srgb, var(--paper-900) 5%, transparent);
+  --shadow-lg:
+    0 12px 24px -6px color-mix(in srgb, var(--paper-900) 10%, transparent),
+    0 4px 8px -4px color-mix(in srgb, var(--paper-900) 6%, transparent);
 }

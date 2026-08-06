@@ -5,11 +5,23 @@ interface Props {
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
 }
-const { variant = "primary", href, type = "button", disabled = false } = Astro.props;
+const {
+  variant = "primary",
+  href,
+  type = "button",
+  disabled = false,
+} = Astro.props;
 const className = `btn btn--${variant}`;
 ---
-{href ? (
-  <a href={href} class={className}><slot /></a>
-) : (
-  <button class={className} type={type} disabled={disabled}><slot /></button>
-)}
+
+{
+  href ? (
+    <a href={href} class={className}>
+      <slot />
+    </a>
+  ) : (
+    <button class={className} type={type} disabled={disabled}>
+      <slot />
+    </button>
+  )
+}

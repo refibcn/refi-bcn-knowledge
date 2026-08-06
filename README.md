@@ -6,11 +6,11 @@ Catalunya atlas.
 
 This is instance 2 of a three-instance model:
 
-| Instance             | Repo                 | Scope                                        |
-| -------------------- | -------------------- | -------------------------------------------- |
-| Website              | `refibcn-site`       | refibcn.cat — marketing / public front door   |
-| **Knowledge Commons**| **this repo**        | knowledge.refibcn.cat — the commons + atlas   |
-| Bioregioning Earth   | separate             | Wider bioregional programme                   |
+| Instance              | Repo           | Scope                                       |
+| --------------------- | -------------- | ------------------------------------------- |
+| Website               | `refibcn-site` | refibcn.cat — marketing / public front door |
+| **Knowledge Commons** | **this repo**  | knowledge.refibcn.cat — the commons + atlas |
+| Bioregioning Earth    | separate       | Wider bioregional programme                 |
 
 ## Two feeds
 
@@ -25,11 +25,11 @@ This is instance 2 of a three-instance model:
 
 ## Three lenses
 
-| Lens               | Path               | Audience                                                  |
-| ------------------ | ------------------ | --------------------------------------------------------- |
-| Commons            | `/commons`         | Public. Reviewed, publishable knowledge pages.             |
-| Commons review     | `/commons-review`  | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
-| Atlas              | `/atlas`           | Public. Catalunya map — comarques and territorial context. |
+| Lens           | Path              | Audience                                                             |
+| -------------- | ----------------- | -------------------------------------------------------------------- |
+| Commons        | `/commons`        | Public. Reviewed, publishable knowledge pages.                       |
+| Commons review | `/commons-review` | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
+| Atlas          | `/atlas`          | Public. Catalunya map — comarques and territorial context.           |
 
 ## Commands
 
@@ -38,6 +38,8 @@ npm install
 npm run dev       # local dev server
 npm run build     # static build to dist/
 npm run preview   # serve the built dist/
+npm run check     # astro check (types) + prettier --check
+npm run format    # prettier --write
 ```
 
 Scripts arrive incrementally as their files land:
@@ -52,7 +54,32 @@ Scripts arrive incrementally as their files land:
 ## Deploy model
 
 Static build, published to GitHub Pages from the `refibcn/refi-bcn-knowledge` repo.
-`public/CNAME` pins the custom domain `knowledge.refibcn.cat`.
+
+### The custom domain is staged, not live — `public/CNAME.pending`
+
+The custom domain file is committed as **`public/CNAME.pending`**, not `public/CNAME`.
+Its contents are already exactly right (`knowledge.refibcn.cat`); only the filename is
+holding it back, so activation is a rename.
+
+**Why it is deliberately not `CNAME` yet.** A published `CNAME` file tells GitHub Pages
+to 301-redirect _every_ request from `refibcn.github.io/refi-bcn-knowledge/*` to
+`https://knowledge.refibcn.cat/*`. Until the DNS record exists, that hostname does not
+resolve — so the whole site becomes **completely unreachable**, at any URL, and GitHub
+cannot provision the TLS certificate (Let's Encrypt validation needs the record to
+resolve first), leaving HTTPS broken too. This is not a cosmetic problem: it takes the
+deployment fully offline and blocks the hashed-asset verification in Task 12.
+
+**Activation — one atomic change, both halves together:**
+
+```bash
+# 1. Create the DNS record: knowledge.refibcn.cat  CNAME  refibcn.github.io
+# 2. Confirm it resolves:   dig +short knowledge.refibcn.cat
+# 3. Only then:
+git mv public/CNAME.pending public/CNAME
+```
+
+Do not rename ahead of the DNS record. Do not add a `CNAME` alongside the `.pending`
+file — exactly one of the two should exist at any time.
 
 ### Pre-DNS URL caveat
 
@@ -65,12 +92,27 @@ not set `base`**. The tradeoff:
   (`https://refibcn.github.io/refi-bcn-knowledge/`) work, but would then break every path
   once DNS lands and the site is served from the domain root.
 
-You cannot have both from one build. **Known limitation:** until the `knowledge.refibcn.cat`
-DNS record is wired, the project-page URL will render with broken asset and link paths.
-That is expected and temporary — do not "fix" it by adding `base`.
+You cannot have both from one build. **Known limitation:** while `CNAME.pending` is
+staged, the site _is_ reachable at the project-page URL, but pages there render with
+broken asset and link paths because every path resolves from `/` rather than
+`/refi-bcn-knowledge/`. That is expected and temporary — do not "fix" it by adding
+`base`, which would break the custom domain the moment DNS lands.
 
-Components read `import.meta.env.BASE_URL` rather than hardcoding `/`, so if the decision
-is ever reversed the change is a single line in `astro.config.mjs`.
+All URL construction goes through `withBase()` in `src/lib/paths.ts` rather than
+hardcoding `/`, so if the decision is ever reversed the change is a single line in
+`astro.config.mjs`.
+
+## Conventions
+
+- **Site identity** — one typed, validated export: `site` from `src/lib/site.ts`. Never
+  read `src/data/site.yaml` directly; a missing key must fail the build, not render blank.
+- **URLs** — always `withBase()` from `src/lib/paths.ts`, never a hardcoded leading `/`.
+- **Path resolution** — resolve from `import.meta.url`, never `process.cwd()`, which
+  depends on where the build was invoked from. The KB engine follows the same rule.
+- **Fontsource packages live in `dependencies`, not `devDependencies`** (the sibling repos
+  put them in devDeps). `Layout.astro` imports them at build time, so a `npm ci --omit=dev`
+  build would fail otherwise. New repos in this family should follow this repo, not the
+  siblings.
 
 ## Design system
 

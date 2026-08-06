@@ -4,11 +4,16 @@
   "version": "0.1.0",
   "private": true,
   "description": "ReFi BCN Knowledge Commons — public commons lens, internal review lens, Catalunya atlas, and the Notion-CRM-fed directory.",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "check": "astro check && prettier . --check",
+    "format": "prettier . --write"
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.0.0",
@@ -19,11 +24,14 @@
     "@fontsource/ibm-plex-mono": "^5.0.0",
     "@notionhq/client": "^3.1.0",
     "astro": "^5.0.0",
-    "js-yaml": "^4.1.0",
-    "maplibre-gl": "^5.0.0"
+    "js-yaml": "^4.1.1",
+    "maplibre-gl": "^5.24.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.4",
     "@types/js-yaml": "^4.0.9",
+    "prettier": "^3.4.2",
+    "prettier-plugin-astro": "^0.14.1",
     "typescript": "^5.9.3"
   }
 }

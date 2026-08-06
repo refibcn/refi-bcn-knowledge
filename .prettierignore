@@ -1,0 +1,7 @@
+dist/
+dist-commons-protected/
+node_modules/
+.astro/
+package-lock.json
+public/CNAME
+public/CNAME.pending

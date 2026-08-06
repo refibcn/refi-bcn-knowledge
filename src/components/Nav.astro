@@ -1,10 +1,6 @@
 ---
-import fs from "node:fs";
-import path from "node:path";
-import yaml from "js-yaml";
-const site = yaml.load(
-  fs.readFileSync(path.join(process.cwd(), "src/data/site.yaml"), "utf8")
-) as { name: string };
+import { site } from "../lib/site";
+import { withBase } from "../lib/paths";
 
 interface Props {
   current?: string;
@@ -12,43 +8,128 @@ interface Props {
   dataset?: string;
 }
 const { current = "home", section, dataset } = Astro.props;
-const rawBase = import.meta.env.BASE_URL;
-const base = rawBase.endsWith('/') ? rawBase : `${rawBase}/`;
 // Outer chrome stays externally neutral (naming decision D0-interim): no
 // programme branding here — that lives inside the Catalonia sections.
 const items = [
-  { id: "commons", label: "Commons", href: `${base}commons/` },
-  { id: "atlas", label: "Atlas", href: `${base}atlas/` },
-  { id: "organizations", label: "Organizations", href: `${base}organizations/` },
-  { id: "programs", label: "Programs", href: `${base}programs/` },
-  { id: "events", label: "Events", href: `${base}events/` },
-  { id: "priorities", label: "Priorities", href: `${base}priorities/` },
-  { id: "about", label: "About", href: `${base}about/` },
+  { id: "commons", label: "Commons", href: withBase("commons/") },
+  { id: "atlas", label: "Atlas", href: withBase("atlas/") },
+  {
+    id: "organizations",
+    label: "Organizations",
+    href: withBase("organizations/"),
+  },
+  { id: "programs", label: "Programs", href: withBase("programs/") },
+  { id: "events", label: "Events", href: withBase("events/") },
+  { id: "priorities", label: "Priorities", href: withBase("priorities/") },
+  { id: "about", label: "About", href: withBase("about/") },
 ];
 ---
+
 <header class="site-nav">
-  <a href={base} class="brand" aria-label={`${site.name} — home`}>
+  <a href={withBase()} class="brand" aria-label={`${site.name} — home`}>
     <span class="brand-org">{site.name}</span>
-    {section && <><span class="brand-sep">·</span><span class="brand-system">{section}</span></>}
-    {dataset && <><span class="brand-sep">·</span><span class="brand-dataset">{dataset}</span></>}
+    {
+      section && (
+        <>
+          <span class="brand-sep">·</span>
+          <span class="brand-system">{section}</span>
+        </>
+      )
+    }
+    {
+      dataset && (
+        <>
+          <span class="brand-sep">·</span>
+          <span class="brand-dataset">{dataset}</span>
+        </>
+      )
+    }
   </a>
   <nav aria-label="Primary">
     <ul>
-      {items.map((it) => (
-        <li><a href={it.href} class:list={[{ active: current === it.id }]}>{it.label}</a></li>
-      ))}
+      {
+        items.map((it) => (
+          <li>
+            <a href={it.href} class:list={[{ active: current === it.id }]}>
+              {it.label}
+            </a>
+          </li>
+        ))
+      }
     </ul>
   </nav>
 </header>
 <style>
-.site-nav { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem var(--gutter); border-bottom: 1px solid var(--ink); background: var(--paper); position: sticky; top: 0; z-index: 10; }
-.brand { display: flex; align-items: baseline; gap: 0.6rem; text-decoration: none; color: var(--ink); font-family: var(--mono); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; }
-.brand-org { font-weight: 500; }
-.brand-system, .brand-sep { color: var(--rule); }
-.brand-dataset { color: var(--ink); }
-nav ul { list-style: none; display: flex; gap: 1.25rem; margin: 0; padding: 0; flex-wrap: wrap; }
-nav a { font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--rule); text-decoration: none; padding: 0.25rem 0; border-bottom: 1px solid transparent; white-space: nowrap; }
-nav a.active, nav a:hover { color: var(--ink); border-bottom-color: var(--ink); }
-@media (max-width: 880px) { .brand-system, .brand-sep { display: none; } }
-@media (max-width: 720px) { .site-nav { flex-direction: column; align-items: flex-start; } nav ul { gap: 0.9rem; } }
+  .site-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem var(--gutter);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .brand-org {
+    font-weight: 500;
+  }
+  .brand-system,
+  .brand-sep {
+    color: var(--rule);
+  }
+  .brand-dataset {
+    color: var(--ink);
+  }
+  nav ul {
+    list-style: none;
+    display: flex;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+  }
+  nav a {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--rule);
+    text-decoration: none;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid transparent;
+    white-space: nowrap;
+  }
+  nav a.active,
+  nav a:hover {
+    color: var(--ink);
+    border-bottom-color: var(--ink);
+  }
+  @media (max-width: 880px) {
+    .brand-system,
+    .brand-sep {
+      display: none;
+    }
+  }
+  @media (max-width: 720px) {
+    .site-nav {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    nav ul {
+      gap: 0.9rem;
+    }
+  }
 </style>

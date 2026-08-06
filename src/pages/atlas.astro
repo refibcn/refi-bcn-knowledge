@@ -6,8 +6,14 @@ import { withBase } from "../lib/paths";
 import {
   fetchAtlasRecords,
   toMarkers,
+  toComarcaPlacements,
+  largestRingCentroid,
   legendEntries,
 } from "../lib/atlas-data.mjs";
+// Bundle-time read of the comarca geometry, per the `?raw` convention in
+// src/lib/site.ts. This is build-only — the browser still fetches the same file
+// from public/ via the map's data-geo-url, so nothing extra ships to the client.
+import comarquesRaw from "../../public/geo/catalunya-comarques.geojson?raw";
 
 // Ported from refibcn-site. Two adaptations for this repo:
 //   - `current="atlas"` — this site's nav has its own Atlas item, where the
@@ -18,23 +24,90 @@ import {
 const entries = await getCollection("cohort");
 const doc = entries[0]!.data;
 
-// ── CRM marker layer (Task 13) ────────────────────────────────────────────
+// ── CRM actor layers (Task 13) ────────────────────────────────────────────
 // Actors come from the ReFi BCN CRM at build time. A missing NOTION_API_KEY or
 // an API failure degrades to the cohort-only map rather than failing the build,
 // matching how the directory pages handle the same seam.
 //
-// NOTE ON THE CURRENT STATE: the CRM actors database has no Lat/Lng properties
-// yet — verified against all 608 live records — so `toMarkers()` legitimately
-// yields zero markers and the layer stays dormant. The count below is rendered
-// from the real numbers precisely so that gap is visible on the page instead of
-// looking like an empty map. It lights up on its own once actors are geocoded.
+// TWO PLACEMENT PATHS, deliberately:
+//
+//   1. Points, from Lat/Lng. The CRM has no such properties today — verified
+//      against the full property-key union of all 608 records, not a sample —
+//      so this yields nothing. The code is kept because it is correct and
+//      lights up on its own the moment actors are geocoded.
+//   2. Comarques, from the `Area2` multi-select. Its comarca options are the
+//      same territorial divisions as the geojson's `nom_comar` values, so the
+//      two join by name. This is the geography the CRM actually has.
+//
+// Province-level and `regional` Area2 values carry no polygon and are left
+// unplaced rather than guessed at; the count is surfaced below.
+
+// Comarca name set + centroids, read off the same geojson the map draws.
+// Nine comarques appear as two features (mainland + exclave), so features are
+// grouped by name and their polygons concatenated before taking a centroid —
+// otherwise the badge would land on whichever part happened to come first.
+const comarquesGeo = JSON.parse(comarquesRaw) as {
+  features: { properties: { nom_comar: string }; geometry: any }[];
+};
+const polygonsByComarca = new Map<string, any[]>();
+for (const feature of comarquesGeo.features) {
+  const name = feature.properties?.nom_comar;
+  if (!name) continue;
+  const polygons =
+    feature.geometry?.type === "Polygon"
+      ? [feature.geometry.coordinates]
+      : (feature.geometry?.coordinates ?? []);
+  polygonsByComarca.set(name, [
+    ...(polygonsByComarca.get(name) ?? []),
+    ...polygons,
+  ]);
+}
+const comarcaIndex = [...polygonsByComarca.keys()];
+const centroidByComarca = new Map<string, [number, number] | null>(
+  [...polygonsByComarca].map(([name, polygons]) => [
+    name,
+    largestRingCentroid({ type: "MultiPolygon", coordinates: polygons }),
+  ]),
+);
+
 let crmRecordCount = 0;
 let crmMarkers: ReturnType<typeof toMarkers> = [];
+let crmComarcas: {
+  comarca: string;
+  actors: { name: string; category: string | null; tags: string[] }[];
+  centroid: [number, number] | null;
+}[] = [];
+let placedActorCount = 0;
+let unplacedCount = 0;
 let crmError: string | null = null;
 try {
   const records = await fetchAtlasRecords();
   crmRecordCount = records.length;
   crmMarkers = toMarkers(records);
+
+  const placements = toComarcaPlacements(records, comarcaIndex);
+  crmComarcas = placements.map((p) => ({
+    ...p,
+    centroid: centroidByComarca.get(p.comarca) ?? null,
+  }));
+
+  // Distinct actors, not the sum of per-comarca lists — a record spanning two
+  // comarques is placed twice but is still one actor.
+  placedActorCount = new Set(
+    placements.flatMap((p) => p.actors.map((a) => a.name)),
+  ).size;
+
+  // Records that named a territory the map cannot draw: `regional` and the
+  // four province values. Counted so the gap is stated rather than implied.
+  const placedNames = new Set(
+    placements.flatMap((p) => p.actors.map((a) => a.name)),
+  );
+  unplacedCount = records.filter((r) => {
+    const area2 = r.properties?.["Area2"];
+    const values = Array.isArray(area2) ? area2 : area2 ? [area2] : [];
+    const name = String(r.properties?.["Name"] ?? "").trim();
+    return values.length > 0 && name && !placedNames.has(name);
+  }).length;
 } catch (e) {
   crmError = e instanceof Error ? e.message : "CRM feed unavailable.";
 }
@@ -42,11 +115,22 @@ try {
 const directoryHref = withBase("organizations/");
 
 // The legend is derived from AGENCY_PRECEDENCE in src/lib/atlas-data.mjs — the
-// same array that decides each marker's category. Do not restate it here.
+// same array that decides every category. Do not restate it here.
 const legend = legendEntries();
-const countFor = (id: string) =>
-  crmMarkers.filter((m) => m.category === id).length;
-const uncategorized = crmMarkers.filter((m) => m.category === null).length;
+
+// Legend counts span both placement paths, deduped by actor name so a record
+// placed in two comarques is not counted twice.
+const placedByCategory = new Map<string | null, Set<string>>();
+for (const entry of [
+  ...crmComarcas.flatMap((c) => c.actors),
+  ...crmMarkers.map((m) => ({ name: m.name, category: m.category })),
+]) {
+  const bucket = placedByCategory.get(entry.category) ?? new Set<string>();
+  bucket.add(entry.name);
+  placedByCategory.set(entry.category, bucket);
+}
+const countFor = (id: string | null) => placedByCategory.get(id)?.size ?? 0;
+const uncategorized = countFor(null);
 ---
 
 <Layout
@@ -69,6 +153,7 @@ const uncategorized = crmMarkers.filter((m) => m.category === null).length;
       projects={doc.projects}
       networks={doc.networks}
       crmMarkers={crmMarkers}
+      crmComarcas={crmComarcas}
       crmDirectoryHref={directoryHref}
     />
   </section>
@@ -112,22 +197,46 @@ const uncategorized = crmMarkers.filter((m) => m.category === null).length;
 
     <p class="provenance">
       {
-        crmError
-          ? `CRM layer unavailable at build time — ${crmError} The cohort map above is unaffected.`
-          : `${crmMarkers.length} of ${crmRecordCount} CRM actor records carry coordinates and are plotted above.`
-      }
-      {
-        !crmError && crmMarkers.length === 0 && (
+        crmError ? (
+          `CRM layer unavailable at build time — ${crmError} The cohort map above is unaffected.`
+        ) : (
           <>
-            {" "}
-            The CRM has no <code>Lat</code>/<code>Lng</code> fields yet, so the
-            actor layer is empty pending geocoding — it populates automatically
-            once those fields exist.{" "}
-            <a href={directoryHref}>Browse the directory</a> in the meantime.
+            <strong>{placedActorCount}</strong> of {crmRecordCount} CRM actors
+            placed by comarca, across {crmComarcas.length} comarques;{" "}
+            <strong>{crmMarkers.length}</strong> carry point coordinates.
+            Comarca placement comes from each record's <code>Area2</code> value,
+            so an actor is shaded across its whole comarca rather than pinned to
+            an address — precise coordinates would replace that with an exact
+            location.
+            {unplacedCount > 0 && (
+              <>
+                {" "}
+                A further <strong>{unplacedCount}</strong> actors name only a
+                province or <code>regional</code> scope, which has no polygon to
+                place them on; they are listed in the{" "}
+                <a href={directoryHref}>directory</a> but not drawn here.
+              </>
+            )}
           </>
         )
       }
     </p>
+
+    {
+      crmComarcas.length > 0 && (
+        <details class="comarca-breakdown">
+          <summary>Actors by comarca</summary>
+          <ul class="comarca-list">
+            {crmComarcas.map((c) => (
+              <li>
+                <span class="comarca-name">{c.comarca}</span>
+                <span class="comarca-count">{c.actors.length}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )
+    }
   </section>
 </Layout>
 
@@ -201,5 +310,38 @@ const uncategorized = crmMarkers.filter((m) => m.category === null).length;
     font-size: 0.78rem;
     color: var(--rule);
     max-width: 70ch;
+    line-height: 1.55;
+  }
+  .provenance strong {
+    color: var(--ink);
+  }
+  .comarca-breakdown {
+    margin: 0.9rem 0 0;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+  }
+  .comarca-breakdown summary {
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--rule);
+  }
+  .comarca-list {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: 0.25rem 1.5rem;
+  }
+  .comarca-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-bottom: 1px dotted var(--rule);
+    padding-bottom: 0.15rem;
+  }
+  .comarca-count {
+    color: var(--rule);
   }
 </style>

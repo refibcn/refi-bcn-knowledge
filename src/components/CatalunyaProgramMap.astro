@@ -10,6 +10,8 @@ import { withBase } from "../lib/paths";
 import {
   AGENCY_COLORS,
   UNCATEGORIZED_COLOR,
+  COMARCA_DENSITY_COLOR,
+  densityOpacity,
   actorAnchor,
 } from "../lib/atlas-data.mjs";
 
@@ -21,12 +23,21 @@ interface CrmMarker {
   tags: string[];
 }
 
+interface CrmComarca {
+  comarca: string;
+  actors: { name: string; category: string | null; tags: string[] }[];
+  /** `[lng, lat]` of the comarca's largest polygon, for the count badge. */
+  centroid: [number, number] | null;
+}
+
 interface Props {
   projects: Project[];
   networks: Record<"miceli" | "keras-buti", NetworkMeta>;
   /** CRM actor markers (Task 13). Optional and additive — omit them and the
    *  map renders exactly as ported. */
   crmMarkers?: CrmMarker[];
+  /** CRM actors placed by comarca, ranked. Also optional and additive. */
+  crmComarcas?: CrmComarca[];
   /** Page the popup "view in directory" link points at. */
   crmDirectoryHref?: string;
 }
@@ -34,6 +45,7 @@ const {
   projects,
   networks,
   crmMarkers = [],
+  crmComarcas = [],
   crmDirectoryHref = "",
 } = Astro.props;
 // Ported from refibcn-site; the only change is that public-asset URLs go
@@ -115,6 +127,32 @@ const crmGeoJson = {
       href: `${crmDirectoryHref}#${actorAnchor(m.name)}`,
     },
   })),
+};
+
+// Comarca placement payload (Area2 → nom_comar). Opacity and per-actor colour
+// are resolved here from the shared palette so the client script carries no
+// taxonomy or scale knowledge of its own.
+const maxComarcaCount = crmComarcas.reduce(
+  (max, c) => Math.max(max, c.actors.length),
+  0,
+);
+const crmComarcaPayload = {
+  comarcas: crmComarcas.map((c) => ({
+    comarca: c.comarca,
+    count: c.actors.length,
+    opacity: densityOpacity(c.actors.length, maxComarcaCount),
+    centroid: c.centroid,
+    actors: c.actors.map((a) => ({
+      name: a.name,
+      tags: a.tags,
+      color:
+        (a.category && (AGENCY_COLORS as Record<string, string>)[a.category]) ||
+        UNCATEGORIZED_COLOR,
+      href: `${crmDirectoryHref}#${actorAnchor(a.name)}`,
+    })),
+  })),
+  densityColor: COMARCA_DENSITY_COLOR,
+  directoryHref: crmDirectoryHref,
 };
 
 const cardImage = (p: Project): string => {
@@ -244,6 +282,11 @@ const cardImage = (p: Project): string => {
     data-crm-markers
     set:html={JSON.stringify(crmGeoJson)}
   />
+  <script
+    type="application/json"
+    data-crm-comarcas
+    set:html={JSON.stringify(crmComarcaPayload)}
+  />
 </div>
 
 <script>
@@ -336,6 +379,77 @@ const cardImage = (p: Project): string => {
         crmMarkersEl?.textContent ??
           '{"type":"FeatureCollection","features":[]}',
       );
+      const crmComarcasEl = host.querySelector<HTMLScriptElement>(
+        "[data-crm-comarcas]",
+      );
+      type CrmComarcaEntry = {
+        comarca: string;
+        count: number;
+        opacity: number;
+        centroid: [number, number] | null;
+        actors: { name: string; tags: string[]; color: string; href: string }[];
+      };
+      const crmComarcaData: {
+        comarcas: CrmComarcaEntry[];
+        densityColor: string;
+        directoryHref: string;
+      } = JSON.parse(
+        crmComarcasEl?.textContent ??
+          '{"comarcas":[],"densityColor":"#3d5a80","directoryHref":""}',
+      );
+      const crmComarcas = crmComarcaData.comarcas ?? [];
+      const crmComarcaByName = new Map(crmComarcas.map((c) => [c.comarca, c]));
+
+      // Popup listing the actors placed in one comarca. Long lists are capped
+      // and spill over to the directory rather than growing an unusable popup.
+      const COMARCA_POPUP_LIMIT = 12;
+      function comarcaPopupHtml(entry: CrmComarcaEntry): string {
+        const shown = entry.actors.slice(0, COMARCA_POPUP_LIMIT);
+        const rest = entry.actors.length - shown.length;
+        return [
+          '<div class="crm-popup crm-popup--comarca">',
+          `<p class="crm-popup__name">${escapeHtml(entry.comarca)}</p>`,
+          `<p class="crm-popup__meta">${entry.count} actor${entry.count === 1 ? "" : "s"} in the CRM</p>`,
+          '<ul class="crm-popup__actors">',
+          shown
+            .map(
+              (a) =>
+                `<li><a href="${escapeHtml(a.href)}"><span class="crm-popup__dot" style="background:${escapeHtml(a.color)}"></span>${escapeHtml(a.name)}</a>${
+                  a.tags.length
+                    ? `<span class="crm-popup__chips">${a.tags
+                        .map(
+                          (t) =>
+                            `<span class="crm-popup__chip">${escapeHtml(t)}</span>`,
+                        )
+                        .join("")}</span>`
+                    : ""
+                }</li>`,
+            )
+            .join(""),
+          "</ul>",
+          rest > 0 && crmComarcaData.directoryHref
+            ? `<a class="crm-popup__link" href="${escapeHtml(crmComarcaData.directoryHref)}">+${rest} more in the directory &rarr;</a>`
+            : "",
+          "</div>",
+        ].join("");
+      }
+
+      function openComarcaPopup(
+        name: string,
+        lngLat: [number, number],
+        map: maplibregl.Map,
+      ) {
+        const entry = crmComarcaByName.get(name);
+        if (!entry) return;
+        new maplibregl.Popup({
+          closeButton: true,
+          offset: 10,
+          maxWidth: "320px",
+        })
+          .setLngLat(lngLat)
+          .setHTML(comarcaPopupHtml(entry))
+          .addTo(map);
+      }
 
       const map = new maplibregl.Map({
         container: mapHost,
@@ -388,6 +502,54 @@ const cardImage = (p: Project): string => {
               ],
             } as any,
           });
+          // CRM comarca density (Task 13 follow-up). Sits directly on top of
+          // the cohort fill and below the borders/labels, so it reads as a
+          // second overlay on the same polygons rather than replacing them.
+          if (crmComarcas.length > 0) {
+            const opacityMatch: any[] = ["match", ["get", "nom_comar"]];
+            for (const entry of crmComarcas) {
+              opacityMatch.push(entry.comarca, entry.opacity);
+            }
+            opacityMatch.push(0);
+
+            map.addLayer({
+              id: "crm-comarca-fill",
+              type: "fill",
+              source: "comarques",
+              paint: {
+                "fill-color": crmComarcaData.densityColor,
+                "fill-opacity": opacityMatch,
+              } as any,
+            });
+
+            map.on("click", "crm-comarca-fill", (e) => {
+              const name = e.features?.[0]?.properties?.nom_comar as
+                string | undefined;
+              if (!name || !crmComarcaByName.has(name)) return;
+              // Markers own the click when one is under the cursor.
+              const overMarker = map
+                .queryRenderedFeatures(e.point, {
+                  layers: ["projects-dot", "crm-actors-dot"].filter((id) =>
+                    map.getLayer(id),
+                  ),
+                })
+                .some(Boolean);
+              if (overMarker) return;
+              openComarcaPopup(name, [e.lngLat.lng, e.lngLat.lat], map);
+            });
+            map.on("mousemove", "crm-comarca-fill", (e) => {
+              const name = e.features?.[0]?.properties?.nom_comar as
+                string | undefined;
+              map.getCanvas().style.cursor =
+                name && crmComarcaByName.has(name) ? "pointer" : "";
+            });
+            map.on(
+              "mouseleave",
+              "crm-comarca-fill",
+              () => (map.getCanvas().style.cursor = ""),
+            );
+          }
+
           map.addLayer({
             id: "comarques-line",
             type: "line",
@@ -450,6 +612,77 @@ const cardImage = (p: Project): string => {
               "text-halo-width": 2,
             },
           });
+
+          // Count badges, one per comarca, at the centroid of its largest
+          // polygon. Their own point source rather than the polygon source:
+          // nine comarques are split across two features in this geojson and a
+          // symbol layer on the polygons would draw a duplicate badge on each.
+          const badgeFeatures = crmComarcas
+            .filter((entry) => Array.isArray(entry.centroid))
+            .map((entry) => ({
+              type: "Feature" as const,
+              geometry: {
+                type: "Point" as const,
+                coordinates: entry.centroid as [number, number],
+              },
+              properties: { comarca: entry.comarca, count: entry.count },
+            }));
+
+          if (badgeFeatures.length > 0) {
+            map.addSource("crm-comarca-badges", {
+              type: "geojson",
+              data: { type: "FeatureCollection", features: badgeFeatures },
+            });
+            map.addLayer({
+              id: "crm-comarca-badge",
+              type: "circle",
+              source: "crm-comarca-badges",
+              paint: {
+                "circle-radius": [
+                  "interpolate",
+                  ["linear"],
+                  ["zoom"],
+                  7,
+                  9,
+                  11,
+                  13,
+                ] as any,
+                "circle-color": "#fbf9f3",
+                "circle-stroke-width": 1.2,
+                "circle-stroke-color": crmComarcaData.densityColor,
+                "circle-opacity": 0.95,
+              },
+            });
+            map.addLayer({
+              id: "crm-comarca-badge-count",
+              type: "symbol",
+              source: "crm-comarca-badges",
+              layout: {
+                "text-field": ["to-string", ["get", "count"]],
+                "text-font": ["IBM Plex Mono Regular", "Open Sans Regular"],
+                "text-size": 11,
+                "text-allow-overlap": true,
+              },
+              paint: { "text-color": crmComarcaData.densityColor },
+            });
+
+            map.on("click", "crm-comarca-badge", (e) => {
+              const name = e.features?.[0]?.properties?.comarca as
+                string | undefined;
+              if (name)
+                openComarcaPopup(name, [e.lngLat.lng, e.lngLat.lat], map);
+            });
+            map.on(
+              "mouseenter",
+              "crm-comarca-badge",
+              () => (map.getCanvas().style.cursor = "pointer"),
+            );
+            map.on(
+              "mouseleave",
+              "crm-comarca-badge",
+              () => (map.getCanvas().style.cursor = ""),
+            );
+          }
         } catch (err) {
           console.warn("Could not load comarques GeoJSON:", err);
         }
@@ -1231,6 +1464,58 @@ const cardImage = (p: Project): string => {
     font-size: 0.62rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+    color: var(--rule);
+  }
+  .program-map :global(.crm-popup__meta) {
+    margin: 0.15rem 0 0;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--rule);
+  }
+  .program-map :global(.crm-popup__actors) {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    max-height: 15rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .program-map :global(.crm-popup__actors a) {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-size: 0.75rem;
+    line-height: 1.3;
+  }
+  .program-map :global(.crm-popup__actors a:hover) {
+    text-decoration: underline;
+  }
+  .program-map :global(.crm-popup__dot) {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--ink);
+    flex: none;
+    transform: translateY(1px);
+  }
+  .program-map :global(.crm-popup__chips) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-left: 0.85rem;
+    margin-top: 0.15rem;
+  }
+  .program-map :global(.crm-popup__chip) {
+    border: 1px solid var(--rule);
+    padding: 0 0.25rem;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
     color: var(--rule);
   }
   .program-map :global(.crm-popup__link) {

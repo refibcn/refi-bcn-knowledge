@@ -1,0 +1,88 @@
+# Public lens → GitHub Pages.
+#
+# Three triggers: every push to main, a 6-hourly cron (the Notion CRM is read at
+# BUILD time, so the published directory only refreshes when this rebuilds), and
+# manual dispatch.
+#
+# Two things this workflow guarantees, both of which matter more on the cron
+# than on a push, because nobody is watching an unattended run:
+#
+#   1. The internal review lens never builds here. COMMONS_REVIEW is pinned
+#      empty, so `dist/review/` stays the stub and `dist-review-protected/`
+#      — the staticrypt bucket that embeds the raw KB — is never produced.
+#   2. A broken CRM feed fails the run instead of publishing. REQUIRE_NOTION=1
+#      turns every page's "Data error" banner into a build error, so a missing,
+#      expired or revoked key leaves the last good deployment serving.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 */6 * * *" # refresh the Notion CRM feed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  # Deviation from the usual `true`: an in-progress run may already be inside
+  # actions/deploy-pages, and cancelling there aborts a live deployment for no
+  # gain. Queued runs still collapse to the latest.
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fail in seconds with a plain message rather than 90s later inside a
+      # Vite stack trace. This only sees an ABSENT secret; an expired or
+      # revoked one still passes here and is caught by REQUIRE_NOTION below.
+      - name: Require the Notion secret
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+        run: |
+          if [ -z "$NOTION_API_KEY" ]; then
+            echo "::error::Repository secret NOTION_API_KEY is not set. The directory, programs, events, priorities and atlas pages are built from the ReFi BCN Notion CRM; without it this run would publish empty pages over a working site. Set it in Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22 # package.json engines: node >=22
+          cache: npm
+
+      - run: npm ci
+
+      # NOTE: ~11 of these tests self-skip in CI — they assert against the
+      # refi-bcn-os workspace KB store (../../data/kb/), which does not exist in
+      # a standalone clone. A green run here is NOT full coverage; run
+      # `npm test` inside the workspace checkout for that. The ~106 that do run
+      # cover the public-lens gates, the KB summary fallback and the atlas.
+      - run: npm test
+
+      - name: Build (public lens only)
+        run: npm run build
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          COMMONS_REVIEW: "" # hard guard — the internal lens must never build here
+          REQUIRE_NOTION: "1" # hard guard — no publishing over a dead CRM feed
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

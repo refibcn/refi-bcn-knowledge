@@ -332,3 +332,240 @@ export function connections(objects) {
 
   return { out, unresolved, backlinks, siblings };
 }
+
+// ── Source containers ────────────────────────────────────────────────────
+// Groups every object under the source system it came from. The containers
+// are the `source-system` schema entries; the membership test is a prefix
+// match on the object's recorded origin.
+//
+// This is the seam under /sources and, downstream, under the archive-ready
+// verdict for an upstream repo. Two failure modes have to stay loud:
+//
+//   1. WRONG container. Cards nest — `refi-bcn-os-operations` lives inside
+//      `refi-bcn` — so matching is LONGEST-PREFIX-WINS, not first-match.
+//      First-match would swallow every operations object into the parent repo.
+//   2. NO container. Anything that matches nothing goes to `unattributed`,
+//      which is always present even when empty. It is the canary: a non-zero
+//      count means objects exist that no container page would ever show.
+//
+// Nothing here mutates the objects; containers hold the same references.
+
+const UNATTRIBUTED = "unattributed";
+
+/** Read a field off a card in either shape: a loadKb-normalized object (fields
+ *  hoisted, original under `raw`) or a plain YAML entry. */
+function cardField(card, name) {
+  return card?.[name] ?? card?.raw?.[name];
+}
+
+/**
+ * The origin prefixes a card claims, in precedence order:
+ *
+ *   1. An explicit `origin_prefixes:` list on the card — used verbatim. It is
+ *      authoritative because derivation cannot know every notation (e.g.
+ *      refibcn-site: the repo is `refibcn.github.io`, the working copy is
+ *      `repos/refibcn-site/`).
+ *   2. Otherwise derived from `url`: the url with a single trailing slash,
+ *      plus — for GitHub urls — the workspace-relative `repos/<repo>/` form,
+ *      because the store records both notations (loadKb falls back
+ *      provenance.origin → source_lineage → url).
+ *   3. Neither → no prefixes. The container still exists, just empty.
+ *
+ * The trailing slash is load-bearing: without it `…/ReFi-Barcelona` would also
+ * match a sibling repo like `…/ReFi-Barcelona-archive`.
+ *
+ * @param {Record<string, any> | null | undefined} card
+ * @returns {string[]}
+ */
+export function cardOriginPrefixes(card) {
+  const explicit = cardField(card, "origin_prefixes");
+  if (Array.isArray(explicit)) {
+    return explicit.filter((p) => typeof p === "string" && p.length > 0);
+  }
+  const url = cardField(card, "url");
+  if (typeof url !== "string" || !url) return [];
+  const prefixes = [url.endsWith("/") ? url : `${url}/`];
+  const repo = /^https?:\/\/github\.com\/[^/]+\/([^/?#]+)/i.exec(url);
+  if (repo) prefixes.push(`repos/${repo[1]}/`);
+  return prefixes;
+}
+
+/** The string a container match is tested against. The store records two
+ *  shapes: `provenance.origin` (most objects) and a bare `source_lineage`
+ *  (public-use-boundary records, which carry no provenance object at all).
+ *  Missing the second silently inflates `unattributed`. `origin` is the
+ *  loadKb-normalized fallback, which also covers hand-built objects. */
+function originKey(o) {
+  const key =
+    o?.raw?.provenance?.origin || o?.raw?.source_lineage || o?.origin || "";
+  return typeof key === "string" ? key : "";
+}
+
+/** Map → key-sorted plain object, so the serialized container is byte-stable
+ *  across runs. Tallies accumulate in a Map, never in an object literal: a
+ *  bucket named `__proto__` (or any other Object.prototype key) assigned onto
+ *  a literal would silently fail to become an own property, i.e. vanish from
+ *  the count. Unlikely from a controlled vocabulary — but a tally that loses
+ *  objects without saying so is the exact failure this seam must not have. */
+function sortedCounts(counts) {
+  return Object.fromEntries([...counts].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/**
+ * @typedef {object} SourceContainer
+ * @property {string} id       The card slug, or "unattributed".
+ * @property {string} title
+ * @property {Record<string, any> | null} card  null for "unattributed".
+ * @property {KbObject[]} objects
+ * @property {Record<string, number>} by_maturity  Unset maturity buckets as "unset".
+ * @property {Record<string, number>} by_schema
+ * @property {number} high_risk_count  Uses the loadKb-normalized `high_risk`,
+ *   so it agrees with facets().highRisk rather than with the raw store flag.
+ */
+
+/** @returns {SourceContainer} */
+function finishContainer(id, title, card, objects) {
+  /** @type {Map<string, number>} */
+  const by_maturity = new Map();
+  /** @type {Map<string, number>} */
+  const by_schema = new Map();
+  let high_risk_count = 0;
+  for (const o of objects) {
+    // Explicit bucket for an unset maturity — never let `undefined` become a
+    // property name, and never let it vanish from the tally.
+    const m = o?.maturity || "unset";
+    by_maturity.set(m, (by_maturity.get(m) ?? 0) + 1);
+    const s = o?.schema || "unset";
+    by_schema.set(s, (by_schema.get(s) ?? 0) + 1);
+    if (o?.high_risk) high_risk_count += 1;
+  }
+  return {
+    id,
+    title,
+    card,
+    objects,
+    by_maturity: sortedCounts(by_maturity),
+    by_schema: sortedCounts(by_schema),
+    high_risk_count,
+  };
+}
+
+/**
+ * @param {KbObject[]} objects  The full set. `source-system` entries in it are
+ *   the container definitions, not container contents — they are excluded from
+ *   membership and from every tally.
+ * @param {Record<string, any>[]} [cards]  Defaults to the `source-system`
+ *   entries found in `objects`.
+ * @returns {SourceContainer[]}  Most-populated first, id-ascending on ties,
+ *   `unattributed` always last and always present.
+ */
+export function sourceContainers(objects, cards) {
+  const objs = Array.isArray(objects) ? objects : [];
+  const cardList = Array.isArray(cards)
+    ? cards
+    : objs.filter((o) => o?.schema === "source-system");
+
+  /** @type {Map<string, { title: string, card: Record<string, any>, objects: KbObject[] }>} */
+  const containers = new Map();
+  for (const card of cardList) {
+    const id = String(cardField(card, "slug") ?? card?.id ?? "");
+    if (!id || containers.has(id)) continue;
+    containers.set(id, {
+      title: String(cardField(card, "title") || id),
+      card,
+      objects: [],
+    });
+  }
+
+  /** @type {KbObject[]} */
+  const orphans = [];
+
+  // Every (containerId, prefix) pair, longest prefix first. Sorting by length
+  // is what makes nested cards resolve to the deepest one; the id/prefix
+  // tiebreaks only exist so equal-length prefixes resolve deterministically.
+  /** @type {[string, string][]} */
+  const pairs = [];
+  for (const [id, c] of containers) {
+    for (const p of cardOriginPrefixes(c.card)) pairs.push([id, p]);
+  }
+  pairs.sort(
+    (a, b) =>
+      b[1].length - a[1].length ||
+      a[0].localeCompare(b[0]) ||
+      a[1].localeCompare(b[1]),
+  );
+
+  for (const o of objs) {
+    if (o?.schema === "source-system") continue; // a card, not contents
+    const key = originKey(o);
+    const hit = key ? pairs.find(([, p]) => key.startsWith(p)) : undefined;
+    if (hit) containers.get(hit[0]).objects.push(o);
+    else orphans.push(o);
+  }
+
+  const list = [...containers]
+    .map(([id, c]) => finishContainer(id, c.title, c.card, c.objects))
+    .sort(
+      (a, b) => b.objects.length - a.objects.length || a.id.localeCompare(b.id),
+    );
+  list.push(finishContainer(UNATTRIBUTED, "Unattributed", null, orphans));
+  return list;
+}
+
+// ── Ingest disposition ───────────────────────────────────────────────────
+// How many FILES of a source have been ingested / merged / excluded / are
+// still pending, derived from the workspace batch rosters by
+// `npm run derive:disposition` and committed so a standalone clone renders.
+
+const DISPOSITION_FILE = resolve(
+  REPO_ROOT,
+  "src",
+  "data",
+  "sources-disposition.json",
+);
+
+/** @type {Map<string, Record<string, any>>} */
+const dispositionCache = new Map();
+
+/**
+ * @typedef {object} Disposition
+ * @property {string} batch
+ * @property {string} source_card
+ * @property {string} status
+ * @property {number} files_total
+ * @property {number} ingested
+ * @property {number} merged
+ * @property {number} excluded
+ * @property {number} pending
+ * @property {number} work_orders_prepared  NOT the file count — one file can
+ *   produce several work orders (batch-1: 93 orders from 88 files).
+ * @property {{ reason: string, files: number }[]} excluded_reasons
+ */
+
+/**
+ * @param {string} containerId
+ * @param {string} [file]
+ * @returns {Disposition | null}  null means "this source has no batch roster"
+ *   (e.g. notion-refi-bcn, whose content is not files at all) — which is a
+ *   different statement from a batch reporting zero files, and renders
+ *   differently. A MISSING disposition file throws rather than degrading every
+ *   container to null: a silently absent disposition would read as "nothing to
+ *   ingest" and could authorise archiving a source that was never processed.
+ */
+export function disposition(containerId, file = DISPOSITION_FILE) {
+  if (!dispositionCache.has(file)) {
+    if (!existsSync(file)) {
+      throw new Error(
+        `kb.mjs: missing ${file}. It is a committed artifact — run ` +
+          "`npm run derive:disposition` inside a refi-bcn-os checkout.",
+      );
+    }
+    dispositionCache.set(file, JSON.parse(readFileSync(file, "utf8")));
+  }
+  const sources = dispositionCache.get(file).sources;
+  // hasOwn, not a bare index: JSON.parse gives an Object.prototype-backed
+  // object, so `sources["constructor"]` would hand back a function instead of
+  // null for a container that has no roster.
+  if (!sources || !Object.hasOwn(sources, containerId)) return null;
+  return sources[containerId];
+}

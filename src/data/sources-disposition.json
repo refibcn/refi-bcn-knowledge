@@ -1,0 +1,34 @@
+{
+  "_comment": "GENERATED — do not edit by hand. Written by `npm run derive:disposition` from refi-bcn-os/docs/kms/batches/*.yaml. Counts FILES, not work orders.",
+  "sources": {
+    "refi-bcn-old-kb": {
+      "batch": "batch-1",
+      "source_card": "refi-bcn-old-kb",
+      "status": "ingested",
+      "files_total": 269,
+      "ingested": 88,
+      "merged": 9,
+      "excluded": 172,
+      "pending": 0,
+      "work_orders_prepared": 93,
+      "excluded_reasons": [
+        {
+          "reason": "content stubs (non-substantive)",
+          "files": 12
+        },
+        {
+          "reason": "docs (Quartz tooling)",
+          "files": 76
+        },
+        {
+          "reason": "case-studies/Old (BioFi book OCR)",
+          "files": 57
+        },
+        {
+          "reason": "_archive remainder",
+          "files": 27
+        }
+      ]
+    }
+  }
+}

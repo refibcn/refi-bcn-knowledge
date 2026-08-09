@@ -79,7 +79,9 @@ const real = rows.filter((r) => r.id !== "unattributed");
               )}
 
               <p class="src-counts">
-                <strong>{r.objects.length}</strong> objects
+                {/* objects_total, not objects.length — a standalone clone reads
+                    the committed summary, whose rows carry counts and no bodies. */}
+                <strong>{r.objects_total}</strong> objects
                 {r.high_risk_count > 0 && (
                   <span class="src-hr"> · {r.high_risk_count} high-risk</span>
                 )}
@@ -170,9 +172,9 @@ const real = rows.filter((r) => r.id !== "unattributed");
     </ul>
 
     <p class="src-canary">
-      <strong>{canary?.objects.length ?? 0}</strong> objects match no source card.
+      <strong>{canary?.objects_total ?? 0}</strong> objects match no source card.
       {
-        canary?.objects.length === 0
+        canary?.objects_total === 0
           ? " That is the expected state — every object traces to a source."
           : " That is a fault: some object's provenance matches no card, so the card set needs updating."
       }

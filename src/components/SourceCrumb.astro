@@ -9,7 +9,13 @@
 // Pass `container` for a single-source view, or nothing for a view that spans
 // sources (it then points at the index). Title comes from the store so it cannot
 // drift from the container page's own heading.
+// The title is looked up through the same two-path seam as /sources: the live
+// store inside a refi-bcn-os checkout, the committed aggregate summary in a
+// standalone clone. Without the fallback this crumb degraded from "ReFi BCN
+// Notion workspace" to the bare slug `notion-refi-bcn` in CI — on /atlas,
+// /events, /organizations and /programs, all four of which pass a container.
 import { loadKb, sourceContainers } from "../lib/kb.mjs";
+import { summaryContainers, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { withBase } from "../lib/paths";
 
 interface Props {
@@ -27,7 +33,10 @@ let href = "sources/";
 if (container) {
   href = `sources/${container}/`;
   if (!label) {
-    const found = sourceContainers(loadKb()).find((c) => c.id === container);
+    const containers = usingCommittedStore()
+      ? summaryContainers()
+      : sourceContainers(loadKb());
+    const found = containers.find((c) => c.id === container);
     title = found?.title ?? container;
   }
 }

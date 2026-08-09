@@ -336,6 +336,7 @@ test("unattributed is always present, even when empty — it is the canary", () 
     title: "Unattributed",
     card: null,
     objects: [],
+    objects_total: 0,
     by_maturity: {},
     by_schema: {},
     high_risk_count: 0,

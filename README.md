@@ -42,6 +42,33 @@ the chrome carries functional labels only.
    (copy `.env.example` to `.env`). Local YAML remains the source of truth for org-os
    registries; Notion is the CRM surface.
 
+### The store is outside this repo — two committed derivations bridge the gap
+
+Feed 1 lives in the org-os checkout, which CI does **not** have: GitHub Actions clones
+this repo standalone, so `resolveKbDir()` falls back to `data/kb-public/` — the exported
+public subset, which is legitimately **empty** until human review promotes objects.
+`export:public-kb` cannot fill it, and must not be made to: `publishableKb()` is
+fail-closed by design.
+
+So the aggregates a public page needs are **derived from the workspace and committed**:
+
+| Artifact                            | Command                      | What it holds                                                                  |
+| ----------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| `src/data/sources-disposition.json` | `npm run derive:disposition` | Per-source file disposition from `refi-bcn-os/docs/kms/batches/*.yaml`.        |
+| `src/data/kb-summary.json`          | `npm run derive:kb-summary`  | Per-container and global object counts + the `source-system` cards. No bodies. |
+
+**Re-run BOTH after any ingest batch, and commit the regenerated JSON with the change.**
+They are derived data under version control, so they go stale silently. `npm test` pins
+that: `tests/kb-summary.test.mjs` recomputes the summary from the live store and fails if
+the committed file disagrees (skipped when there is no workspace store, i.e. in CI).
+
+`derive:kb-summary` **refuses** to run when it can only see `data/kb-public/` — deriving
+there would write zeros over good data and render `/sources` as "nothing ingested", which
+is the reading that could authorise archiving an unprocessed source.
+
+The summary carries counts and the source cards only. Object titles, bodies, slugs and
+origins are excluded, and the script asserts that rather than promising it.
+
 ## Three lenses
 
 | Lens      | Path         | Audience                                                             |
@@ -75,6 +102,10 @@ npm run build     # static build to dist/
 npm run preview   # serve the built dist/
 npm run check     # astro check (types) + prettier --check
 npm run format    # prettier --write
+
+# Committed derivations — re-run both after every ingest batch
+npm run derive:disposition   # → src/data/sources-disposition.json
+npm run derive:kb-summary    # → src/data/kb-summary.json
 ```
 
 `npm run build` ends in `node scripts/verify-public-kb.mjs` — a hard gate that walks the

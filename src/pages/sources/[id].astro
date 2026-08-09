@@ -10,6 +10,12 @@
 // never contains the listing markup at all. scripts/verify-public-kb.mjs then
 // re-checks dist/sources/ independently — belt and braces, same as the /knowledge
 // lens.
+//
+// Counts come from `row.objects_total`, never `row.objects.length`: a standalone
+// clone has no workspace store and builds these rows from the committed
+// aggregate summary, which carries counts and an empty `objects`. The internal
+// listing below is the one place that reads `row.objects`, and it only runs in
+// the COMMONS_REVIEW build, which always has the live store.
 import Layout from "../../components/Layout.astro";
 import SectionBlock from "../../components/SectionBlock.astro";
 import { sourcesViewModel, dispositionBar } from "../../lib/sources.mjs";
@@ -76,7 +82,7 @@ const CARD_FIELDS = [
 
     <p class="src-headline">
       <span class:list={["src-chip", `src-chip--${v.status}`]}>{v.status}</span>
-      <strong>{row.objects.length}</strong> objects
+      <strong>{row.objects_total}</strong> objects
       {
         row.high_risk_count > 0 && (
           <span> · {row.high_risk_count} high-risk</span>
@@ -247,11 +253,11 @@ const CARD_FIELDS = [
           </p>
         </section>
       ) : (
-        row.objects.length > 0 && (
+        row.objects_total > 0 && (
           <section class="src-block">
             <h3>Objects</h3>
             <p class="src-dim">
-              {row.objects.length} objects sit in this container. Their contents
+              {row.objects_total} objects sit in this container. Their contents
               are not published here — the working set lives in the
               password-gated review lens, and entries reach the public knowledge
               lens only after review. This page deliberately shows counts and

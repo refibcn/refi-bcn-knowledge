@@ -417,6 +417,9 @@ function sortedCounts(counts) {
  * @property {string} title
  * @property {Record<string, any> | null} card  null for "unattributed".
  * @property {KbObject[]} objects
+ * @property {number} objects_total  `objects.length` — as a NAMED field, because
+ *   a container built from the committed summary carries `objects: []` and every
+ *   page must read the count from the same place on both paths.
  * @property {Record<string, number>} by_maturity  Unset maturity buckets as "unset".
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count  Uses the loadKb-normalized `high_risk`,
@@ -456,6 +459,7 @@ function finishContainer(id, title, card, objects) {
     title,
     card,
     objects,
+    objects_total: objects.length,
     by_maturity: sortedCounts(by_maturity),
     by_schema: sortedCounts(by_schema),
     high_risk_count,

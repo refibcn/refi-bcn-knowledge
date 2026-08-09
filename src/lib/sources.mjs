@@ -3,6 +3,7 @@
 // drift apart — C2 says "reuse sourceContainers — no second grouping
 // implementation", and this is the layer that keeps that honest.
 import { loadKb, sourceContainers, disposition } from "./kb.mjs";
+import { summaryContainers, usingCommittedStore } from "./kb-summary.mjs";
 import { archiveReady } from "./archive-ready.mjs";
 
 // A card reaches us either as the raw YAML entry or as a KbObject wrapping it in
@@ -148,7 +149,8 @@ export const PLANNED_SOURCES = Object.freeze([
  * @property {string} id
  * @property {string} title
  * @property {Record<string, any> | null} card
- * @property {any[]} objects
+ * @property {any[]} objects  EMPTY on the summary path — read `objects_total`.
+ * @property {number} objects_total
  * @property {Record<string, number>} by_maturity
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count
@@ -161,12 +163,27 @@ export const PLANNED_SOURCES = Object.freeze([
 
 /** Order the index reads best in: real containers, planned rows, then the
  *  unattributed canary — which stays visible at zero on purpose.
- *  @returns {{rows: SourceRow[], planned: typeof PLANNED_SOURCES, totals: {objects: number, containers: number, unattributed: number}}} */
+ *  @returns {{rows: SourceRow[], planned: typeof PLANNED_SOURCES, totals: {objects: number, containers: number, unattributed: number}, from_summary: boolean}} */
 export function sourcesViewModel({ internal = false } = {}) {
-  const objects = loadKb();
-  // One argument: sourceContainers derives the card list from the store's own
-  // source-system entries. C2's "no second grouping implementation" rule.
-  const containers = sourceContainers(objects);
+  // Two container sources, ONE row shape.
+  //
+  // Live store when this build sits inside a refi-bcn-os checkout; the committed
+  // aggregate summary when it does not (a standalone CI clone). The summary path
+  // yields `objects: []` and takes every count from named fields, so nothing
+  // downstream — the index, the container pages, dispositionBar, archiveReady —
+  // has to know which one it got. That is the whole contract; if a consumer ever
+  // needs to branch on it, the seam has been broken.
+  //
+  // Why not just read the store: a clone has none. `data/kb-public/` is the
+  // fallback and it is legitimately empty until review promotes objects, so
+  // sourceContainers() there produces no containers at all (the cards are
+  // themselves store entries). Aggregates are committed; bodies are not.
+  const fromSummary = usingCommittedStore();
+  const containers = fromSummary
+    ? summaryContainers()
+    : // One argument: sourceContainers derives the card list from the store's own
+      // source-system entries. C2's "no second grouping implementation" rule.
+      sourceContainers(loadKb());
 
   const rows = containers.map((c) => {
     // Flatten the card ONCE, before anything reads it. A card arrives either as
@@ -190,12 +207,16 @@ export function sourcesViewModel({ internal = false } = {}) {
   return {
     rows,
     planned: PLANNED_SOURCES,
+    // `objects_total`, never `objects.length` — the summary path has no bodies.
     totals: {
-      objects: rows.reduce((n, r) => n + r.objects.length, 0),
+      objects: rows.reduce((n, r) => n + r.objects_total, 0),
       containers: rows.filter((r) => r.id !== "unattributed").length,
       unattributed:
-        rows.find((r) => r.id === "unattributed")?.objects.length ?? 0,
+        rows.find((r) => r.id === "unattributed")?.objects_total ?? 0,
     },
+    /** Which container source this build read. Diagnostic only — no page may
+     *  branch on it, or the two paths start drifting again. */
+    from_summary: fromSummary,
   };
 }
 

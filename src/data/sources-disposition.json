@@ -44,6 +44,32 @@
           "file": "repos/ReFi-Barcelona/README.md"
         }
       ]
+    },
+    "refi-bcn-os-operations": {
+      "batch": null,
+      "source_card": "refi-bcn-os-operations",
+      "status": "not-batched",
+      "corpus_path": "packages/operations",
+      "files_total": 155,
+      "ingested": 0,
+      "merged": 0,
+      "excluded": 0,
+      "pending": 155,
+      "excluded_reasons": [],
+      "note": "No batch roster yet — all 155 files await triage."
+    },
+    "regenerant-catalunya-repo": {
+      "batch": null,
+      "source_card": "regenerant-catalunya-repo",
+      "status": "not-batched",
+      "corpus_path": "repos/Regenerant-Catalunya",
+      "files_total": 330,
+      "ingested": 0,
+      "merged": 0,
+      "excluded": 0,
+      "pending": 330,
+      "excluded_reasons": [],
+      "note": "No batch roster yet — all 330 files await triage."
     }
   }
 }

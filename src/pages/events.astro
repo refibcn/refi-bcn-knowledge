@@ -1,5 +1,6 @@
 ---
 import Layout from "../components/Layout.astro";
+import SourceCrumb from "../components/SourceCrumb.astro";
 import OrganicAmbient from "../components/OrganicAmbient.astro";
 import { loadSectionConfig, fetchDatabaseRecords } from "../lib/notion";
 import { normalizeEvent, hasCatbis } from "../lib/crm";
@@ -74,6 +75,10 @@ function eventDateLabel(dateStr: string | null): string {
 ---
 
 <Layout title="Events" current="events">
+  <SourceCrumb
+    container="notion-refi-bcn"
+    note="read from the CRM at build time, never written back"
+  />
   <header class="hero hero--compact">
     <OrganicAmbient />
     <div class="hero__inner section">

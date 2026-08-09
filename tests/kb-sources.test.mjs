@@ -8,7 +8,7 @@
 // an object attributed to NO container (dropped instead of surfaced).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -656,3 +656,128 @@ test(
     }
   },
 );
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Invariants added while reconciling two independent C1 implementations
+// (2026-08-09). Both arrived at the same three design calls; these pin the two
+// that had no test, plus the un-batched corpus path added for C2.
+// ─────────────────────────────────────────────────────────────────────────────
+
+test("one card matches BOTH notations the store uses for the same source", () => {
+  // The store records the old KB two ways — 379 objects carry the GitHub blob
+  // URL, 38 carry the `repos/…` workspace path — because loadKb falls back
+  // provenance.origin → source_lineage → url and those fields were written by
+  // different passes. A card matching one notation loses ~90% of its own corpus
+  // and reports the remainder as a clean number.
+  const objects = [
+    o("resource", "a", "repos/ReFi-Barcelona/content/a.md"),
+    o(
+      "resource",
+      "b",
+      "https://github.com/refibcn/ReFi-Barcelona/blob/fe87706/content/b.md",
+    ),
+  ];
+  const cards = [
+    {
+      slug: "refi-bcn-old-kb",
+      origin_prefixes: [
+        "repos/ReFi-Barcelona/",
+        "https://github.com/refibcn/ReFi-Barcelona/",
+      ],
+    },
+  ];
+  const containers = sourceContainers(objects, cards);
+  assert.equal(
+    containers.find((c) => c.id === "refi-bcn-old-kb").objects.length,
+    2,
+  );
+  assert.equal(
+    containers.find((c) => c.id === "unattributed").objects.length,
+    0,
+  );
+});
+
+test("a source card is never content inside a container", () => {
+  // Every card carries a `url`, which becomes its origin — so without this rule
+  // each card self-attributes and notion-refi-bcn claims "1 object" when the
+  // honest answer is 0: its content lives in the CRM, not the store.
+  const objects = [
+    o("source-system", "notion-refi-bcn", "https://www.notion.so/refibcn"),
+    o("resource", "real", "https://www.notion.so/refibcn/page"),
+  ];
+  const cards = [
+    {
+      slug: "notion-refi-bcn",
+      origin_prefixes: ["https://www.notion.so/refibcn"],
+    },
+  ];
+  const containers = sourceContainers(objects, cards);
+  const c = containers.find((x) => x.id === "notion-refi-bcn");
+  assert.equal(c.objects.length, 1, "only the real object, not the card");
+  assert.equal(c.objects[0].slug, "real");
+  assert.equal(
+    containers.find((x) => x.id === "unattributed").objects.length,
+    0,
+    "and the card is not re-homed into unattributed either",
+  );
+});
+
+test(
+  "real store: every object is attributed and the totals reconcile",
+  {
+    skip: noWorkspace,
+  },
+  () => {
+    // /sources calls `unattributed` a canary that should read 0. That is only a
+    // signal if something asserts it.
+    const objects = loadKb();
+    const containers = sourceContainers(objects);
+    const canary = containers.find((c) => c.id === "unattributed");
+    assert.equal(
+      canary.objects.length,
+      0,
+      `unattributed must be empty; got ${canary.objects.length}: ${canary.objects
+        .slice(0, 5)
+        .map((o) => `${o.id} <- ${o.origin}`)
+        .join(" | ")}`,
+    );
+    const grouped = containers.reduce((n, c) => n + c.objects.length, 0);
+    const cards = objects.filter((o) => o.schema === "source-system").length;
+    assert.equal(grouped + cards, objects.length);
+  },
+);
+
+test("a corpus with no batch is reported as fully pending, not omitted", () => {
+  // Emitting only batched sources leaves those containers with no record at all,
+  // which the pages render as "no disposition recorded" — at a glance
+  // indistinguishable from "nothing to do". The untouched backlog has to show.
+  const dir = mkdtempSync(join(tmpdir(), "kb-batches-"));
+  const ws = mkdtempSync(join(tmpdir(), "kb-ws-"));
+  const corpus = join(ws, "repos", "Some-Repo");
+  writeFileSync(join(dir, "not-a-roster.yaml"), "batch: nope\n");
+  mkdirSync(corpus, { recursive: true });
+  writeFileSync(join(corpus, "a.md"), "# a\n");
+  writeFileSync(join(corpus, "b.md"), "# b\n");
+  writeFileSync(join(corpus, "c.txt"), "not markdown\n");
+
+  const out = deriveDispositions(dir, {
+    cards: [["some-repo", { corpus_path: "repos/Some-Repo" }]],
+    workspaceRoot: ws,
+  });
+  const d = out.sources["some-repo"];
+  assert.equal(d.files_total, 2, "only .md counts");
+  assert.equal(d.pending, 2);
+  assert.equal(d.ingested, 0);
+  assert.equal(d.status, "not-batched");
+  assert.equal(d.batch, null);
+});
+
+test("a fixture roster dir does not pull in the real workspace cards", () => {
+  // Regression lock: the un-batched scan originally read the real source cards
+  // regardless of the directory passed in, so fixture-based assertions silently
+  // gained three extra sources.
+  const dir = mkdtempSync(join(tmpdir(), "kb-batches-"));
+  writeFileSync(join(dir, "not-a-roster.yaml"), "batch: nope\n");
+  const out = deriveDispositions(dir);
+  assert.deepEqual(Object.keys(out.sources), []);
+});

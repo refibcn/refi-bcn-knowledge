@@ -23,10 +23,38 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
+
+/** The refi-bcn-os checkout this repo lives inside. Absent in a standalone clone. */
+export const WORKSPACE_ROOT = resolve(REPO_ROOT, "..", "..");
+
+/** The source cards, as [slug, entry] pairs. Empty in a standalone clone. */
+export function loadSourceCards() {
+  const file = join(WORKSPACE_ROOT, "data", "kb", "source-system.yaml");
+  if (!existsSync(file)) return [];
+  const doc = yaml.load(readFileSync(file, "utf8"));
+  return Object.entries(doc?.entries ?? {});
+}
+
+/** Count .md under `dir`, or null when it is not present locally. */
+export function countMarkdown(dir) {
+  if (!existsSync(dir)) return null;
+  let n = 0;
+  const walk = (d) => {
+    for (const f of readdirSync(d)) {
+      if (f === ".git" || f === "node_modules") continue;
+      const p = join(d, f);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (f.endsWith(".md")) n++;
+    }
+  };
+  walk(dir);
+  return n;
+}
 
 /** The workspace batch rosters. Absent in a standalone clone. */
 export const BATCH_DIR = resolve(
@@ -243,7 +271,18 @@ export function deriveDisposition(doc) {
  * `source_card` + `coverage` pair are not rosters and are skipped.
  * @param {string} dir
  */
-export function deriveDispositions(dir = BATCH_DIR) {
+/**
+ * @param {string} dir Roster directory.
+ * @param {{cards?: [string, any][], workspaceRoot?: string}} [opts]
+ *   `cards` defaults to the real source cards ONLY when reading the real roster
+ *   directory. A caller pointing at a fixture dir is testing roster parsing, so
+ *   it gets no workspace scan by default — otherwise the real cards leak into
+ *   fixture-based assertions, which is exactly what happened the first time this
+ *   scan was added.
+ */
+export function deriveDispositions(dir = BATCH_DIR, opts = {}) {
+  const cards = opts.cards ?? (dir === BATCH_DIR ? loadSourceCards() : []);
+  const workspaceRoot = opts.workspaceRoot ?? WORKSPACE_ROOT;
   /** @type {Record<string, ReturnType<typeof deriveDisposition>>} */
   const sources = {};
   for (const file of readdirSync(dir).sort()) {
@@ -263,6 +302,38 @@ export function deriveDispositions(dir = BATCH_DIR) {
     }
     sources[record.source_card] = record;
   }
+
+  // ── Sources with a corpus but no batch yet ──────────────────────────────
+  // A card carrying `corpus_path` names a real pile of files someone still has
+  // to triage. Emitting only batched sources leaves those containers with NO
+  // disposition record, which the pages render as "no disposition recorded" —
+  // indistinguishable, at a glance, from "nothing to do". Counting them makes
+  // the untouched backlog visible instead: Regenerant-Catalunya is 330 files at
+  // 0 ingested, and packages/operations is 155. Both are entirely pending, and
+  // that is the honest number to put in front of a reviewer.
+  //
+  // Counted from the checkout, never asserted — same rule as the batched path.
+  for (const [slug, card] of cards) {
+    if (sources[slug]) continue;
+    const corpus = card?.corpus_path;
+    if (!corpus) continue; // fileless source; the page explains why, see normalizeDisposition
+    const files_total = countMarkdown(join(workspaceRoot, corpus));
+    if (files_total === null) continue; // corpus not cloned here — leave it unmeasured
+    sources[slug] = {
+      batch: null,
+      source_card: slug,
+      status: "not-batched",
+      corpus_path: corpus,
+      files_total,
+      ingested: 0,
+      merged: 0,
+      excluded: 0,
+      pending: files_total,
+      excluded_reasons: [],
+      note: `No batch roster yet — all ${files_total} files await triage.`,
+    };
+  }
+
   return {
     _comment:
       "GENERATED — do not edit by hand. Written by `npm run derive:disposition` " +
@@ -303,9 +374,11 @@ if (invokedDirectly()) {
   writeFileSync(OUT_FILE, JSON.stringify(out, null, 2) + "\n", "utf8");
   for (const [card, r] of Object.entries(out.sources)) {
     console.log(
-      `  ${card} (${r.batch}, ${r.status}): ${r.files_total} files = ` +
-        `${r.ingested} ingested + ${r.merged} merged + ${r.excluded} excluded + ${r.pending} pending ` +
-        `[${r.work_orders_prepared} work orders]`,
+      `  ${card} (${r.batch ?? r.status}): ${r.files_total} files = ` +
+        `${r.ingested} ingested + ${r.merged} merged + ${r.excluded} excluded + ${r.pending} pending` +
+        (r.work_orders_prepared == null
+          ? ""
+          : ` [${r.work_orders_prepared} work orders]`),
     );
   }
   console.log(

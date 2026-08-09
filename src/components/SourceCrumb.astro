@@ -1,0 +1,71 @@
+---
+// "Source: X" breadcrumb — the integration half of close-out plan C2.
+//
+// Every view in this instance is a lens over one or more ingested sources, and
+// until now nothing on the page said which. That is the gap the source
+// containers close: a reader looking at the directory should be one click from
+// "where did these records come from, and how much of that source is processed?"
+//
+// Pass `container` for a single-source view, or nothing for a view that spans
+// sources (it then points at the index). Title comes from the store so it cannot
+// drift from the container page's own heading.
+import { loadKb, sourceContainers } from "../lib/kb.mjs";
+import { withBase } from "../lib/paths";
+
+interface Props {
+  /** Source-system card slug, e.g. "notion-refi-bcn". Omit for multi-source views. */
+  container?: string;
+  /** Overrides the derived label — for sources with no card yet (e.g. a live CRM feed). */
+  label?: string;
+  /** Extra clause after the link, e.g. "read at build time, never written back". */
+  note?: string;
+}
+const { container, label, note } = Astro.props;
+
+let title = label ?? "All sources";
+let href = "sources/";
+if (container) {
+  href = `sources/${container}/`;
+  if (!label) {
+    const found = sourceContainers(loadKb()).find((c) => c.id === container);
+    title = found?.title ?? container;
+  }
+}
+---
+
+<p class="source-crumb">
+  <span class="source-crumb__key">Source</span>
+  <a href={withBase(href)}>{title}</a>
+  {note && <span class="source-crumb__note">— {note}</span>}
+</p>
+
+<style>
+  .source-crumb {
+    margin: 0;
+    padding: 6px var(--gutter);
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
+  }
+  .source-crumb__key {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .source-crumb a {
+    color: var(--text-primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .source-crumb a:hover {
+    border-bottom-color: var(--ink);
+  }
+  .source-crumb__note {
+    font-family: var(--sans, inherit);
+  }
+</style>

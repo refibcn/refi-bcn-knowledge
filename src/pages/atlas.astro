@@ -1,5 +1,6 @@
 ---
 import Layout from "../components/Layout.astro";
+import SourceCrumb from "../components/SourceCrumb.astro";
 import CatalunyaProgramMap from "../components/CatalunyaProgramMap.astro";
 import { getCollection } from "astro:content";
 import { withBase } from "../lib/paths";
@@ -193,6 +194,10 @@ const unplacedReasonText =
   dataset="Catalunya"
   description="A living atlas of Catalunya's regenerative territory — actors, cohorts, and bioregional signals."
 >
+  <SourceCrumb
+    container="notion-refi-bcn"
+    note="placed by comarca from the CRM's Area2 field — the CRM holds no coordinates"
+  />
   <section class="atlas-head">
     <h1>Atlas</h1>
     <p class="lede">

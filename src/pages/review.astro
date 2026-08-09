@@ -6,7 +6,13 @@
 // Fully self-contained on purpose: every byte of KB-derived content stays in this one
 // HTML file so staticrypt encrypts all of it (no /_astro assets, no bundled data chunks).
 // Styling mirrors editorial-organic.css values inline for the same reason.
-import { loadKb, facets, graphData, connections } from "../lib/kb.mjs";
+import {
+  loadKb,
+  facets,
+  graphData,
+  connections,
+  sourceContainers,
+} from "../lib/kb.mjs";
 import { COLORS, TYPE_INFO } from "../lib/kb-render.mjs";
 // Brand lockup tracks site.yaml `name` rather than hardcoding it, so the
 // post-ratification instance-name commit only has to touch one file.
@@ -24,6 +30,23 @@ const graph = graphData(objects);
 const conn = connections(objects);
 const bySchema = Object.fromEntries(schemas.map((s) => [s, objects.filter((o) => o.schema === s).length]));
 const rawCount = objects.filter((o) => o.maturity === "raw").length;
+
+// Source dimension (close-out plan C2). Reuses sourceContainers rather than
+// re-grouping by origin here — one grouping implementation, so the facet and the
+// /sources pages can never disagree about which source an object belongs to.
+// Emitted as a per-object id array so the client filter stays an O(1) lookup and
+// the payload does not carry the objects twice.
+const containers = sourceContainers(objects).filter(
+  (c) => c.objects.length > 0,
+);
+const sourceOf = new Map();
+for (const c of containers) for (const o of c.objects) sourceOf.set(o.id, c.id);
+const sourceIds = objects.map((o) => sourceOf.get(o.id) ?? "");
+const sourceList = containers.map((c) => ({
+  id: c.id,
+  title: c.title,
+  n: c.objects.length,
+}));
 
 const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 ---
@@ -181,6 +204,13 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
           </div>
         </div>
         <div>
+          <p class="grouplabel">Source</p>
+          <select id="src" aria-label="Filter by source">
+            <option value="">all sources</option>
+            {sourceList.map((s) => <option value={s.id}>{s.title} ({s.n})</option>)}
+          </select>
+        </div>
+        <div>
           <p class="grouplabel">Domain</p>
           <select id="dom" aria-label="Filter by domain">
             <option value="">all domains</option>
@@ -230,11 +260,12 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
 
     <div id="tip"></div>
 
-    <script is:inline set:html={`window.KB=${inlineJson(objects)};window.GRAPH=${inlineJson(graph)};window.CONN=${inlineJson(conn)};window.COLORS=${inlineJson(COLORS)};window.INFO=${inlineJson(TYPE_INFO)};`}></script>
+    <script is:inline set:html={`window.KB=${inlineJson(objects)};window.GRAPH=${inlineJson(graph)};window.CONN=${inlineJson(conn)};window.COLORS=${inlineJson(COLORS)};window.INFO=${inlineJson(TYPE_INFO)};window.SRC=${inlineJson(sourceIds)};window.SRCLIST=${inlineJson(sourceList)};`}></script>
     <script is:inline>
       (function () {
         "use strict";
         var KB = window.KB, GRAPH = window.GRAPH, CONN = window.CONN, COLORS = window.COLORS;
+        var SRC = window.SRC || [], SRCLIST = window.SRCLIST || [];
         var $ = function (id) { return document.getElementById(id); };
         var listEl = $("list"), countEl = $("count"), tip = $("tip"), reader = $("reader"), side = $("side");
         var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
@@ -265,7 +296,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
         };
         var lbl = function (k) { return LABELS[k] || k.replace(/_/g, " "); };
 
-        var state = { F: "all", HR: false, RAW: false, Q: "", D: "", S: "title" };
+        var state = { F: "all", HR: false, RAW: false, Q: "", D: "", S: "title", SRC: "" };
 
         function tagRow(o) {
           return '<div class="tags">' +
@@ -284,6 +315,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
             if (state.HR && !o.high_risk) continue;
             if (state.RAW && o.maturity !== "raw") continue;
             if (state.D && o.domain !== state.D) continue;
+            if (state.SRC && SRC[i] !== state.SRC) continue;
             if (q && (o.title + " " + o.summary + " " + o.slug).toLowerCase().indexOf(q) === -1) continue;
             out.push(i);
           }
@@ -484,6 +516,20 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
             if (!curList.length) renderList();
             renderReader(i); show("reader"); return;
           }
+          // #/src/<id> — the deep link the /sources container pages use. The
+          // source filter lives in the hash, not just in the select, so the
+          // filtered view survives a reload and can be pasted to someone.
+          if (h.indexOf("#/src/") === 0) {
+            var sid = decodeURIComponent(h.slice(6));
+            var known = SRCLIST.some(function (s) { return s.id === sid; });
+            if (!known) { go("#/"); return; }   // unknown source: browse, don't show an empty list
+            state.SRC = sid;
+            if ($("src")) $("src").value = sid;
+            renderList(); show("browse"); return;
+          }
+          // Any other route clears the source filter, so it cannot linger
+          // invisibly after navigating away.
+          if (state.SRC) { state.SRC = ""; if ($("src")) $("src").value = ""; }
           if (h === "#/graph") { renderList(); show("graph"); return; }
           renderList(); show("browse");
         }
@@ -499,6 +545,10 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
         });
         $("q").oninput = function (e) { state.Q = e.target.value; if (location.hash.indexOf("#/o/") === 0) go("#/"); else route(); };
         $("dom").onchange = function (e) { state.D = e.target.value; route(); };
+        // Selecting a source rewrites the hash rather than filtering in place, so
+        // the filtered view is a shareable link — the container pages link
+        // straight in with #/src/<id>.
+        $("src").onchange = function (e) { go(e.target.value ? "#/src/" + e.target.value : "#/"); };
         $("sort").onchange = function (e) { state.S = e.target.value; route(); };
         $("hrOnly").onchange = function (e) { state.HR = e.target.checked; route(); };
         $("rawOnly").onchange = function (e) { state.RAW = e.target.checked; route(); };

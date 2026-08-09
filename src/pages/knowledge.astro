@@ -1,5 +1,6 @@
 ---
 import Layout from "../components/Layout.astro";
+import SourceCrumb from "../components/SourceCrumb.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { loadKb, facets, publishableKb } from "../lib/kb.mjs";
 import { COLORS, TYPE_INFO, tagRowHtml } from "../lib/kb-render.mjs";
@@ -30,6 +31,7 @@ const pubBySchema = schemas
   section="Knowledge"
   description="One internal broad knowledge base; curated public collections, each with a clear scope, audience, and goal."
 >
+  <SourceCrumb note="this lens spans every ingested source" />
   <SectionBlock
     id="knowledge"
     title="Knowledge base"

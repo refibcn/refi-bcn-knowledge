@@ -1,0 +1,458 @@
+---
+// /sources/<id> — one container, in full (close-out plan C2 + C3).
+//
+// DC-3: the PUBLIC build renders the card expanded plus the computed
+// archive-ready checklist, and ZERO object bodies. The internal build
+// (COMMONS_REVIEW=1) additionally lists objects grouped by schema and maturity,
+// each deep-linking into the review app.
+//
+// The split is a build-time constant, not a runtime check, so the public bundle
+// never contains the listing markup at all. scripts/verify-public-kb.mjs then
+// re-checks dist/sources/ independently — belt and braces, same as the /knowledge
+// lens.
+import Layout from "../../components/Layout.astro";
+import SectionBlock from "../../components/SectionBlock.astro";
+import { sourcesViewModel, dispositionBar } from "../../lib/sources.mjs";
+import { COLORS } from "../../lib/kb-render.mjs";
+import { withBase } from "../../lib/paths";
+
+const INTERNAL = process.env.COMMONS_REVIEW === "1";
+
+export async function getStaticPaths() {
+  const internal = process.env.COMMONS_REVIEW === "1";
+  const { rows } = sourcesViewModel({ internal });
+  return rows.map((r) => ({ params: { id: r.id }, props: { row: r } }));
+}
+
+const { row } = Astro.props;
+// Locals, not property chains: `row.disposition` and `row.card` are legitimately
+// nullable (a fileless source, the unattributed canary), and narrowing a local
+// once is clearer than repeating `?.` on every read below.
+const disp = row.disposition;
+const card = row.card;
+const bar = dispositionBar(disp);
+const v = row.verdict;
+
+// Objects grouped for the internal listing. Built only when INTERNAL, so the
+// public build does not even hold the array.
+const groups: [string, any[]][] = INTERNAL
+  ? Object.entries(
+      row.objects.reduce((acc: Record<string, any[]>, o: any) => {
+        (acc[o.schema] ??= []).push(o);
+        return acc;
+      }, {}),
+    ).sort(([a], [b]) => a.localeCompare(b))
+  : [];
+
+const CARD_FIELDS = [
+  ["type", "Type"],
+  ["steward", "Steward"],
+  ["what_it_curates", "What it curates"],
+  ["why_it_matters", "Why it matters"],
+  ["currentness", "Currentness"],
+  ["update_rhythm", "Update rhythm"],
+  ["extraction_status", "Extraction status"],
+  ["toolkit_route", "Toolkit route"],
+  ["return_path", "Return path"],
+  ["how_to_credit", "How to credit"],
+  ["reuse_conditions", "Reuse conditions"],
+];
+---
+
+<Layout
+  title={row.title}
+  current="sources"
+  section="Knowledge"
+  dataset="Source"
+  description={`${row.title} — objects, file disposition and archive-readiness.`}
+  noindex={!INTERNAL && row.id === "unattributed"}
+>
+  <SectionBlock id="container" title={row.title}>
+    <nav class="src-crumb">
+      <a href={withBase("sources/")}>Sources</a>
+      <span>/</span>
+      <span class="src-crumb__cur">{row.id}</span>
+    </nav>
+
+    <p class="src-headline">
+      <span class:list={["src-chip", `src-chip--${v.status}`]}>{v.status}</span>
+      <strong>{row.objects.length}</strong> objects
+      {
+        row.high_risk_count > 0 && (
+          <span> · {row.high_risk_count} high-risk</span>
+        )
+      }
+      {
+        card?.url && (
+          <>
+            {" · "}
+            <a href={card!.url} target="_blank" rel="noopener">
+              {card!.url.replace(/^https?:\/\//, "")}
+            </a>
+          </>
+        )
+      }
+    </p>
+
+    {v.note && <p class="src-note">{v.note}</p>}
+
+    <!-- ── Archive-ready checklist (DC-4) ────────────────────────────── -->
+    {
+      v.applicable && v.checks.length > 0 && (
+        <section class="src-verdict">
+          <h3>Archive-ready</h3>
+          <p class="src-verdict__lede">
+            {v.ready
+              ? "Every condition is met. Archiving is a Luiz-gated step; the checklist below is the evidence."
+              : "Not ready. Each unmet condition names what is missing — these are computed from the store and the batch records, not asserted."}
+          </p>
+          <ul class="src-checks">
+            {v.checks.map((c) => (
+              <li class:list={["src-check", { "src-check--fail": !c.pass }]}>
+                <span class="src-check__mark" aria-hidden="true">
+                  {c.pass ? "✓" : "✗"}
+                </span>
+                <div>
+                  <strong>{c.label}</strong>
+                  <p>{c.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <!-- ── File disposition ──────────────────────────────────────────── -->
+    <section class="src-block">
+      <h3>File disposition</h3>
+      {
+        bar ? (
+          <>
+            <span class="src-bar" role="img" aria-label={bar.label}>
+              <span
+                class="src-bar__seg src-bar__seg--ingested"
+                style={`width:${bar.ingested}%`}
+              />
+              <span
+                class="src-bar__seg src-bar__seg--merged"
+                style={`width:${bar.merged}%`}
+              />
+              <span
+                class="src-bar__seg src-bar__seg--excluded"
+                style={`width:${bar.excluded}%`}
+              />
+              <span
+                class="src-bar__seg src-bar__seg--pending"
+                style={`width:${bar.pending}%`}
+              />
+            </span>
+            <p class="src-dim">{bar.label}</p>
+            {(disp?.batches?.length ?? 0) > 0 && (
+              <p class="src-dim">
+                Batches:{" "}
+                {disp!
+                  .batches!.map((b) => `${b.batch} (${b.status})`)
+                  .join(" · ")}
+              </p>
+            )}
+            {(disp?.discrepancies?.length ?? 0) > 0 && (
+              <ul class="src-warn">
+                {disp!.discrepancies!.map((d) => (
+                  <li>{d}</li>
+                ))}
+              </ul>
+            )}
+          </>
+        ) : (
+          <p class="src-dim">
+            {disp?.reason ?? "No file disposition recorded for this source."}
+          </p>
+        )
+      }
+    </section>
+
+    <!-- ── Views over this container ─────────────────────────────────── -->
+    {
+      row.views.length > 0 && (
+        <section class="src-block">
+          <h3>Views over this source</h3>
+          <ul class="src-views">
+            {row.views.map((view) => (
+              <li>
+                <a href={withBase(view.href)}>{view.label}</a>
+                <span class="src-dim"> — {view.note}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <!-- ── The card, expanded ────────────────────────────────────────── -->
+    {
+      card && (
+        <section class="src-block">
+          <h3>Source card</h3>
+          <dl class="src-card-fields">
+            {CARD_FIELDS.filter(([k]) => card![k]).map(([k, label]) => (
+              <>
+                <dt>{label}</dt>
+                <dd>{card![k]}</dd>
+              </>
+            ))}
+            {(card!.origin_prefixes?.length ?? 0) > 0 && (
+              <>
+                <dt>Origin prefixes</dt>
+                <dd class="mono">{card!.origin_prefixes.join("\n")}</dd>
+              </>
+            )}
+          </dl>
+        </section>
+      )
+    }
+
+    <!-- ── Object listing: INTERNAL ONLY (DC-3) ──────────────────────── -->
+    {
+      INTERNAL ? (
+        <section class="src-block">
+          <h3>Objects</h3>
+          <p class="src-dim">
+            Internal build. Each row opens in the review app filtered to this
+            source.
+          </p>
+          {groups.map(([schema, items]) => (
+            <div class="src-group">
+              <h4>
+                <span class="dot" style={`background:${COLORS[schema]}`} />
+                {schema} <span class="src-dim">{items.length}</span>
+              </h4>
+              <ul class="src-objects">
+                {items.map((o) => (
+                  <li>
+                    <a href={withBase(`review/#/o/${o.schema}/${o.slug}`)}>
+                      {o.title}
+                    </a>
+                    <span class="src-dim"> · {o.maturity}</span>
+                    {o.high_risk && <span class="src-flag"> high-risk</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p class="src-dim">
+            <a href={withBase(`review/#/src/${row.id}`)}>
+              Open all {row.objects.length} in the review lens →
+            </a>
+          </p>
+        </section>
+      ) : (
+        row.objects.length > 0 && (
+          <section class="src-block">
+            <h3>Objects</h3>
+            <p class="src-dim">
+              {row.objects.length} objects sit in this container. Their contents
+              are not published here — the working set lives in the
+              password-gated review lens, and entries reach the public knowledge
+              lens only after review. This page deliberately shows counts and
+              status, nothing more.
+            </p>
+          </section>
+        )
+      )
+    }
+  </SectionBlock>
+</Layout>
+
+<style>
+  .src-crumb {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    margin-bottom: var(--space-4);
+  }
+  .src-crumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .src-crumb a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+  .src-crumb__cur {
+    color: var(--text-primary);
+  }
+  .src-headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  .src-headline strong {
+    color: var(--text-primary);
+  }
+  .src-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    padding: 1px 9px;
+  }
+  .src-chip--archive-ready {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .src-note {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+  .src-verdict,
+  .src-block {
+    margin-top: var(--space-8);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-5);
+  }
+  .src-verdict h3,
+  .src-block h3 {
+    font-size: var(--text-md);
+    margin: 0 0 var(--space-2);
+  }
+  .src-verdict__lede {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    margin: 0 0 var(--space-4);
+  }
+  .src-checks {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .src-check {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .src-check__mark {
+    font-family: var(--mono);
+    flex: none;
+    width: 1.1em;
+  }
+  .src-check--fail .src-check__mark {
+    color: var(--primary);
+  }
+  .src-check strong {
+    font-weight: 500;
+  }
+  .src-check p {
+    margin: 2px 0 0;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+  .src-bar {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface-2);
+    margin: 4px 0 8px;
+  }
+  .src-bar__seg {
+    display: block;
+    height: 100%;
+  }
+  .src-bar__seg--ingested {
+    background: var(--primary);
+  }
+  .src-bar__seg--merged {
+    background: color-mix(in srgb, var(--primary) 55%, var(--surface-2));
+  }
+  .src-bar__seg--excluded {
+    background: color-mix(in srgb, var(--ink) 22%, var(--surface-2));
+  }
+  .src-bar__seg--pending {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--surface-2),
+      var(--surface-2) 3px,
+      var(--border-default) 3px,
+      var(--border-default) 6px
+    );
+  }
+  .src-dim {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+  }
+  .src-warn {
+    margin: 8px 0 0;
+    padding-left: var(--space-5);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+  }
+  .src-views {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .src-card-fields {
+    margin: 0;
+  }
+  .src-card-fields dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-top: var(--space-4);
+  }
+  .src-card-fields dd {
+    margin: var(--space-1) 0 0;
+    line-height: var(--leading-body);
+  }
+  .src-card-fields dd.mono {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    white-space: pre-wrap;
+  }
+  .src-group {
+    margin-top: var(--space-5);
+  }
+  .src-group h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 var(--space-2);
+    font-size: 0.95rem;
+  }
+  .src-group .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+  }
+  .src-objects {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: 2px;
+    font-size: 0.88rem;
+  }
+  .src-flag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+</style>

@@ -1,0 +1,321 @@
+---
+// /sources — one row per ingested source (close-out plan C2).
+//
+// The point of this page is that a reviewer can see WHAT is being consolidated
+// and how far each source got, without reading a batch file. Everything numeric
+// here is derived (sourceContainers + derive-disposition + archiveReady); nothing
+// is asserted in markup.
+//
+// Public build renders counts and status only — never object bodies (DC-3). The
+// dist gate in scripts/verify-public-kb.mjs enforces that independently.
+import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
+import { sourcesViewModel, dispositionBar } from "../lib/sources.mjs";
+import { withBase } from "../lib/paths";
+
+const INTERNAL = process.env.COMMONS_REVIEW === "1";
+const { rows, planned, totals } = sourcesViewModel({ internal: INTERNAL });
+
+const canary = rows.find((r) => r.id === "unattributed");
+const real = rows.filter((r) => r.id !== "unattributed");
+---
+
+<Layout
+  title="Sources"
+  current="sources"
+  section="Knowledge"
+  description="Every source feeding the knowledge base — what it holds, how much of it has been processed, and whether it is ready to archive."
+>
+  <SectionBlock
+    id="sources"
+    title="Sources"
+    tissue={true}
+    tissueSeed={7}
+    intro="One container per source. Counts, file disposition and archive-readiness are computed from the store and the batch records — not asserted here."
+  >
+    <p class="lede">
+      Consolidating a knowledge base means pulling several repositories and
+      systems into one place. These are the sources, each with what it holds,
+      how much has been processed, and what still blocks freezing it.
+    </p>
+
+    <dl class="src-totals">
+      <div><dt>Sources</dt><dd>{totals.containers}</dd></div>
+      <div><dt>Objects</dt><dd>{totals.objects}</dd></div>
+      <div>
+        <dt>Unattributed</dt>
+        <dd class:list={[{ "src-bad": totals.unattributed > 0 }]}>
+          {totals.unattributed}
+        </dd>
+      </div>
+    </dl>
+
+    <ul class="src-list">
+      {
+        real.map((r) => {
+          const bar = dispositionBar(r.disposition);
+          return (
+            <li class="src-card">
+              <div class="src-card__head">
+                <h3>
+                  <a href={withBase(r.href)}>{r.title}</a>
+                </h3>
+                <span
+                  class:list={["src-chip", `src-chip--${r.verdict.status}`]}
+                >
+                  {r.verdict.status}
+                </span>
+              </div>
+
+              {r.card?.url && (
+                <p class="src-origin">
+                  <a href={r.card.url} target="_blank" rel="noopener">
+                    {r.card.url.replace(/^https?:\/\//, "")}
+                  </a>
+                  {r.role !== "source" && (
+                    <span class="src-role"> · {r.role}</span>
+                  )}
+                </p>
+              )}
+
+              <p class="src-counts">
+                <strong>{r.objects.length}</strong> objects
+                {r.high_risk_count > 0 && (
+                  <span class="src-hr"> · {r.high_risk_count} high-risk</span>
+                )}
+                {Object.entries(r.by_maturity).length > 0 && (
+                  <span class="src-mat">
+                    {" · "}
+                    {Object.entries(r.by_maturity)
+                      .map(([m, n]) => `${n} ${m}`)
+                      .join(", ")}
+                  </span>
+                )}
+              </p>
+
+              {bar ? (
+                <>
+                  <span class="src-bar" role="img" aria-label={bar.label}>
+                    <span
+                      class="src-bar__seg src-bar__seg--ingested"
+                      style={`width:${bar.ingested}%`}
+                    />
+                    <span
+                      class="src-bar__seg src-bar__seg--merged"
+                      style={`width:${bar.merged}%`}
+                    />
+                    <span
+                      class="src-bar__seg src-bar__seg--excluded"
+                      style={`width:${bar.excluded}%`}
+                    />
+                    <span
+                      class="src-bar__seg src-bar__seg--pending"
+                      style={`width:${bar.pending}%`}
+                    />
+                  </span>
+                  <p class="src-disp">{bar.label}</p>
+                </>
+              ) : (
+                <p class="src-disp src-disp--na">
+                  {r.disposition?.reason ??
+                    "No file disposition recorded for this source."}
+                </p>
+              )}
+
+              {r.views.length > 0 && (
+                <p class="src-views">
+                  Views:{" "}
+                  {r.views.map((v, i) => (
+                    <>
+                      {i > 0 && " · "}
+                      <a href={withBase(v.href)}>{v.label}</a>
+                      <span class="src-views__note"> ({v.note})</span>
+                    </>
+                  ))}
+                </p>
+              )}
+
+              {!r.verdict.ready &&
+                r.verdict.applicable &&
+                r.verdict.blockers.length > 0 && (
+                  <p class="src-block">
+                    Blocks archive: {r.verdict.blockers[0]}
+                    {r.verdict.blockers.length > 1 &&
+                      ` (+${r.verdict.blockers.length - 1} more)`}
+                  </p>
+                )}
+              {!r.verdict.applicable && r.verdict.note && (
+                <p class="src-note">{r.verdict.note}</p>
+              )}
+            </li>
+          );
+        })
+      }
+
+      {
+        planned.map((p) => (
+          <li class="src-card src-card--planned">
+            <div class="src-card__head">
+              <h3>{p.title}</h3>
+              <span class="src-chip src-chip--planned">planned</span>
+            </div>
+            <p class="src-counts">
+              No card in the store yet — this row is declared here, not derived.
+            </p>
+            <p class="src-disp src-disp--na">{p.why}</p>
+            <p class="src-block">Blocked on: {p.blocked_on}</p>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="src-canary">
+      <strong>{canary?.objects.length ?? 0}</strong> objects match no source card.
+      {
+        canary?.objects.length === 0
+          ? " That is the expected state — every object traces to a source."
+          : " That is a fault: some object's provenance matches no card, so the card set needs updating."
+      }
+    </p>
+  </SectionBlock>
+</Layout>
+
+<style>
+  .src-totals {
+    display: flex;
+    gap: var(--space-8);
+    margin: var(--space-6) 0 var(--space-8);
+    padding: 0;
+  }
+  .src-totals div {
+    display: flex;
+    flex-direction: column;
+  }
+  .src-totals dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .src-totals dd {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: var(--text-lg);
+  }
+  .src-bad {
+    color: var(--primary);
+  }
+  .src-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .src-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--surface-1);
+  }
+  .src-card--planned {
+    border-style: dashed;
+    opacity: 0.85;
+  }
+  .src-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .src-card h3 {
+    margin: 0;
+    font-size: var(--text-md);
+  }
+  .src-card h3 a {
+    color: inherit;
+  }
+  .src-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    padding: 1px 9px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .src-chip--archive-ready {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .src-chip--archived {
+    background: var(--surface-2);
+  }
+  .src-origin,
+  .src-counts,
+  .src-disp,
+  .src-views,
+  .src-block,
+  .src-note {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .src-origin a {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+  .src-counts strong {
+    color: var(--text-primary);
+  }
+  .src-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--surface-2);
+    margin: 10px 0 0;
+  }
+  .src-bar__seg {
+    display: block;
+    height: 100%;
+  }
+  .src-bar__seg--ingested {
+    background: var(--primary);
+  }
+  .src-bar__seg--merged {
+    background: color-mix(in srgb, var(--primary) 55%, var(--surface-2));
+  }
+  .src-bar__seg--excluded {
+    background: color-mix(in srgb, var(--ink) 22%, var(--surface-2));
+  }
+  .src-bar__seg--pending {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--surface-2),
+      var(--surface-2) 3px,
+      var(--border-default) 3px,
+      var(--border-default) 6px
+    );
+  }
+  .src-disp--na {
+    font-style: italic;
+  }
+  .src-views__note {
+    font-size: 0.78rem;
+  }
+  .src-block {
+    color: var(--text-primary);
+  }
+  .src-canary {
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+</style>

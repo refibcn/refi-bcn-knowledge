@@ -49,7 +49,7 @@ test(
 
 // What a standalone CI clone actually does: read the committed public store.
 // Nothing is `reviewed` yet, so the export is empty — that must load as an
-// empty commons, not crash the build.
+// empty knowledge lens, not crash the build.
 test("the committed public store loads (empty today, by design)", () => {
   assert.deepEqual(loadKb(PUBLIC_DIR), []);
 });

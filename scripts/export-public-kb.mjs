@@ -60,7 +60,7 @@ for (const f of readdirSync(PUBLIC_KB_DIR)) {
 const header =
   "# GENERATED — do not edit by hand. Written by `npm run export:public-kb`.\n" +
   "# Source: the refi-bcn-os workspace store, filtered by publishableKb()\n" +
-  "# (fail-closed). This file is exactly what the public commons renders.\n";
+  "# (fail-closed). This file is exactly what the public knowledge lens renders.\n";
 
 for (const [schema, entries] of [...bySchema].sort()) {
   writeFileSync(

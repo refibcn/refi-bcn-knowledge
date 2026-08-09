@@ -1,6 +1,6 @@
 node_modules/
 dist/
-dist-commons-protected/
+dist-review-protected/
 .astro/
 .cache/
 .env

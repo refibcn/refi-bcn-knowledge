@@ -1,16 +1,35 @@
-# refi-bcn-knowledge — ReFi BCN Knowledge Commons
+# refi-bcn-knowledge — the ReFi BCN knowledge instance
 
-The knowledge commons for ReFi Barcelona: an Astro 5 static site that publishes the
+The knowledge instance for ReFi Barcelona: an Astro 5 static site that publishes the
 organization's knowledge base, its directory of organizations and programs, and a
 Catalunya atlas.
 
 This is instance 2 of a three-instance model:
 
-| Instance              | Repo           | Scope                                       |
-| --------------------- | -------------- | ------------------------------------------- |
-| Website               | `refibcn-site` | refibcn.cat — marketing / public front door |
-| **Knowledge Commons** | **this repo**  | knowledge.refibcn.cat — the commons + atlas |
-| Bioregioning Earth    | separate       | Wider bioregional programme                 |
+| Instance               | Repo           | Scope                                                 |
+| ---------------------- | -------------- | ----------------------------------------------------- |
+| Website                | `refibcn-site` | refibcn.cat — marketing / public front door           |
+| **Knowledge instance** | **this repo**  | knowledge.refibcn.cat — knowledge + atlas + directory |
+| Bioregioning           | separate       | Wider bioregional programme                           |
+
+### A note on naming (BD-2026-060)
+
+"Knowledge commons" was **dropped as a working name** on 2026-08-06: the label was
+being used for two different instances, and it overclaims — none of this is a commons
+yet, it is the team's own work. Stage 1 of the rename (this repo's routes, labels and
+docs) is applied. What is deliberately **not** renamed:
+
+- **URLs.** This instance ships at `knowledge.refibcn.cat`; `regenerant.refibcn.cat`
+  keeps serving the Quartz program site, separately. No takeover, no repo rename.
+- **The repo name** (`refi-bcn-knowledge`) and the `refibcn/commons-review` artifact
+  bucket — invisible plumbing, renaming buys nothing.
+- **The `COMMONS_REVIEW` env var** — the internal-build switch, referenced by the
+  deploy workflow.
+
+The instance name (Regenerant Catalunya) lands in `src/data/site.yaml` `name` and the
+`index.astro` hero **once the sync ratifies what the container above the sub-scopes is
+called** — BD-2026-060 named the sub-scopes without naming the container. Until then
+the chrome carries functional labels only.
 
 ## Two feeds
 
@@ -25,11 +44,11 @@ This is instance 2 of a three-instance model:
 
 ## Three lenses
 
-| Lens           | Path              | Audience                                                             |
-| -------------- | ----------------- | -------------------------------------------------------------------- |
-| Commons        | `/commons`        | Public. Reviewed, publishable knowledge pages.                       |
-| Commons review | `/commons-review` | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
-| Atlas          | `/atlas`          | Public. Catalunya map — comarques and territorial context.           |
+| Lens      | Path         | Audience                                                             |
+| --------- | ------------ | -------------------------------------------------------------------- |
+| Knowledge | `/knowledge` | Public. Reviewed, publishable knowledge pages.                       |
+| Review    | `/review`    | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
+| Atlas     | `/atlas`     | Public. Catalunya map — comarques and territorial context.           |
 
 ### Atlas data and assets
 
@@ -64,7 +83,7 @@ It is the last line of defence behind `publishableKb()`, not a substitute for it
 
 ### The internal lens builds separately
 
-`/commons-review` is env-gated. A plain `astro build` renders a **stub** — the page
+`/review` is env-gated. A plain `astro build` renders a **stub** — the page
 short-circuits on `COMMONS_REVIEW !== "1"` and no store content is read at all, so a
 public deploy cannot ship the dataset even by accident. The real app is built and
 encrypted by its own command:
@@ -73,17 +92,18 @@ encrypted by its own command:
 STATICRYPT_PASSWORD=… npm run build:internal
 ```
 
-which runs `COMMONS_REVIEW=1 astro build`, then `protect:commons` (staticrypt-encrypts
-`dist/commons-review/index.html` into `dist-commons-protected/`) and `verify:commons`
+which runs `COMMONS_REVIEW=1 astro build`, then `protect:review` (staticrypt-encrypts
+`dist/review/index.html` into `dist-review-protected/`) and `verify:review`
 (asserts exactly one HTML file, a staticrypt marker, no `/_astro` references, and no
 canary strings in plaintext). The password comes only from the environment — never a
 file, never a commit. `.staticrypt.json` holds only the salt, and is committed so
 "remember me" survives redeploys.
 
-That artifact deploys to the existing `refibcn/commons-review` bucket. The page is
+That artifact deploys to the existing `refibcn/commons-review` bucket — the bucket
+name is deliberately unchanged (see the naming note above). The page is
 deliberately self-contained: all KB markup, CSS and JS are inline so that staticrypt
 encrypts every byte of it. Do not "optimise" it into shared `/_astro` chunks —
-`verify:commons` will fail, and rightly so.
+`verify:review` will fail, and rightly so.
 
 ## Deploy model
 
@@ -153,9 +173,9 @@ hardcoding `/`, so if the decision is ever reversed the change is a single line 
 - **Tokens and theme** — `src/styles/` copied from `refibcn-site` (tokens · theme swap
   point · `themes/editorial-organic.css` active). Same visual language as the website.
 - **Chrome** — `Layout`, `Nav`, `Footer`, `Button` ported from `refibcn/rc2`.
-- **Naming** — the outer chrome is externally neutral (decision D0-interim). Programme
-  branding such as Regenerant Catalunya appears only inside the Catalonia sections, not
-  in the nav, footer or site title.
+- **Naming** — the outer chrome is externally neutral (BD-2026-060, superseding the
+  earlier D0-interim position). Programme branding such as Regenerant Catalunya appears
+  only inside the Catalonia sections, not in the nav, footer or site title.
 
 ## Licence
 

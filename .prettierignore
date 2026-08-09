@@ -1,5 +1,5 @@
 dist/
-dist-commons-protected/
+dist-review-protected/
 node_modules/
 .astro/
 package-lock.json
@@ -16,4 +16,4 @@ data/kb-public/
 # expected }"). The file is also deliberately hand-tuned for self-containment —
 # every byte of KB-derived markup, CSS and JS has to stay inline so staticrypt
 # encrypts all of it — so leaving it unformatted is the safer trade.
-src/pages/commons-review.astro
+src/pages/review.astro

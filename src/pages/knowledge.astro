@@ -25,14 +25,14 @@ const pubBySchema = schemas
 ---
 
 <Layout
-  title="Commons"
-  current="commons"
-  section="Bioregional Commons"
-  description="The knowledge commons — one internal broad knowledge base; curated public collections, each with a clear scope, audience, and goal."
+  title="Knowledge"
+  current="knowledge"
+  section="Knowledge"
+  description="One internal broad knowledge base; curated public collections, each with a clear scope, audience, and goal."
 >
   <SectionBlock
-    id="commons"
-    title="Bioregional Commons"
+    id="knowledge"
+    title="Knowledge base"
     tissue={true}
     tissueSeed={4}
     intro="One consolidated internal knowledge base; what publishes are curated collections with a clear scope, audience, and goal — starting with regeneration in Catalunya."
@@ -40,8 +40,8 @@ const pubBySchema = schemas
     <p class="lede">
       We keep a single broad knowledge base internally and publish curated
       sub-collections from it. Every published entry is human-reviewed, carries
-      its provenance, and belongs to a defined public scope — knowledge as a
-      commons, not a content dump.
+      its provenance, and belongs to a defined public scope — a curated
+      collection, not a content dump.
     </p>
 
     <a class="kb-atlas" href={withBase("atlas/")}>
@@ -49,7 +49,7 @@ const pubBySchema = schemas
       <strong>Catalunya's regenerative territory, mapped →</strong>
       <p>
         The Regenerant Catalunya cohort across its comarques — the spatial lens
-        on the same commons.
+        on the same knowledge base.
       </p>
     </a>
 
@@ -100,7 +100,7 @@ const pubBySchema = schemas
               {g.items.map((o) => (
                 <a
                   class="kb-card"
-                  href={withBase(`commons/${o.schema}/${o.slug}/`)}
+                  href={withBase(`knowledge/${o.schema}/${o.slug}/`)}
                 >
                   <strong>{o.title}</strong>
                   {o.summary && <p>{o.summary.slice(0, 200)}</p>}

@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.1.0",
   "private": true,
-  "description": "ReFi BCN Knowledge Commons — public commons lens, internal review lens, Catalunya atlas, and the Notion-CRM-fed directory.",
+  "description": "ReFi BCN knowledge instance — public knowledge lens, internal review lens, Catalunya atlas, source containers, and the Notion-CRM-fed directory.",
   "engines": {
     "node": ">=22"
   },
@@ -14,9 +14,9 @@
     "astro": "astro",
     "test": "node --test tests/*.test.mjs",
     "export:public-kb": "node scripts/export-public-kb.mjs",
-    "protect:commons": "node scripts/protect-commons-review.mjs",
-    "verify:commons": "node scripts/verify-commons-protected.mjs",
-    "build:internal": "COMMONS_REVIEW=1 astro build && npm run protect:commons && npm run verify:commons",
+    "protect:review": "node scripts/protect-review.mjs",
+    "verify:review": "node scripts/verify-review-protected.mjs",
+    "build:internal": "COMMONS_REVIEW=1 astro build && npm run protect:review && npm run verify:review",
     "check": "astro check && prettier . --check",
     "format": "prettier . --write"
   },

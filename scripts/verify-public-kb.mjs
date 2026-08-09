@@ -1,7 +1,7 @@
 // Public-dist gate: NO raw KB content may appear anywhere under dist/.
 // Runs after every plain `astro build`. The bucket build (COMMONS_REVIEW=1)
 // intentionally embeds the dataset → the gate skips there (its own gate,
-// verify-commons-protected.mjs, covers that artifact).
+// verify-review-protected.mjs, covers that artifact).
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 

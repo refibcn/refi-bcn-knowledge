@@ -24,20 +24,20 @@ export async function getStaticPaths() {
   }));
 }
 const { o, refs, backs, siblings } = Astro.props;
-const link = (c: any) => withBase(`commons/${c.schema}/${c.slug}/`);
+const link = (c: any) => withBase(`knowledge/${c.schema}/${c.slug}/`);
 ---
 
 <Layout
   title={o.title}
-  current="commons"
-  section="Bioregional Commons"
+  current="knowledge"
+  section="Knowledge"
   description={o.summary?.slice(0, 150)}
 >
   <article class="kb-object">
     <nav class="kb-crumb">
-      <a href={withBase("commons/")}>Commons</a>
+      <a href={withBase("knowledge/")}>Knowledge</a>
       <span>/</span>
-      <a href={withBase(`commons/#${o.schema}`)}>{o.schema}</a>
+      <a href={withBase(`knowledge/#${o.schema}`)}>{o.schema}</a>
       <span>/</span>
       <span class="kb-crumb__cur">{o.slug}</span>
     </nav>

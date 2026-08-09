@@ -1,5 +1,8 @@
 ---
-// Commons review surface — password-gated INTERNAL KB application (Phase 3.0a → KB-app v2).
+// Internal review surface (/review) — password-gated INTERNAL KB application (Phase 3.0a → KB-app v2).
+// Route renamed from /commons-review per BD-2026-060; the COMMONS_REVIEW env var and the
+// `refibcn/commons-review` deploy bucket deliberately keep their names (invisible plumbing,
+// and the env name is referenced by the deploy workflow + the plan's own C2 contract).
 // Fully self-contained on purpose: every byte of KB-derived content stays in this one
 // HTML file so staticrypt encrypts all of it (no /_astro assets, no bundled data chunks).
 // Styling mirrors editorial-organic.css values inline for the same reason.
@@ -519,7 +522,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
       <main style="max-width:560px;margin:18vh auto;padding:0 20px;text-align:center">
         <h1 style="font-family:var(--font-display)">Internal review instance</h1>
         <p style="color:#6b6660">
-          The knowledge-commons review surface is password-gated and lives at
+          The internal review surface is password-gated and lives at
           <a href="https://refibcn.github.io/commons-review/">refibcn.github.io/commons-review</a>.
           Ask the ReFi BCN team for access.
         </p>

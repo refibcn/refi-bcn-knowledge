@@ -1,4 +1,4 @@
-// Server-side render helpers shared by the public commons pages and the
+// Server-side render helpers shared by the public knowledge pages and the
 // internal review page's frontmatter. Pure string builders — no DOM.
 // COLORS: dataviz-validated on paper #fbf9f3 (all 6 checks pass; fixed assignment).
 // The `Record<string, string>` annotations are for callers only: schema names

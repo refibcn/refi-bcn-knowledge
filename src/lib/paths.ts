@@ -14,7 +14,7 @@ export const base: string = import.meta.env.BASE_URL.endsWith("/")
 /**
  * Join a root-relative path onto the site base.
  *
- * `withBase()` → the site root. `withBase("commons/")` → "/commons/".
+ * `withBase()` → the site root. `withBase("knowledge/")` → "/knowledge/".
  * Leading slashes on the argument are tolerated and stripped.
  */
 export function withBase(pathname = ""): string {

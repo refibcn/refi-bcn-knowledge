@@ -8,10 +8,12 @@ interface Props {
   dataset?: string;
 }
 const { current = "home", section, dataset } = Astro.props;
-// Outer chrome stays externally neutral (naming decision D0-interim): no
-// programme branding here — that lives inside the Catalonia sections.
+// Outer chrome stays externally neutral. BD-2026-060 dropped "knowledge
+// commons" as a name outright; the instance names (Regenerant Catalunya /
+// Bioregioning) land here only once the sync ratifies which container name
+// sits above the sub-scopes. Until then: functional labels, no branding.
 const items = [
-  { id: "commons", label: "Commons", href: withBase("commons/") },
+  { id: "knowledge", label: "Knowledge", href: withBase("knowledge/") },
   { id: "atlas", label: "Atlas", href: withBase("atlas/") },
   {
     id: "organizations",

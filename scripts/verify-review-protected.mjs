@@ -1,4 +1,4 @@
-// Hard deploy gate for the commons review artifact: must be encrypted,
+// Hard deploy gate for the internal review artifact: must be encrypted,
 // self-contained, and leak zero plaintext store content.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +17,7 @@ const walk = (d) =>
     return statSync(p).isDirectory() ? walk(p) : [p];
   });
 
-const files = walk("dist-commons-protected");
+const files = walk("dist-review-protected");
 const htmls = files.filter((f) => f.endsWith(".html"));
 let ok = true;
 
@@ -27,7 +27,7 @@ if (htmls.length !== 1 || !htmls[0].endsWith("index.html")) {
   );
   ok = false;
 }
-const page = readFileSync(join("dist-commons-protected", "index.html"), "utf8");
+const page = readFileSync(join("dist-review-protected", "index.html"), "utf8");
 if (!/staticrypt/i.test(page)) {
   console.error(
     "FAIL: index.html has no staticrypt marker — page is NOT encrypted.",

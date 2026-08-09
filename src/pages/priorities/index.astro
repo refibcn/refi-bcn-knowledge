@@ -16,6 +16,8 @@ import {
   inferPriorityTags,
 } from "../../lib/crm";
 import { withBase } from "../../lib/paths";
+// Soft banner locally, hard build failure under REQUIRE_NOTION=1 (CI).
+import { crmFailure } from "../../lib/crm-strict.mjs";
 
 const priorities = loadPriorities().sort((a, b) => a.order - b.order);
 const indicators = loadIndicators();
@@ -36,7 +38,11 @@ try {
     programRecords = await fetchDatabaseRecords(programsSection.database_id);
   }
 } catch (e: any) {
-  notionError = e.message ?? "Failed to fetch records from Notion.";
+  notionError = crmFailure(
+    e,
+    "the priorities index",
+    import.meta.env.REQUIRE_NOTION,
+  );
 }
 
 const actors = actorRecords.filter(hasCatbis).map(normalizeRecord);

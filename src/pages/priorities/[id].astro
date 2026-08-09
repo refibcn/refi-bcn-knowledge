@@ -15,6 +15,8 @@ import {
 } from "../../lib/crm";
 import { withBase } from "../../lib/paths";
 import type { Priority } from "../../lib/priorities";
+// Soft banner locally, hard build failure under REQUIRE_NOTION=1 (CI).
+import { crmFailure } from "../../lib/crm-strict.mjs";
 
 export async function getStaticPaths() {
   const priorities = loadPriorities();
@@ -48,7 +50,11 @@ try {
     programRecords = await fetchDatabaseRecords(programsSection.database_id);
   }
 } catch (e: any) {
-  notionError = e.message ?? "Failed to fetch records from Notion.";
+  notionError = crmFailure(
+    e,
+    `the "${priority.id}" priority page`,
+    import.meta.env.REQUIRE_NOTION,
+  );
 }
 
 const relatedActors = actorRecords

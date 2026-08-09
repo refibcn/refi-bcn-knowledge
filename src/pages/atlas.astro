@@ -15,6 +15,8 @@ import {
   actorAnchor,
 } from "../lib/atlas-data.mjs";
 import { hasCatbis } from "../lib/crm";
+// Soft banner locally, hard build failure under REQUIRE_NOTION=1 (CI).
+import { crmFailure } from "../lib/crm-strict.mjs";
 // Bundle-time read of the comarca geometry, per the `?raw` convention in
 // src/lib/site.ts. This is build-only — the browser still fetches the same file
 // from public/ via the map's data-geo-url, so nothing extra ships to the client.
@@ -149,7 +151,12 @@ try {
     );
   }
 } catch (e) {
-  crmError = e instanceof Error ? e.message : "CRM feed unavailable.";
+  // Note this catch spans the placement logic too, not just the fetch — so
+  // under REQUIRE_NOTION=1 an anchor collision caught by assertUniqueAnchors()
+  // stops the deploy instead of degrading to a banner. That is deliberate: a
+  // collision silently breaks every atlas → directory link, and CI is exactly
+  // where nobody is watching the banner.
+  crmError = crmFailure(e, "the atlas", import.meta.env.REQUIRE_NOTION);
 }
 
 const directoryHref = withBase("organizations/");

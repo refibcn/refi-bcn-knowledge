@@ -5,6 +5,8 @@ import OrganicAmbient from "../components/OrganicAmbient.astro";
 import { loadSectionConfig, fetchDatabaseRecords } from "../lib/notion";
 import { normalizeEvent, hasCatbis } from "../lib/crm";
 import type { CrmEvent } from "../lib/crm";
+// Soft banner locally, hard build failure under REQUIRE_NOTION=1 (CI).
+import { crmFailure } from "../lib/crm-strict.mjs";
 
 const sections = loadSectionConfig();
 const eventsSection = sections.find((s) => s.id === "events");
@@ -15,7 +17,7 @@ if (eventsSection?.database_id) {
   try {
     records = await fetchDatabaseRecords(eventsSection.database_id);
   } catch (e: any) {
-    error = e.message ?? "Failed to fetch events from Notion.";
+    error = crmFailure(e, "events", import.meta.env.REQUIRE_NOTION);
   }
 } else {
   error = "No database_id configured for events section.";

@@ -8,6 +8,11 @@
 // Styling mirrors editorial-organic.css values inline for the same reason.
 import { loadKb, facets, graphData, connections } from "../lib/kb.mjs";
 import { COLORS, TYPE_INFO } from "../lib/kb-render.mjs";
+// Brand lockup tracks site.yaml `name` rather than hardcoding it, so the
+// post-ratification instance-name commit only has to touch one file.
+// `site` is a `?raw` yaml import inlined at build time — no runtime asset, so
+// this does not weaken the self-containment staticrypt depends on.
+import { site } from "../lib/site";
 
 // Data only exists in the INTERNAL build (the encrypted bucket). A plain
 // `astro build` renders a stub so a public site deploy can never ship the
@@ -162,7 +167,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
     <div class="app">
       <aside class="side" id="side">
         <div>
-          <p class="brand">Knowledge Commons</p>
+          <p class="brand">{site.name}</p>
           <p class="brandsub">Internal review · <b>{objects.length}</b> objects · <b>{rawCount}</b> in queue · <b>{highRisk}</b> high-risk</p>
         </div>
         <input id="q" type="search" placeholder="Search title, summary, slug…" autocomplete="off" />
@@ -204,7 +209,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
       <main>
         <div class="mobilebar">
           <button id="menuBtn" aria-label="Menu">☰</button>
-          <strong style="font-family:var(--font-display)">Knowledge Commons</strong>
+          <strong style="font-family:var(--font-display)">{site.name}</strong>
         </div>
 
         <div id="browse">
@@ -348,7 +353,7 @@ const inlineJson = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
           };
 
           reader.innerHTML =
-            '<div class="crumbs"><a href="#/" data-nav>Commons</a> / <a href="#/" data-schema="' + o.schema + '">' + o.schema + "</a> / <span>" + esc(o.slug) + "</span></div>" +
+            '<div class="crumbs"><a href="#/" data-nav>Knowledge</a> / <a href="#/" data-schema="' + o.schema + '">' + o.schema + "</a> / <span>" + esc(o.slug) + "</span></div>" +
             "<h2>" + esc(o.title) + "</h2>" +
             '<div class="slugline"><code>' + esc(o.id) + "</code>" +
             '<button id="copylink">copy link</button>' +

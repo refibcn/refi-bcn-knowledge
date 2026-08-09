@@ -421,6 +421,11 @@ function sortedCounts(counts) {
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count  Uses the loadKb-normalized `high_risk`,
  *   so it agrees with facets().highRisk rather than with the raw store flag.
+ * @property {number} unresolved_high_risk  High-risk objects still at maturity
+ *   "raw". THE canonical definition — archiveReady() consumes this number and
+ *   must never recompute it from `objects`, because a container built from the
+ *   committed summary carries `objects: []` and a filter over that would return
+ *   0, turning "I cannot tell" into "nothing to review". See archive-ready.mjs.
  */
 
 /** @returns {SourceContainer} */
@@ -430,6 +435,7 @@ function finishContainer(id, title, card, objects) {
   /** @type {Map<string, number>} */
   const by_schema = new Map();
   let high_risk_count = 0;
+  let unresolved_high_risk = 0;
   for (const o of objects) {
     // Explicit bucket for an unset maturity — never let `undefined` become a
     // property name, and never let it vanish from the tally.
@@ -437,7 +443,13 @@ function finishContainer(id, title, card, objects) {
     by_maturity.set(m, (by_maturity.get(m) ?? 0) + 1);
     const s = o?.schema || "unset";
     by_schema.set(s, (by_schema.get(s) ?? 0) + 1);
-    if (o?.high_risk) high_risk_count += 1;
+    if (o?.high_risk) {
+      high_risk_count += 1;
+      // Same tally loop as high_risk_count on purpose: the two numbers are read
+      // side by side on the container page and in the archive verdict, and a
+      // second pass elsewhere is a second definition waiting to drift.
+      if (o.maturity === "raw") unresolved_high_risk += 1;
+    }
   }
   return {
     id,
@@ -447,6 +459,7 @@ function finishContainer(id, title, card, objects) {
     by_maturity: sortedCounts(by_maturity),
     by_schema: sortedCounts(by_schema),
     high_risk_count,
+    unresolved_high_risk,
   };
 }
 

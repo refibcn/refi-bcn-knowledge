@@ -339,6 +339,7 @@ test("unattributed is always present, even when empty — it is the canary", () 
     by_maturity: {},
     by_schema: {},
     high_risk_count: 0,
+    unresolved_high_risk: 0,
   });
 });
 
@@ -445,6 +446,19 @@ test("real store: per-container tallies", { skip: noWorkspace }, () => {
     objects.filter((x) => x.raw.high_risk === true).length,
     104,
     "raw store flag, for the record",
+  );
+
+  // `unresolved_high_risk` is the number the archive verdict blocks on, so it is
+  // tallied HERE (one definition, in the same loop as high_risk_count) rather
+  // than recomputed in archive-ready.mjs — which cannot recompute it at all once
+  // a container arrives from the committed summary with `objects: []`.
+  // 157 normalized high-risk minus the 53 boundary records (maturity
+  // "boundary", not "raw") = 104 still awaiting review.
+  assert.equal(old.unresolved_high_risk, 104);
+  assert.equal(
+    old.objects.filter((x) => x.high_risk && x.maturity === "raw").length,
+    104,
+    "matches the filter archive-ready.mjs used to run inline",
   );
 });
 

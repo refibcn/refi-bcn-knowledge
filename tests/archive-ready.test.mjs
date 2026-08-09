@@ -11,11 +11,17 @@ import {
   STATUSES,
 } from "../src/lib/archive-ready.mjs";
 
+// Mirrors what sourceContainers() produces, INCLUDING `unresolved_high_risk` —
+// which archiveReady reads directly rather than deriving from `objects`. The
+// default is 0 (nothing unreviewed) so the happy path stays reachable; the
+// "count is absent" case is built explicitly, below, because that is a distinct
+// state from "the count is zero".
 const container = (over = {}) => ({
   id: "src",
   card: { container_role: "source", ...(over.card ?? {}) },
   objects: over.objects ?? [],
   high_risk_count: over.high_risk_count ?? 0,
+  unresolved_high_risk: over.unresolved_high_risk ?? 0,
 });
 
 const clean = {
@@ -98,7 +104,16 @@ test("an unexplained corpus gap blocks even when pending reads zero", () => {
   assert.match(check(v, "reconciled").detail, /272 .md on disk/);
 });
 
-test("unreviewed high-risk objects block", () => {
+// ── The high-risk count: supplied, and fail-closed when it is not ─────────
+//
+// Three cases, and the third is the whole point. archiveReady used to derive
+// this number from `container.objects`; a container built from the committed
+// summary carries `objects: []`, so the derivation returned 0 and the check
+// passed on NO information. These three tests pin the count as an input and pin
+// "absent" to FAIL — the direction that keeps a repo from being frozen on a
+// verdict computed without the facts.
+
+test("unreviewed high-risk objects block (count > 0)", () => {
   const v = archiveReady(
     container({
       card: { signoff: { date: "2026-08-11", by: "team" } },
@@ -108,27 +123,80 @@ test("unreviewed high-risk objects block", () => {
         { high_risk: false, maturity: "raw" },
       ],
       high_risk_count: 2,
+      unresolved_high_risk: 1,
     }),
     deps(clean),
   );
   assert.equal(v.ready, false);
+  assert.equal(check(v, "high-risk").pass, false);
   assert.match(
     check(v, "high-risk").detail,
     /1 high-risk objects still at maturity "raw"/,
   );
 });
 
-test("reviewed high-risk objects do not block", () => {
+test("reviewed high-risk objects do not block (count === 0)", () => {
   const v = archiveReady(
     container({
       card: { signoff: { date: "2026-08-11", by: "team" } },
       objects: [{ high_risk: true, maturity: "reviewed" }],
       high_risk_count: 1,
+      unresolved_high_risk: 0,
     }),
     deps(clean),
   );
   assert.equal(check(v, "high-risk").pass, true);
+  assert.equal(
+    check(v, "high-risk").detail,
+    "1 high-risk objects, all past raw review.",
+  );
   assert.equal(v.ready, true);
+});
+
+test("an ABSENT high-risk count blocks — never passes on no information", () => {
+  // The summary-path shape with the count omitted: objects is empty, so any
+  // derivation from it would read 0 and certify. Everything else here is clean
+  // and signed off, so this test fails loudly the moment the check goes back to
+  // deriving the number instead of demanding it.
+  const v = archiveReady(
+    {
+      id: "refi-bcn-old-kb",
+      card: {
+        container_role: "source",
+        signoff: { date: "2026-08-11", by: "team" },
+      },
+      objects: [],
+      high_risk_count: 157,
+      // unresolved_high_risk deliberately absent
+    },
+    deps(clean),
+  );
+  assert.equal(check(v, "high-risk").pass, false);
+  assert.match(check(v, "high-risk").detail, /unavailable — cannot certify/);
+  assert.equal(v.ready, false);
+  assert.notEqual(v.status, "archive-ready");
+});
+
+test("a non-numeric high-risk count is 'unknown', not 'zero'", () => {
+  for (const bad of [null, "0", NaN, undefined]) {
+    const v = archiveReady(
+      {
+        id: "src",
+        card: {
+          container_role: "source",
+          signoff: { date: "2026-08-11", by: "team" },
+        },
+        objects: [],
+        unresolved_high_risk: bad,
+      },
+      deps(clean),
+    );
+    assert.equal(
+      check(v, "high-risk").pass,
+      false,
+      `${JSON.stringify(bad)} must not certify`,
+    );
+  }
 });
 
 // ── signoff() parsing: partial is not signed ──────────────────────────────

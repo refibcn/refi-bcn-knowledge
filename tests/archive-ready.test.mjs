@@ -316,6 +316,31 @@ test("an applicable disposition over zero files is not vacuously 'absorbed'", ()
   assert.equal(v.status, "active");
 });
 
+test("an unreconciled batch is not 'absorbed', however zero its pending count", () => {
+  // The 2026-08-09 shape again, now aimed at the chip rather than the checklist.
+  // `pending` is derived from the batch's own numbers, so it reads 0 while the
+  // tree holds files the batch never saw. "Absorbed" asserts every file is
+  // placed; over an unreconciled corpus that is an over-claim, and it is the
+  // signal that precedes archiving a repo read-only.
+  const v = archiveReady(
+    container(),
+    deps({
+      ...clean,
+      files_total: 272,
+      ingested: 88,
+      merged: 9,
+      excluded: 172,
+      pending: 0,
+      discrepancies: [
+        "buckets do not sum: 269 dispositioned + 0 pending vs 272 files",
+      ],
+    }),
+  );
+  assert.notEqual(v.status, "absorbed");
+  assert.equal(v.status, "ingesting"); // what it actually falls back to
+  assert.equal(v.ready, false);
+});
+
 test("real store: the refi-bcn-old-kb chip the page renders reads 'absorbed'", async () => {
   const { resolveKbDir, PUBLIC_KB_DIR } = await import("../src/lib/kb.mjs");
   if (resolveKbDir() === PUBLIC_KB_DIR) return; // standalone CI clone

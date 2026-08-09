@@ -185,10 +185,21 @@ export function archiveReady(container, deps = {}) {
   // "ingesting" is a present participle — it claims work is underway. Once every
   // file is placed (ingested, merged, or excluded), nothing is being ingested;
   // the container is *absorbed* but still not archive-ready, because what remains
-  // is human: sign-off and high-risk review. The `files_total > 0` guard keeps a
-  // disposition that applies to nothing from reading as vacuously complete.
+  // is human: sign-off and high-risk review.
+  //
+  // "Absorbed" needs BOTH "nothing left to place" AND "the count is trustworthy".
+  // `pending` is derived from the batch's own numbers, so it can read 0 while
+  // those numbers contradict the files on disk — the 2026-08-09 finding, and the
+  // reason check (2) `reconciled` is separate from check (1) at all. Claiming
+  // "absorbed" over an unreconciled corpus would over-claim in the one direction
+  // that matters, since this chip is a precondition signal for freezing a repo.
+  // The `files_total > 0` guard likewise keeps a disposition that applies to
+  // nothing from reading as vacuously complete.
   const fullyDispositioned =
-    d?.applicable && d.files_total > 0 && d.pending === 0;
+    d?.applicable &&
+    d.files_total > 0 &&
+    d.pending === 0 &&
+    (d.discrepancies?.length ?? 0) === 0;
   return {
     ready,
     applicable: true,

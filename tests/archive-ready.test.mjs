@@ -259,3 +259,72 @@ test("real store: refi-bcn-old-kb blocks on high-risk review and sign-off", asyn
   assert.equal(check(v, "signoff").pass, false, "no sign-off exists yet");
   assert.equal(v.ready, false);
 });
+
+// ── The chip has to say what is true ─────────────────────────────────────
+//
+// "ingesting" is a present participle: it claims work is underway. Once every
+// file in the batch is placed, nothing is being ingested — the container is
+// merely not archive-ready, because what remains is human (sign-off, high-risk
+// review). Those are different states and the chip must not conflate them.
+
+test("a fully dispositioned batch reads 'absorbed', not 'ingesting'", () => {
+  const v = archiveReady(
+    { ...container(), id: "refi-bcn-old-kb" }, // no signoff → not archive-ready
+    deps({
+      ...clean,
+      files_total: 272,
+      ingested: 88,
+      merged: 9,
+      excluded: 175,
+      pending: 0,
+    }),
+  );
+  assert.equal(v.ready, false); // sign-off still missing
+  assert.equal(v.status, "absorbed"); // but the files are all placed
+});
+
+test("a batch with files still pending stays 'ingesting'", () => {
+  const v = archiveReady(
+    container(),
+    deps({
+      ...clean,
+      files_total: 100,
+      ingested: 40,
+      merged: 0,
+      excluded: 0,
+      pending: 60,
+    }),
+  );
+  assert.equal(v.status, "ingesting");
+});
+
+test("an applicable disposition over zero files is not vacuously 'absorbed'", () => {
+  // pending === 0 is trivially true when there is nothing to place. Reading that
+  // as "absorbed" would be the same class of error as a test that passes because
+  // it asserts nothing.
+  const v = archiveReady(
+    container(),
+    deps({
+      ...clean,
+      files_total: 0,
+      ingested: 0,
+      merged: 0,
+      excluded: 0,
+      pending: 0,
+    }),
+  );
+  assert.equal(v.status, "active");
+});
+
+test("real store: the refi-bcn-old-kb chip the page renders reads 'absorbed'", async () => {
+  const { resolveKbDir, PUBLIC_KB_DIR } = await import("../src/lib/kb.mjs");
+  if (resolveKbDir() === PUBLIC_KB_DIR) return; // standalone CI clone
+
+  // sourcesViewModel is what /sources renders from, so this is the assertion
+  // that actually pins the user-visible chip rather than a fixture's echo.
+  const { sourcesViewModel } = await import("../src/lib/sources.mjs");
+  const row = sourcesViewModel().rows.find((r) => r.id === "refi-bcn-old-kb");
+  assert.ok(row, "refi-bcn-old-kb should be in the sources view model");
+  assert.equal(row.verdict.status, "absorbed");
+  assert.equal(row.verdict.ready, false, "still blocked on the human checks");
+});

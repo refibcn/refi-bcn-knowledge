@@ -182,10 +182,23 @@ export function archiveReady(container, deps = {}) {
 
   const ready = checks.every((c) => c.pass);
   const anyIngested = d?.applicable && d.ingested > 0;
+  // "ingesting" is a present participle — it claims work is underway. Once every
+  // file is placed (ingested, merged, or excluded), nothing is being ingested;
+  // the container is *absorbed* but still not archive-ready, because what remains
+  // is human: sign-off and high-risk review. The `files_total > 0` guard keeps a
+  // disposition that applies to nothing from reading as vacuously complete.
+  const fullyDispositioned =
+    d?.applicable && d.files_total > 0 && d.pending === 0;
   return {
     ready,
     applicable: true,
-    status: ready ? "archive-ready" : anyIngested ? "ingesting" : "active",
+    status: ready
+      ? "archive-ready"
+      : fullyDispositioned
+        ? "absorbed"
+        : anyIngested
+          ? "ingesting"
+          : "active",
     checks,
     blockers: checks.filter((c) => !c.pass).map((c) => c.detail),
   };

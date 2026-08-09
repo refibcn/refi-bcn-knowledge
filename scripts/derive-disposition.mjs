@@ -73,7 +73,7 @@ const len = (value, name, label) => {
  * @returns {{ batch: string, source_card: string, status: string,
  *   files_total: number, ingested: number, merged: number, excluded: number,
  *   pending: number, work_orders_prepared: number,
- *   excluded_reasons: { reason: string, files: number }[] }}
+ *   excluded_reasons: { reason: string, files: number, file?: string }[] }}
  */
 export function deriveDisposition(doc) {
   const label = String(doc?.batch ?? doc?.source_card ?? "(unnamed batch)");
@@ -167,7 +167,43 @@ export function deriveDisposition(doc) {
     );
   }
 
-  const excluded = stubs + bulkTotal;
+  // Post-hoc dispositions: files the original triage never noticed, appended to
+  // the roster rather than folded into `coverage` (which is preserved as the
+  // historical record of what the triage actually saw). They are part of the
+  // corpus, so they must be part of the totals — batch-1's coverage sums to 269
+  // while the checkout holds 272 tracked .md, and the 3-file gap is exactly
+  // this block. Dropping it would report a complete disposition for a corpus
+  // that is not fully accounted for.
+  const postHoc = doc.post_hoc_dispositions ?? {};
+  if (typeof postHoc !== "object" || postHoc === null) {
+    throw new Error(`${label}: post_hoc_dispositions must be a mapping`);
+  }
+  const postHocExcluded = postHoc.excluded ?? [];
+  if (!Array.isArray(postHocExcluded)) {
+    throw new Error(`${label}: post_hoc_dispositions.excluded must be a list`);
+  }
+  // Refuse to silently ignore a disposition class we do not know how to count.
+  // A future `post_hoc_dispositions.ingested:` would otherwise vanish from the
+  // ingested total while still looking like a clean derivation.
+  const KNOWN_POST_HOC = new Set(["recorded", "reason", "excluded"]);
+  const unknown = Object.keys(postHoc).filter((k) => !KNOWN_POST_HOC.has(k));
+  if (unknown.length) {
+    throw new Error(
+      `${label}: unhandled post_hoc_dispositions key(s) ${unknown.join(", ")} — ` +
+        "teach derive-disposition.mjs how to count them before they can be trusted",
+    );
+  }
+  const postHocEntries = postHocExcluded.map((e, i) => {
+    const file = e?.file;
+    if (typeof file !== "string" || !file) {
+      throw new Error(
+        `${label}: post_hoc_dispositions.excluded[${i}] needs a \`file:\``,
+      );
+    }
+    return { reason: `post-hoc (missed by triage): ${file}`, files: 1, file };
+  });
+
+  const excluded = stubs + bulkTotal + postHocEntries.length;
   const accounted = ingested + merged + excluded;
   // A roster may declare an independent corpus total; until one does,
   // files_total is the sum of the parts and `pending` is 0 by construction.
@@ -197,6 +233,7 @@ export function deriveDisposition(doc) {
       ...bulkEntries.sort(
         (a, b) => b.files - a.files || a.reason.localeCompare(b.reason),
       ),
+      ...postHocEntries.sort((a, b) => a.file.localeCompare(b.file)),
     ],
   };
 }

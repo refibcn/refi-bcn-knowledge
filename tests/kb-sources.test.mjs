@@ -471,17 +471,98 @@ test("committed disposition: batch-1 arithmetic closes exactly", () => {
   assert.equal(d.status, "ingested");
   assert.equal(d.ingested, 88, "86 from content/ + 2 from _archive/");
   assert.equal(d.merged, 9);
-  assert.equal(d.excluded, 172, "12 content stubs + 160 bulk");
-  assert.equal(d.files_total, 269);
+  assert.equal(d.excluded, 175, "12 content stubs + 160 bulk + 3 post-hoc");
+  assert.equal(d.files_total, 272);
   assert.equal(d.pending, 0);
   assert.equal(d.ingested + d.merged + d.excluded, d.files_total);
-  // The independent file-side cross-check from the batch roster:
-  // 164 content/ + 76 docs/ + 29 _archive/ = 269.
-  assert.equal(164 + 76 + 29, d.files_total);
+
+  // The independent file-side cross-check, measured against the canonical
+  // Batch-1 checkout repos/ReFi-Barcelona @ fe87706 (272 tracked .md):
+  //   164 content/ + 76 docs/ + 30 _archive/ + 2 repo-root = 272.
+  // The roster's own `coverage` block sums to 269 — it counted _archive/Dev_old
+  // (29) but not its sibling _archive/themes-backup (1), and never walked the
+  // repo root (2). Those 3 files are recorded in the roster's
+  // `post_hoc_dispositions` block and MUST land in the totals; a disposition
+  // that reports "0 pending" over a corpus it only partly counted is exactly
+  // the wrong archive-ready verdict this seam exists to prevent.
+  assert.equal(164 + 76 + 30 + 2, d.files_total);
+  const postHoc = d.excluded_reasons.filter((r) => r.file);
+  assert.equal(postHoc.length, 3);
+  assert.deepEqual(postHoc.map((r) => r.file).sort(), [
+    "repos/ReFi-Barcelona/AGENTS.md",
+    "repos/ReFi-Barcelona/README.md",
+    "repos/ReFi-Barcelona/_archive/themes-backup/README-Minimal-Refi-Theme.md",
+  ]);
+  assert.equal(
+    d.excluded_reasons.reduce((a, r) => a + r.files, 0),
+    d.excluded,
+    "the reasons account for every excluded file",
+  );
+
   // work_orders_prepared (93) is NOT the file count (88) — several files
   // produced more than one work order. Never conflate them.
   assert.equal(d.work_orders_prepared, 93);
   assert.notEqual(d.work_orders_prepared, d.ingested);
+});
+
+test("post-hoc dispositions are counted, and unknown classes refuse to derive", () => {
+  const base = {
+    batch: "batch-p",
+    status: "ingested",
+    source_card: "s",
+    coverage: {
+      content_md: 4,
+      includes_from_content: 4,
+      includes_from_archive: 0,
+      total_work_order_sources: 4,
+      excluded_content_nonstub_stub: 0,
+      merges: 0,
+      bulk_excluded: {},
+      work_orders_prepared: 4,
+    },
+    merges: [],
+    excluded_stubs: [],
+    work_orders: [1, 2, 3, 4],
+  };
+  assert.equal(deriveDisposition(base).files_total, 4);
+
+  const withPostHoc = {
+    ...base,
+    post_hoc_dispositions: {
+      recorded: "2026-08-09",
+      reason: "gap closed by measurement",
+      excluded: [{ file: "repos/X/README.md", reason: "scaffolding" }],
+    },
+  };
+  const d = deriveDisposition(withPostHoc);
+  assert.equal(d.excluded, 1);
+  assert.equal(d.files_total, 5, "post-hoc files join the corpus total");
+  assert.equal(d.pending, 0);
+  assert.deepEqual(d.excluded_reasons, [
+    {
+      reason: "post-hoc (missed by triage): repos/X/README.md",
+      files: 1,
+      file: "repos/X/README.md",
+    },
+  ]);
+
+  // A class we do not know how to count must stop the derivation, not vanish.
+  assert.throws(
+    () =>
+      deriveDisposition({
+        ...base,
+        post_hoc_dispositions: { ingested: [{ file: "repos/X/late.md" }] },
+      }),
+    /unhandled post_hoc_dispositions key\(s\) ingested/,
+  );
+  assert.throws(
+    () =>
+      deriveDisposition({
+        ...base,
+        post_hoc_dispositions: { excluded: [{ reason: "no file field" }] },
+      }),
+    /needs a `file:`/,
+  );
 });
 
 test("deriveDisposition throws when the accounting does not close", () => {

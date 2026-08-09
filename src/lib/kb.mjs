@@ -539,7 +539,9 @@ const dispositionCache = new Map();
  * @property {number} pending
  * @property {number} work_orders_prepared  NOT the file count — one file can
  *   produce several work orders (batch-1: 93 orders from 88 files).
- * @property {{ reason: string, files: number }[]} excluded_reasons
+ * @property {{ reason: string, files: number, file?: string }[]} excluded_reasons
+ *   `file` is set only on post-hoc exclusions — single files the original
+ *   triage never noticed, recorded on the roster after the fact.
  */
 
 /**

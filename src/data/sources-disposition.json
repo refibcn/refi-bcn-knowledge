@@ -5,10 +5,10 @@
       "batch": "batch-1",
       "source_card": "refi-bcn-old-kb",
       "status": "ingested",
-      "files_total": 269,
+      "files_total": 272,
       "ingested": 88,
       "merged": 9,
-      "excluded": 172,
+      "excluded": 175,
       "pending": 0,
       "work_orders_prepared": 93,
       "excluded_reasons": [
@@ -27,6 +27,21 @@
         {
           "reason": "_archive remainder",
           "files": 27
+        },
+        {
+          "reason": "post-hoc (missed by triage): repos/ReFi-Barcelona/_archive/themes-backup/README-Minimal-Refi-Theme.md",
+          "files": 1,
+          "file": "repos/ReFi-Barcelona/_archive/themes-backup/README-Minimal-Refi-Theme.md"
+        },
+        {
+          "reason": "post-hoc (missed by triage): repos/ReFi-Barcelona/AGENTS.md",
+          "files": 1,
+          "file": "repos/ReFi-Barcelona/AGENTS.md"
+        },
+        {
+          "reason": "post-hoc (missed by triage): repos/ReFi-Barcelona/README.md",
+          "files": 1,
+          "file": "repos/ReFi-Barcelona/README.md"
         }
       ]
     }

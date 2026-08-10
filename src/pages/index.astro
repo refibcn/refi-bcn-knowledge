@@ -83,7 +83,11 @@ const sections = [
   {
     label: "Directory",
     href: withBase("organizations/"),
-    blurb: "Organizations, programs and events, fed from the Notion CRM.",
+    // Names where the link actually lands. The card markup carries one link,
+    // and programs and events are separate CRM-fed pages reachable from the
+    // nav — a blurb naming all three would promise more than the click gives.
+    blurb:
+      "Organizations, fed from the Notion CRM — programs and events sit alongside it in the nav.",
   },
   {
     label: "Priorities",

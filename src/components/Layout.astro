@@ -25,6 +25,11 @@ interface Props {
   current?:
     | "home"
     | "knowledge"
+    // "system" lands with the generated architecture page in the next phase;
+    // it is added here in the same edit as "collections" so the union is
+    // touched once rather than twice.
+    | "collections"
+    | "system"
     | "sources"
     | "atlas"
     | "organizations"

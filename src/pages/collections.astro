@@ -1,0 +1,190 @@
+---
+// /collections — curated sub-scopes over the store (D6: one internal broad
+// base → curated public collections).
+//
+// A collection is a DEFINITION, never a copy: membership is computed at build
+// by src/lib/collections.mjs, and the members that appear publicly as ENTRIES
+// still pass the fail-closed publishableKb() gate (DC-2). So a collection can
+// hold members that are not — and may never be — public, and this page says so
+// with a number rather than hiding it.
+//
+// Counts come from `members_total`/`publishable_total`, never from
+// `members.length`: `members` is empty on the public path by construction, and
+// on a standalone-clone build the counts come from the committed summary while
+// the entries come from the committed public subset. Reading a count off an
+// array here would print 0 in CI while the store holds 15 — the 2026-08-10
+// incident, one page over.
+//
+// Styles are page-local rather than lifted into global.css. The plan floated
+// the lift; it is not a clean move today because `.src-block`, `.src-views` and
+// `.src-bar` already carry CONFLICTING definitions in sources.astro (a <p>
+// modifier, 6px bar) and sources/[id].astro (a <section> with a border-top,
+// 8px bar). One global definition would break one of those two pages, so the
+// shared-style consolidation is its own change, not a side effect of this one.
+import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
+import { collectionsViewModel } from "../lib/collections.mjs";
+import { withBase } from "../lib/paths";
+
+const INTERNAL = process.env.COMMONS_REVIEW === "1";
+const { rows } = collectionsViewModel({ internal: INTERNAL });
+
+const membersTotal = rows.reduce((n, c) => n + c.members_total, 0);
+const publishableTotal = rows.reduce((n, c) => n + c.publishable_total, 0);
+---
+
+<Layout
+  title="Collections"
+  current="collections"
+  section="Knowledge"
+  description="Curated collections drawn from the knowledge base — each with a scope, audience and goal."
+>
+  <SectionBlock
+    id="collections"
+    title="Collections"
+    tissue={true}
+    tissueSeed={9}
+    intro="One internal broad base; what publishes are curated collections. Each is a definition over the store — membership is computed, and entries appear publicly only after review."
+  >
+    <p class="lede">
+      A collection names a scope, an audience and a goal, and then draws its
+      members from the store by rule rather than by copying them. That is why
+      the two numbers below differ: a collection can already have members while
+      none of them have cleared review, and the public entry list stays empty
+      until they do.
+    </p>
+
+    <dl class="src-totals">
+      <div><dt>Collections</dt><dd>{rows.length}</dd></div>
+      <div><dt>Members</dt><dd>{membersTotal}</dd></div>
+      <div><dt>Publishable</dt><dd>{publishableTotal}</dd></div>
+    </dl>
+
+    <ul class="src-list">
+      {
+        rows.map((c) => (
+          <li class="src-card">
+            <div class="src-card__head">
+              <h3>
+                <a href={withBase(c.href)}>{c.title}</a>
+              </h3>
+              <span class:list={["src-chip", `src-chip--${c.status}`]}>
+                {c.status}
+              </span>
+            </div>
+
+            <p class="src-counts">
+              <strong>{c.members_total}</strong> members ·{" "}
+              <strong>{c.publishable_total}</strong> publishable
+            </p>
+
+            {c.goal && <p class="src-goal">{c.goal}</p>}
+
+            <p class="src-views">
+              Drawn from:{" "}
+              {Object.entries(c.by_container)
+                .map(([k, n]) => `${k} (${n})`)
+                .join(" · ") || "—"}
+            </p>
+
+            {c.publishable_total === 0 && (
+              <p class="src-disp src-disp--na">
+                Nothing published yet — every member is still in review. Entries
+                appear here as review promotes them.
+              </p>
+            )}
+          </li>
+        ))
+      }
+    </ul>
+  </SectionBlock>
+</Layout>
+
+<style>
+  .lede {
+    max-width: 60ch;
+    color: var(--text-muted);
+    line-height: var(--leading-body);
+  }
+  .src-totals {
+    display: flex;
+    gap: var(--space-8);
+    margin: var(--space-6) 0 var(--space-8);
+    padding: 0;
+  }
+  .src-totals div {
+    display: flex;
+    flex-direction: column;
+  }
+  .src-totals dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .src-totals dd {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: var(--text-lg);
+  }
+  .src-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 12px;
+  }
+  .src-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--surface-1);
+  }
+  .src-card__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .src-card h3 {
+    margin: 0;
+    font-size: var(--text-md);
+  }
+  .src-card h3 a {
+    color: inherit;
+  }
+  .src-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    padding: 1px 9px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .src-chip--published {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .src-chip--defining {
+    border-style: dashed;
+  }
+  .src-counts,
+  .src-goal,
+  .src-disp,
+  .src-views {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .src-counts strong {
+    color: var(--text-primary);
+  }
+  .src-disp--na {
+    font-style: italic;
+  }
+</style>

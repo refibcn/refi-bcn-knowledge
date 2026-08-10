@@ -1,0 +1,378 @@
+---
+// /collections/<id> — one curated sub-scope, in full.
+//
+// DC-2: the PUBLIC build renders the definition (scope, audience, goal), the
+// counts, and the members that pass publishableKb() as ENTRIES. Raw members
+// appear as counts and nothing else. The internal build (COMMONS_REVIEW=1)
+// additionally lists every member, deep-linked into the review app.
+//
+// The split is a build-time constant, not a runtime check, so the public bundle
+// never contains the listing markup at all — and `collectionsViewModel` already
+// returns `members: []` unless `internal` is set, so there is nothing to leak
+// even if this branch were dropped. scripts/verify-public-kb.mjs re-checks
+// dist/collections/ independently; same belt-and-braces as /sources.
+//
+// Counts come from `members_total` / `publishable_total` / `by_schema` /
+// `by_container` — never from an array length. On a standalone-clone build
+// those four come from the committed aggregate summary while `public_entries`
+// comes from the committed public subset. See the header of
+// src/lib/collections.mjs for why that hybrid is the contract.
+import Layout from "../../components/Layout.astro";
+import SectionBlock from "../../components/SectionBlock.astro";
+import { collectionsViewModel } from "../../lib/collections.mjs";
+import { COLORS } from "../../lib/kb-render.mjs";
+import { withBase } from "../../lib/paths";
+
+const INTERNAL = process.env.COMMONS_REVIEW === "1";
+
+export async function getStaticPaths() {
+  const internal = process.env.COMMONS_REVIEW === "1";
+  const { rows } = collectionsViewModel({ internal });
+  return rows.map((c) => ({ params: { id: c.id }, props: { row: c } }));
+}
+
+const { row } = Astro.props;
+
+const bySchema: [string, number][] = Object.entries(row.by_schema);
+const byContainer: [string, number][] = Object.entries(row.by_container);
+
+// Members grouped for the internal listing. Populated only when INTERNAL, so
+// the public build does not even hold the array.
+//
+// A plain loop over a declared record, rather than sources/[id].astro's
+// `reduce` — `row.members` is genuinely typed here (collectionsViewModel
+// carries JSDoc, and `internal ? members : []` makes it a union), which is
+// enough to defeat reduce's accumulator inference and yield
+// `[string, unknown][]`. sources/[id].astro's identical reduce type-checks
+// only because its `row.objects` is `any`.
+const grouped: Record<string, any[]> = {};
+if (INTERNAL) {
+  for (const o of row.members as any[]) (grouped[o.schema] ??= []).push(o);
+}
+const groups: [string, any[]][] = Object.entries(grouped).sort(([a], [b]) =>
+  a.localeCompare(b),
+);
+
+const DEFINITION_FIELDS: [string, string][] = [
+  ["scope", "Scope"],
+  ["audience", "Audience"],
+  ["goal", "Goal"],
+];
+---
+
+<Layout
+  title={row.title}
+  current="collections"
+  section="Knowledge"
+  dataset="Collection"
+  description={`${row.title} — scope, membership and published entries.`}
+>
+  <SectionBlock id="collection" title={row.title}>
+    <nav class="src-crumb">
+      <a href={withBase("collections/")}>Collections</a>
+      <span>/</span>
+      <span class="src-crumb__cur">{row.id}</span>
+    </nav>
+
+    <p class="src-headline">
+      <span class:list={["src-chip", `src-chip--${row.status}`]}>
+        {row.status}
+      </span>
+      <strong>{row.members_total}</strong> members ·{" "}
+      <strong>{row.publishable_total}</strong> publishable
+    </p>
+
+    <!-- ── The definition ────────────────────────────────────────────── -->
+    <section class="col-block">
+      <h3>Definition</h3>
+      <p class="src-dim">
+        This collection is a definition over the knowledge base, not a copy of
+        it. Membership is recomputed at every build from the rules below, so it
+        follows the store rather than drifting from it.
+      </p>
+      <dl class="col-fields">
+        {
+          DEFINITION_FIELDS.filter(([k]) => row[k]).map(([k, label]) => (
+            <>
+              <dt>{label}</dt>
+              <dd>{row[k]}</dd>
+            </>
+          ))
+        }
+      </dl>
+    </section>
+
+    <!-- ── Membership, by shape and by origin ────────────────────────── -->
+    <section class="col-block">
+      <h3>Membership</h3>
+      {
+        bySchema.length > 0 ? (
+          <>
+            <p class="src-dim">By type</p>
+            <ul class="col-counts">
+              {bySchema.map(([schema, n]) => (
+                <li>
+                  <span class="dot" style={`background:${COLORS[schema]}`} />
+                  <span class="col-counts__label">{schema}</span>
+                  <span class="col-counts__n">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : (
+          <p class="src-dim">No members match this collection's rules today.</p>
+        )
+      }
+      {
+        byContainer.length > 0 && (
+          <>
+            <p class="src-dim">By source</p>
+            <ul class="col-counts">
+              {byContainer.map(([id, n]) => (
+                <li>
+                  <span class="col-counts__label">
+                    <a href={withBase(`sources/${id}/`)}>{id}</a>
+                  </span>
+                  <span class="col-counts__n">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </>
+        )
+      }
+    </section>
+
+    <!-- ── Entries: the public surface ───────────────────────────────── -->
+    <section class="col-block">
+      <h3>Entries</h3>
+      {
+        row.public_entries.length > 0 ? (
+          <ul class="col-entries">
+            {row.public_entries.map((o: any) => (
+              <li>
+                <a href={withBase(`knowledge/${o.schema}/${o.slug}/`)}>
+                  {o.title}
+                </a>
+                <span class="src-dim"> · {o.schema}</span>
+              </li>
+            ))}
+          </ul>
+        ) : row.publishable_total > 0 ? (
+          <p class="src-dim">
+            {row.publishable_total} members have cleared review, but this build
+            carries no published bodies for them — the public export is behind
+            the store. Re-run the export, then rebuild.
+          </p>
+        ) : (
+          <p class="src-dim">
+            Nothing is published from this collection yet. All{" "}
+            {row.members_total} members are still in review: they are counted
+            above because they exist, and they are not listed here because
+            publishing is what review decides. Entries appear on this page as
+            review promotes them — the list stays empty until then rather than
+            standing in for work that has not happened.
+          </p>
+        )
+      }
+    </section>
+
+    <!-- ── Member listing: INTERNAL ONLY (DC-2) ──────────────────────── -->
+    {
+      INTERNAL ? (
+        <section class="col-block">
+          <h3>Members</h3>
+          <p class="src-dim">
+            Internal build. Each row opens in the review app.
+          </p>
+          {groups.map(([schema, items]) => (
+            <div class="col-group">
+              <h4>
+                <span class="dot" style={`background:${COLORS[schema]}`} />
+                {schema} <span class="src-dim">{items.length}</span>
+              </h4>
+              <ul class="col-objects">
+                {items.map((o) => (
+                  <li>
+                    <a href={withBase(`review/#/o/${o.schema}/${o.slug}`)}>
+                      {o.title}
+                    </a>
+                    <span class="src-dim"> · {o.maturity}</span>
+                    {o.high_risk && <span class="src-flag"> high-risk</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          {byContainer.length > 0 && (
+            <p class="src-dim">
+              {/* The review app routes by SOURCE, not by collection
+                  (`#/src/<id>` — see src/pages/review.astro). These are the
+                  containers this collection draws from; no collection-scoped
+                  hash route is invented here. */}
+              Browse the sources these members come from:{" "}
+              {byContainer.map(([id], i) => (
+                <>
+                  {i > 0 && " · "}
+                  <a href={withBase(`review/#/src/${id}`)}>{id}</a>
+                </>
+              ))}
+            </p>
+          )}
+        </section>
+      ) : (
+        row.members_total > 0 && (
+          <section class="col-block">
+            <h3>Members</h3>
+            <p class="src-dim">
+              {row.members_total} objects match this collection. Their contents
+              are not published here — the working set lives in the
+              password-gated review lens, and members reach this page as entries
+              only after review. This section deliberately shows counts and
+              nothing more.
+            </p>
+          </section>
+        )
+      )
+    }
+  </SectionBlock>
+</Layout>
+
+<style>
+  .src-crumb {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    margin-bottom: var(--space-4);
+  }
+  .src-crumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .src-crumb a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+  }
+  .src-crumb__cur {
+    color: var(--text-primary);
+  }
+  .src-headline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  .src-headline strong {
+    color: var(--text-primary);
+  }
+  .src-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    padding: 1px 9px;
+  }
+  .src-chip--published {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .src-chip--defining {
+    border-style: dashed;
+  }
+  .col-block {
+    margin-top: var(--space-8);
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-5);
+  }
+  .col-block h3 {
+    font-size: var(--text-md);
+    margin: 0 0 var(--space-2);
+  }
+  .src-dim {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 4px 0 0;
+    max-width: 66ch;
+  }
+  .col-fields {
+    margin: 0;
+  }
+  .col-fields dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-top: var(--space-4);
+  }
+  .col-fields dd {
+    margin: var(--space-1) 0 0;
+    line-height: var(--leading-body);
+  }
+  .col-counts {
+    list-style: none;
+    margin: var(--space-2) 0 var(--space-4);
+    padding: 0;
+    display: grid;
+    gap: 3px;
+    max-width: 32rem;
+    font-size: 0.88rem;
+  }
+  .col-counts li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col-counts__label {
+    flex: 1 1 auto;
+  }
+  .col-counts__n {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex: none;
+  }
+  .col-entries {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: 3px;
+    font-size: 0.9rem;
+  }
+  .col-group {
+    margin-top: var(--space-5);
+  }
+  .col-group h4 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 var(--space-2);
+    font-size: 0.95rem;
+  }
+  .col-objects {
+    margin: 0;
+    padding-left: var(--space-5);
+    display: grid;
+    gap: 2px;
+    font-size: 0.88rem;
+  }
+  .src-flag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+</style>

@@ -1,13 +1,78 @@
 ---
 import Layout from "../components/Layout.astro";
+import { loadKb, publishableKb } from "../lib/kb.mjs";
+import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
+import { sourcesViewModel } from "../lib/sources.mjs";
+import { collectionsViewModel } from "../lib/collections.mjs";
 import { withBase } from "../lib/paths";
 
-// Placeholder index — each section is scaffolded by a later task.
+// ── Status strip: same dual-path contract as /system and /knowledge ───────
+//
+// Count the LIVE workspace store when there is one, and fall back to the
+// committed aggregate only in a standalone clone (no workspace store).
+// Reading `kbSummary()` unconditionally would show stale numbers whenever the
+// store moves ahead of the committed file; reading `loadKb().length`
+// unconditionally would publish "0 objects" in a CI clone, a false public
+// claim about the corpus. Copied verbatim from system.astro, itself copied
+// from knowledge.astro:25-31.
+const all = loadKb();
+const summary = usingCommittedStore() ? kbSummary() : null;
+const objectsTotal = summary ? summary.objects_total : all.length;
+const inReview = summary
+  ? summary.in_review
+  : all.filter((o) => o.maturity === "raw").length;
+const publishedCount = summary ? summary.published : publishableKb(all).length;
+
+// sourcesViewModel() already resolves its own dual path internally
+// (kb-summary.mjs), so no branch is needed here.
+const sourcesTotal = sourcesViewModel().totals.containers;
+
+// Collection DEFINITIONS come from a committed YAML file, identical on both
+// build paths — membership counts differ across the dual path, but the
+// number of defined collections does not, so no branch is needed here.
+const collectionsCount = collectionsViewModel().rows.length;
+
+const statusStrip = [
+  { label: "Objects", n: objectsTotal },
+  { label: "In review", n: inReview },
+  { label: "Published", n: publishedCount },
+  { label: "Sources", n: sourcesTotal },
+  { label: "Collections", n: collectionsCount },
+];
+
+// Working order: Collections is the curation frontier, Knowledge the public
+// lens on the same store, Sources what feeds it, System how it fits
+// together, Slices the crosscuts over that pipeline, Atlas the spatial lens,
+// Directory the CRM-fed trio, Priorities the indicators above all of it.
 const sections = [
+  {
+    label: "Collections",
+    href: withBase("collections/"),
+    blurb:
+      "Curated sub-scopes over the knowledge base — the curation frontier, where entries earn their way toward publication.",
+  },
   {
     label: "Knowledge",
     href: withBase("knowledge/"),
     blurb: "Public knowledge base pages compiled from the org-os KB engine.",
+  },
+  {
+    label: "Sources",
+    href: withBase("sources/"),
+    blurb:
+      "What feeds the knowledge base — every ingested source, what it holds, and how far it's been processed.",
+  },
+  {
+    label: "System",
+    href: withBase("system/"),
+    blurb:
+      "How the pipeline fits together — feeds, store, curation and surfaces, with live counts throughout.",
+  },
+  {
+    label: "Slices",
+    href: withBase("slices/"),
+    blurb:
+      "Crosscuts over the pipeline — domains by schema, the review funnel, the high-risk queue, and boundary tiers.",
   },
   {
     label: "Atlas",
@@ -16,20 +81,9 @@ const sections = [
       "Catalunya map — comarques, territories and where the work is happening.",
   },
   {
-    label: "Organizations",
+    label: "Directory",
     href: withBase("organizations/"),
-    blurb:
-      "Directory of organizations in the network, fed from the Notion CRM.",
-  },
-  {
-    label: "Programs",
-    href: withBase("programs/"),
-    blurb: "Programs and initiatives running across the bioregion.",
-  },
-  {
-    label: "Events",
-    href: withBase("events/"),
-    blurb: "Gatherings, workshops and assemblies.",
+    blurb: "Organizations, programs and events, fed from the Notion CRM.",
   },
   {
     label: "Priorities",
@@ -48,7 +102,24 @@ const sections = [
       the Notion CRM behind the directory and the atlas. Each entry is
       human-reviewed and carries the source it came from.
     </p>
+    <p class="intro-note">
+      Internal working surface of the knowledge base — public entries appear as
+      review promotes them.
+    </p>
   </header>
+
+  <section class="status">
+    <dl class="status-strip">
+      {
+        statusStrip.map((s) => (
+          <div>
+            <dt>{s.label}</dt>
+            <dd>{s.n}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
 
   <section class="sections">
     <ul>
@@ -71,8 +142,44 @@ const sections = [
 <style>
   .intro {
     max-width: var(--container-prose);
-    margin: var(--space-16) auto var(--space-12);
+    margin: var(--space-16) auto var(--space-8);
     padding: 0 var(--gutter);
+  }
+  .intro-note {
+    margin-top: var(--space-4);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .status {
+    max-width: var(--container-prose);
+    margin: 0 auto var(--space-12);
+    padding: 0 var(--gutter);
+  }
+  .status-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    margin: 0;
+    padding: var(--space-5) 0;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .status-strip div {
+    display: flex;
+    flex-direction: column;
+  }
+  .status-strip dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .status-strip dd {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: var(--text-lg);
+    color: var(--text-primary);
   }
   .sections {
     max-width: var(--container-default);

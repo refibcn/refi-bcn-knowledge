@@ -2,14 +2,23 @@
 // funnel, the high-risk queue, and public-use-boundary tiers.
 //
 // Every function here is pure over data the CALLER supplies (objects, or the
-// rows a viewmodel already produced) — no file I/O, no `loadKb`, no summary
-// reads. That is deliberate, not an oversight: the site builds on two paths
-// (a live workspace store with 422 objects, and a standalone CI clone with
-// only a committed aggregate summary), and keeping these functions pure over
-// caller-supplied data is what lets ONE implementation serve both — the page
-// that renders `/slices` decides which source feeds it, this module just
-// computes. If a future edit here wants to import `loadKb` or read a JSON
-// file, that is a sign the code belongs in the page, not in this module.
+// rows a viewmodel already produced) — no store read, no summary read, no
+// dependency of its own on which path the build is on. That is deliberate,
+// not an oversight: the site builds on two paths (a live workspace store
+// with 422 objects, and a standalone CI clone with only a committed
+// aggregate summary), and keeping these functions pure over caller-supplied
+// data is what lets ONE implementation serve both — the page that renders
+// `/slices` decides which source feeds it, this module just computes. If a
+// future edit here wants to call `loadKb` or read a JSON file itself, that
+// is a sign the code belongs in the page, not in this module.
+//
+// The one import below (`sortedCounts`) is a pure formatting helper, but its
+// home module, kb.mjs, does a load-time `existsSync` repo-root walk at
+// module scope — so importing it is not zero filesystem I/O in the strict
+// sense. That is fine, not a loophole: every other consumer here that touches
+// the store (`collections.mjs`, `kb-summary.mjs`) already pays that same
+// load-time walk on both the live and standalone-clone paths, and anything
+// that imports this module in a real build pulls those siblings in too.
 //
 // `highRiskQueue`'s throw-on-absent follows the doctrine already stated in
 // kb-summary.mjs / archive-ready.mjs: a missing `unresolved_high_risk` is a
@@ -114,7 +123,9 @@ export function highRiskQueue(rows) {
       throw new Error(
         `slices.mjs: highRiskQueue — "${r.id}" carries no unresolved_high_risk count. ` +
           "An absent count is a statement about the build, not a claim that " +
-          "nothing is unresolved — it must fail rather than default to 0.",
+          "nothing is unresolved — it must fail rather than default to 0. " +
+          "Rows must come from sourcesViewModel().rows or summaryContainers(), " +
+          "not be hand-constructed.",
       );
     }
     const total = r.high_risk_count;

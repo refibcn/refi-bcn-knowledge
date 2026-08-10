@@ -350,7 +350,7 @@ export function connections(objects) {
 //
 // Nothing here mutates the objects; containers hold the same references.
 
-const UNATTRIBUTED = "unattributed";
+export const UNATTRIBUTED = "unattributed";
 
 /** Read a field off a card in either shape: a loadKb-normalized object (fields
  *  hoisted, original under `raw`) or a plain YAML entry. */
@@ -407,7 +407,7 @@ function originKey(o) {
  *  a literal would silently fail to become an own property, i.e. vanish from
  *  the count. Unlikely from a controlled vocabulary — but a tally that loses
  *  objects without saying so is the exact failure this seam must not have. */
-function sortedCounts(counts) {
+export function sortedCounts(counts) {
   return Object.fromEntries([...counts].sort(([a], [b]) => a.localeCompare(b)));
 }
 

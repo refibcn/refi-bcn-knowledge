@@ -50,13 +50,13 @@
       "source_card": "refi-bcn-os-operations",
       "status": "not-batched",
       "corpus_path": "packages/operations",
-      "files_total": 155,
+      "files_total": 162,
       "ingested": 0,
       "merged": 0,
       "excluded": 0,
-      "pending": 155,
+      "pending": 162,
       "excluded_reasons": [],
-      "note": "No batch roster yet — all 155 files await triage."
+      "note": "No batch roster yet — all 162 files await triage."
     },
     "regenerant-catalunya-repo": {
       "batch": null,

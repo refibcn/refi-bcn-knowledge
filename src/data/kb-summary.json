@@ -330,11 +330,14 @@
     "web3-infrastructure": 9
   },
   "maturity": {
-    "raw": 368,
+    "raw": 362,
     "reviewed": 0,
-    "published": 0,
+    "published": 0
+  },
+  "maturity_other": {
     "boundary": 54
   },
+  "reviewable_total": 362,
   "boundary_tiers": {
     "never-publish-without-consent": 1,
     "public-with-caveat": 53

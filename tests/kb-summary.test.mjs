@@ -26,6 +26,9 @@ import {
   deriveKbSummary,
   assertNoObjectLeak,
   assertDomainVocabOnly,
+  assertNoNewDomainSlugCollision,
+  REVIEWED_DOMAIN_SLUG_COLLISIONS,
+  leakProbeJson,
   OUT_FILE,
 } from "../scripts/derive-kb-summary.mjs";
 import {
@@ -240,15 +243,31 @@ test("assertDomainVocabOnly passes domain values and the unset bucket", () => {
   );
 });
 
-test(
-  "assertDomainVocabOnly passes the real derived by_domain",
-  { skip: noWorkspace },
-  () => {
-    const objects = loadKb(WORKSPACE_DIR);
-    const fresh = deriveKbSummary(objects);
-    assert.doesNotThrow(() => assertDomainVocabOnly(fresh.by_domain, objects));
-  },
-);
+test("assertDomainVocabOnly catches a by_domain keyed on anything but o.domain", () => {
+  // The previous version of this test called deriveKbSummary() and then asserted
+  // doesNotThrow on a check deriveKbSummary had ALREADY run internally on the
+  // same arguments — if it were going to throw, the test died two lines earlier
+  // and never reached the assertion. It could not fail.
+  //
+  // It is also tautological at the production call site: by_domain's keys come
+  // from the same objects the vocabulary does. So test what it is actually FOR —
+  // a regression guard on the key source. The plausible slip is
+  // `o.domain || o.slug`, which puts an object slug in the key set.
+  const objects = [
+    { schema: "resource", slug: "a-slug", domain: "bioregionalism" },
+    { schema: "resource", slug: "another-slug", domain: "" },
+  ];
+  const good = { bioregionalism: 1, unset: 1 };
+  assert.doesNotThrow(() => assertDomainVocabOnly(good, objects));
+
+  // What `o.domain || o.slug` would produce: the empty-domain object keys on its
+  // own slug instead of the "unset" bucket.
+  const slipped = { bioregionalism: 1, "another-slug": 1 };
+  assert.throws(
+    () => assertDomainVocabOnly(slipped, objects),
+    /non-vocabulary key\(s\) \[another-slug\]/,
+  );
+});
 
 test("the rescope regression: assertNoObjectLeak still catches a previously-exempt object's TITLE leaking outside by_domain", () => {
   // Under the original (rejected) fix, `encyclopedia-entry/refi-ecosystem` was
@@ -355,17 +374,55 @@ test("by_domain sums to objects_total, with unset domains bucketed rather than d
   assert.equal(tally, s.objects_total);
 });
 
-test("maturity sums to objects_total and always carries raw/reviewed/published", () => {
+test("maturity is the review FUNNEL — stages only, and its own denominator", () => {
+  // `maturity` used to sum to objects_total, which meant it carried "boundary"
+  // (54 governance records kb.mjs excludes from ever being a page) beside the
+  // three real stages. /slices would have rendered a four-stage funnel whose
+  // fourth stage is a schema. Stages and non-stages are now separated, and the
+  // funnel sums to `reviewable_total` so a consumer can divide by it.
   const s = kbSummary();
-  assert.ok(s.maturity);
+  assert.deepEqual(
+    Object.keys(s.maturity).sort(),
+    ["published", "raw", "reviewed"],
+    "maturity must carry the three stages and nothing else",
+  );
   for (const k of ["raw", "reviewed", "published"]) {
     assert.ok(
       Number.isInteger(s.maturity[k]),
       `maturity.${k} must be present even at zero`,
     );
   }
-  const tally = Object.values(s.maturity).reduce((a, b) => a + b, 0);
-  assert.equal(tally, s.objects_total);
+  const funnel = Object.values(s.maturity).reduce((a, b) => a + b, 0);
+  assert.equal(
+    funnel,
+    s.reviewable_total,
+    "the funnel must sum to its own denominator",
+  );
+  assert.ok(
+    funnel < s.objects_total,
+    "reviewable_total must exclude the out-of-pipeline records and the source cards",
+  );
+});
+
+test("nothing is lost: funnel + out-of-pipeline + source cards === objects_total", () => {
+  // The three-way accounting. Asserting only on `maturity` would let a stage
+  // silently drain into `maturity_other` unnoticed.
+  const s = kbSummary();
+  const funnel = Object.values(s.maturity).reduce((a, b) => a + b, 0);
+  const other = Object.values(s.maturity_other).reduce((a, b) => a + b, 0);
+  const cards = s.by_schema["source-system"] ?? 0;
+  assert.equal(funnel + other + cards, s.objects_total);
+});
+
+test("maturity_other buckets the non-stages rather than dropping them", () => {
+  const s = kbSummary();
+  assert.ok(s.maturity_other, "maturity_other must exist even if empty");
+  for (const k of Object.keys(s.maturity_other)) {
+    assert.ok(
+      !["raw", "reviewed", "published"].includes(k),
+      `"${k}" is a funnel stage and belongs in maturity, not maturity_other`,
+    );
+  }
 });
 
 test("boundary_tiers sums to the public-use-boundary count in by_schema", () => {
@@ -401,6 +458,79 @@ test(
         `${row.id}.members_total: summary path and live path must agree`,
       );
       assert.equal(summaryRow.publishable_total, row.publishable_total, row.id);
+
+      // The tallies, not just the totals. Without these, a rollup that
+      // attributed every member to one container — keying on a constant instead
+      // of containerOf — ships green, and the clone renders a container
+      // breakdown that disagrees with the live build.
+      assert.deepEqual(
+        summaryRow.by_schema,
+        row.by_schema,
+        `${row.id}.by_schema must match across paths`,
+      );
+      assert.deepEqual(
+        summaryRow.by_container,
+        row.by_container,
+        `${row.id}.by_container must match across paths`,
+      );
+
+      // ORDER, explicitly. `sortedCounts` was required so both paths render
+      // identically, and deepEqual is key-order-insensitive — so dropping
+      // sortedCounts from either side would pass every assertion above while
+      // the two builds rendered the same numbers in different sequences.
+      assert.deepEqual(
+        Object.keys(summaryRow.by_schema),
+        Object.keys(row.by_schema),
+        `${row.id}.by_schema KEY ORDER must match across paths`,
+      );
+      assert.deepEqual(
+        Object.keys(summaryRow.by_container),
+        Object.keys(row.by_container),
+        `${row.id}.by_container KEY ORDER must match across paths`,
+      );
     }
   },
 );
+
+// ── The pinned collision set (the leak path the by_domain elision opens) ────
+
+test(
+  "the real store's domain/slug collisions are exactly the reviewed two",
+  { skip: noWorkspace },
+  () => {
+    // by_domain is elided from the leak probe because its terms are vocabulary,
+    // justified by "only two collide with object slugs". Nothing asserted that
+    // stayed true — so this does. A third collision is either a new coincidence
+    // or an object slug copied into a `domain:` field, and the second ships that
+    // slug in a committed public artifact with no other signal.
+    const objects = loadKb(WORKSPACE_DIR);
+    assert.doesNotThrow(() => assertNoNewDomainSlugCollision(objects));
+    assert.deepEqual([...REVIEWED_DOMAIN_SLUG_COLLISIONS].sort(), [
+      "refi-dao-org",
+      "refi-ecosystem",
+    ]);
+  },
+);
+
+test("a slug copied into a domain field fails the build", () => {
+  // The failure this guard exists for, reproduced in miniature.
+  const objects = [
+    { schema: "resource", slug: "some-real-object", domain: "bioregionalism" },
+    { schema: "signal", slug: "another-one", domain: "some-real-object" },
+  ];
+  assert.throws(
+    () => assertNoNewDomainSlugCollision(objects),
+    /collide with an object slug/,
+  );
+});
+
+test("leakProbeJson elides the vocabulary KEYS but keeps the counts", () => {
+  // Shared with the script so the test cannot drift from what is actually
+  // probed. Values stay in the haystack; only the taxonomy strings leave.
+  const probe = leakProbeJson({
+    objects_total: 3,
+    by_domain: { "some-domain": 2, unset: 1 },
+  });
+  assert.ok(!probe.includes("some-domain"), "domain terms must not be probed");
+  assert.ok(probe.includes("2"), "counts must remain in the haystack");
+});

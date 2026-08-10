@@ -165,6 +165,13 @@ export function assertNoObjectLeak(json, objects) {
  *  than trusting the rollup, we assert its key set is drawn from the live
  *  vocabulary, so an object title or slug could never arrive here unnoticed.
  *
+ *  NOTE it is tautological at the production call site — `by_domain`'s keys are
+ *  built from the same `objects` this derives `vocab` from, so no store can make
+ *  it throw. That is fine, because its job is a regression guard on the CODE: if
+ *  a future edit keys by_domain on anything but `o.domain` (`o.domain || o.slug`
+ *  is the plausible slip), the keys leave the vocabulary and this fires. Test it
+ *  as such — with a by_domain and a vocabulary from DIFFERENT object sets.
+ *
  * @param {Record<string, number>} by_domain
  * @param {import("../src/lib/kb.mjs").KbObject[]} objects
  */
@@ -178,6 +185,71 @@ export function assertDomainVocabOnly(by_domain, objects) {
         'only domain values from the store and the "unset" bucket may appear.',
     );
   }
+}
+
+/** Domain terms that collide with a compound object slug, reviewed 2026-08-10:
+ *  `refi-ecosystem` is both a domain and the slug of the encyclopedia entry
+ *  ABOUT that domain; `refi-dao-org` contains `resource/refi-dao` hyphen-bounded.
+ *  Both are vocabulary rather than object identity, which is why `by_domain` is
+ *  elided from the leak haystack (see `leakProbeJson`).
+ *
+ *  A THIRD collision is either a new coincidence or — the case that matters — an
+ *  object slug copied into a `domain:` field during ingest. In that case the term
+ *  is legitimately in `vocab`, so `assertDomainVocabOnly` passes; `by_domain` is
+ *  elided, so the leak probe never sees it; and an object slug ships in a
+ *  committed, publishable artifact with no signal anywhere. So: pin the set, and
+ *  make a new member stop the build for a human to look at. */
+export const REVIEWED_DOMAIN_SLUG_COLLISIONS = Object.freeze([
+  "refi-dao-org",
+  "refi-ecosystem",
+]);
+
+/** Compound object slugs collide with domain terms only in the reviewed cases.
+ *  Uses the same hyphen-bounded probe and the same skip rules as
+ *  `assertNoObjectLeak`, so the two cannot drift apart in what counts as a hit.
+ *
+ * @param {import("../src/lib/kb.mjs").KbObject[]} objects
+ */
+export function assertNoNewDomainSlugCollision(objects) {
+  const domains = [...new Set(objects.map((o) => o.domain).filter(Boolean))];
+  const found = new Set();
+  for (const o of objects) {
+    if (o.schema === "source-system") continue;
+    if (!o.slug || !o.slug.includes("-")) continue;
+    const escaped = o.slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const bounded = new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`);
+    for (const d of domains) {
+      if (d === o.slug || bounded.test(d)) found.add(d);
+    }
+  }
+  const isNew = [...found]
+    .filter((d) => !REVIEWED_DOMAIN_SLUG_COLLISIONS.includes(d))
+    .sort();
+  if (isNew.length) {
+    throw new Error(
+      `derive-kb-summary: domain term(s) [${isNew}] collide with an object slug ` +
+        "and are not in REVIEWED_DOMAIN_SLUG_COLLISIONS. by_domain is elided from " +
+        "the leak probe, so an object slug copied into a `domain:` field would " +
+        "ship in this committed artifact unnoticed. Confirm the term is genuine " +
+        "vocabulary, then add it to that list with a note.",
+    );
+  }
+}
+
+/** The summary as probed for object leaks: `by_domain`'s KEYS are vocabulary by
+ *  construction (guarded by `assertDomainVocabOnly` +
+ *  `assertNoNewDomainSlugCollision`), so they are replaced by their values —
+ *  the counts stay in the haystack, only the taxonomy strings leave. Exported so
+ *  the tests probe exactly what the script probes rather than re-implementing
+ *  the elision and silently drifting from it.
+ *
+ * @param {Record<string, any>} summary
+ */
+export function leakProbeJson(summary) {
+  return JSON.stringify({
+    ...summary,
+    by_domain: Object.values(summary.by_domain),
+  });
 }
 
 /** Card values must stay flat: scalars, arrays of scalars, or a one-level map of
@@ -235,16 +307,45 @@ export function deriveKbSummary(objects = loadKb()) {
   }
   const by_domain = sortedCounts(domainTally);
 
-  // maturity — the global funnel. raw/reviewed/published are seeded at zero so
-  // a consumer can read `summary.maturity.published` without an `?? 0` guard;
-  // any OTHER value (e.g. "boundary", the maturity loadKb() assigns
-  // public-use-boundary objects — see kb.mjs's normalization) gets its own
-  // bucket rather than being folded into one of the three or dropped.
-  const maturity = { raw: 0, reviewed: 0, published: 0 };
+  // maturity — the REVIEW FUNNEL, stages only. raw/reviewed/published are seeded
+  // at zero so a consumer can read `summary.maturity.published` without an `?? 0`
+  // guard.
+  //
+  // Anything else goes to `maturity_other`, NOT into this object. The value that
+  // forces the split is "boundary": kb.mjs assigns it to public-use-boundary
+  // objects, and those are governance metadata that the same file excludes from
+  // ever being a page ("governance metadata, never a page"). Emitting it beside
+  // raw/reviewed/published gave /slices and /system a four-stage funnel whose
+  // fourth stage is a schema, over a denominator wrong by 54 — a reader would
+  // conclude 54 objects had reached a stage called "boundary". Keeping the bucket
+  // is right (fail-loud beats folding it into `raw`); publishing it AS a stage is
+  // not. `reviewable_total` is the honest denominator for the funnel.
+  //
+  // Map, not an object literal: kb.mjs warns that a `__proto__` bucket vanishes
+  // from an object-literal tally. Every other tally in this file already uses one.
+  // Source-system cards are excluded too: they are the containers, not content
+  // in them, and counting them as `raw` made the funnel sum to 368 against a
+  // reviewable set of 362 — a consumer dividing one by the other would render
+  // over 100%. The funnel now covers exactly the reviewable objects, so
+  // `maturity` sums to `reviewable_total` by construction, and the three-way
+  // accounting (funnel + other + cards = objects_total) is asserted below.
+  const FUNNEL_STAGES = ["raw", "reviewed", "published"];
+  const maturityTally = new Map();
   for (const o of objects) {
+    if (o.schema === "source-system") continue;
     const m = o.maturity || "unset";
-    maturity[m] = (maturity[m] ?? 0) + 1;
+    maturityTally.set(m, (maturityTally.get(m) ?? 0) + 1);
   }
+  const maturity = Object.fromEntries(
+    FUNNEL_STAGES.map((s) => [s, maturityTally.get(s) ?? 0]),
+  );
+  const maturity_other = sortedCounts(
+    new Map([...maturityTally].filter(([m]) => !FUNNEL_STAGES.includes(m))),
+  );
+  /** The funnel's denominator — reviewable objects, excluding out-of-pipeline
+   *  governance records and the source cards. This is what /slices and /system
+   *  divide by; `objects_total` would be wrong by 60. */
+  const reviewable_total = Object.values(maturity).reduce((a, b) => a + b, 0);
 
   // boundary_tiers — public-use-boundary objects by tier, "unset" for a
   // missing tier.
@@ -314,6 +415,8 @@ export function deriveKbSummary(objects = loadKb()) {
     collections,
     by_domain,
     maturity,
+    maturity_other,
+    reviewable_total,
     boundary_tiers,
   };
 
@@ -330,6 +433,8 @@ export function deriveKbSummary(objects = loadKb()) {
     "collections",
     "by_domain",
     "maturity",
+    "maturity_other",
+    "reviewable_total",
     "boundary_tiers",
   ];
   if (top !== [...TOP_KEYS].sort().join(",")) {
@@ -400,6 +505,16 @@ export function deriveKbSummary(objects = loadKb()) {
         `derive-kb-summary: collection "${id}" by_schema sums to ${tally} but members_total is ${c.members_total}`,
       );
     }
+    // Same check for by_container. Without it, a rollup that attributed every
+    // member to one container (the plausible slip: keying on a constant instead
+    // of containerOf) would ship green — the clone would then render a container
+    // breakdown that disagrees with the live build.
+    const cTally = Object.values(c.by_container).reduce((a, b) => a + b, 0);
+    if (cTally !== c.members_total) {
+      throw new Error(
+        `derive-kb-summary: collection "${id}" by_container sums to ${cTally} but members_total is ${c.members_total}`,
+      );
+    }
     if (c.publishable_total > c.members_total) {
       throw new Error(
         `derive-kb-summary: collection "${id}" reports ${c.publishable_total} publishable out of ` +
@@ -415,13 +530,33 @@ export function deriveKbSummary(objects = loadKb()) {
     );
   }
 
+  // `maturity` is now the funnel STAGES only and `maturity_other` holds
+  // everything else, so the "nothing lost" invariant spans both — an object must
+  // land in exactly one bucket across the pair. Asserting only on `maturity`
+  // would let a stage silently vanish into `maturity_other` unnoticed.
   const maturitySum = Object.values(summary.maturity).reduce(
     (a, b) => a + b,
     0,
   );
-  if (maturitySum !== summary.objects_total) {
+  const otherSum = Object.values(summary.maturity_other).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  // Three-way accounting, nothing lost: reviewable content + out-of-pipeline
+  // records + the source cards must be every object. `cardCount` is already in
+  // scope from the containers check above.
+  if (maturitySum + otherSum + cardCount !== summary.objects_total) {
     throw new Error(
-      `derive-kb-summary: maturity sums to ${maturitySum} but objects_total is ${summary.objects_total}`,
+      `derive-kb-summary: maturity (${maturitySum}) + maturity_other (${otherSum}) + ` +
+        `cards (${cardCount}) = ${maturitySum + otherSum + cardCount} but objects_total ` +
+        `is ${summary.objects_total} — every object must land in exactly one bucket.`,
+    );
+  }
+  // The funnel is the reviewable set, so a consumer can divide by it safely.
+  if (maturitySum !== summary.reviewable_total) {
+    throw new Error(
+      `derive-kb-summary: maturity stages sum to ${maturitySum} but reviewable_total ` +
+        `is ${summary.reviewable_total} — the funnel must be its own denominator.`,
     );
   }
 
@@ -446,12 +581,9 @@ export function deriveKbSummary(objects = loadKb()) {
   // stop probing the objects: every object stays fully checked against
   // everything else in the artifact. `assertDomainVocabOnly` below is the
   // positive check that covers what eliding by_domain here would otherwise miss.
-  const probeJson = JSON.stringify({
-    ...summary,
-    by_domain: Object.keys(summary.by_domain).length,
-  });
-  assertNoObjectLeak(probeJson, objects);
+  assertNoObjectLeak(leakProbeJson(summary), objects);
   assertDomainVocabOnly(summary.by_domain, objects);
+  assertNoNewDomainSlugCollision(objects);
   return summary;
 }
 

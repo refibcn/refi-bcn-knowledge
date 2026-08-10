@@ -113,6 +113,14 @@ const VIEWS = {
  */
 export const PLANNED_SOURCES = Object.freeze([
   {
+    id: "catalunya-map",
+    title: "Catalunya regeneration map (Giulio)",
+    planned: true,
+    why: "Second stream of the single consolidated batch (BD-2026-065) — the ~300–400 mapped actors join the CRM and the store.",
+    blocked_on:
+      "The D9 coordinate-source answer (which also decides pins vs comarca-shading on /atlas). No card exists until the batch runs.",
+  },
+  {
     id: "telegram-history",
     title: "Telegram history (ReFi BCN group)",
     planned: true,

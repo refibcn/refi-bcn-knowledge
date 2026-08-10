@@ -48,11 +48,20 @@ const schemaCount = bySchema.length;
 const src = sourcesViewModel();
 const col = collectionsViewModel();
 
-// The canary row belongs on /sources; here it appears only when it FAILS
-// (unattributed > 0), because a healthy zero is /sources' detail, not the
-// hub's headline.
-const bases = src.rows.filter((r) => r.id !== "unattributed");
+// The BASES are the knowledge repos being consolidated — `role === "source"`
+// only. The store also has infrastructure containers (the organizational OS
+// self-card, the website render-target): they belong in /sources' full
+// inventory, but rendering them as "bases" here made the consolidation story
+// unreadable — a reader could not tell a knowledge repo from the machinery
+// around it (Luiz, 2026-08-10). The canary row (`unattributed`) likewise
+// surfaces here only when it FAILS.
+const bases = src.rows.filter((r) => r.role === "source");
+const infra = src.rows.filter(
+  (r) => r.id !== "unattributed" && r.role !== "source",
+);
 const attributedTotal = src.totals.objects;
+const basesSum = bases.reduce((n, r) => n + r.objects_total, 0);
+const infraSum = attributedTotal - basesSum;
 
 const statusStrip = [
   { label: "Objects", n: objectsTotal },
@@ -215,6 +224,15 @@ const tools = [
               {Object.keys(r.by_maturity).length > 0 && (
                 <p class="home-base__mat">{matLine(r.by_maturity)}</p>
               )}
+              {
+                // Whose base this is — the card's own steward field, already
+                // public on /sources/<id>. This is what lets a reader tell
+                // "Giulio's Notion-side curation" from "the old KB" without
+                // opening each container.
+                r.card?.steward && (
+                  <p class="home-base__steward">{r.card.steward}</p>
+                )
+              }
             </li>
           );
         })
@@ -233,16 +251,41 @@ const tools = [
       }
     </ul>
     <p class="home-sum">
-      The {src.totals.containers} bases above hold{" "}
-      <strong>{attributedTotal}</strong> attributed objects between them; the store's
-      own total is <strong>{objectsTotal}</strong> because each base also carries
-      a source card describing it — infrastructure, not corpus.
+      The {bases.length} bases above hold <strong>{basesSum}</strong>{" "}
+      attributed objects between them
+      {
+        infraSum > 0 && (
+          <>
+            {" "}
+            (plus <strong>{infraSum}</strong> in infrastructure containers)
+          </>
+        )
+      }; the store's own total is <strong>{objectsTotal}</strong> because every container
+      also carries a source card describing it — infrastructure, not corpus.
+      {
+        infra.length > 0 && (
+          <>
+            {" "}
+            Not shown as bases:{" "}
+            {infra.map((r, i) => (
+              <>
+                {i > 0 && " · "}
+                <a href={withBase(r.href)}>{r.title}</a> (
+                {ROLE_LABEL[r.role] ?? r.role})
+              </>
+            ))}{" "}
+            — machinery around the consolidation, not knowledge repos feeding
+            it. <a href={withBase("sources/")}>/sources</a> lists every
+            container.
+          </>
+        )
+      }
       {
         src.totals.unattributed > 0 && (
           <strong>
             {" "}
-            ⚠ {src.totals.unattributed} objects match no base — that is a fault;
-            see <a href={withBase("sources/")}>/sources</a>.
+            ⚠ {src.totals.unattributed} objects match no container — that is a
+            fault; see <a href={withBase("sources/")}>/sources</a>.
           </strong>
         )
       }
@@ -496,6 +539,14 @@ const tools = [
   .home-base__meta strong,
   .home-base__mat strong {
     color: var(--text-primary);
+  }
+  .home-base__steward {
+    margin: 8px 0 0;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    border-top: 1px dashed var(--border-subtle);
+    padding-top: 6px;
   }
   .home-role {
     font-family: var(--mono);

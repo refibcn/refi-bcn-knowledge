@@ -57,10 +57,14 @@ So the aggregates a public page needs are **derived from the workspace and commi
 | `src/data/sources-disposition.json` | `npm run derive:disposition` | Per-source file disposition from `refi-bcn-os/docs/kms/batches/*.yaml`.        |
 | `src/data/kb-summary.json`          | `npm run derive:kb-summary`  | Per-container and global object counts + the `source-system` cards. No bodies. |
 
-**Re-run BOTH after any ingest batch, and commit the regenerated JSON with the change.**
-They are derived data under version control, so they go stale silently. `npm test` pins
-that: `tests/kb-summary.test.mjs` recomputes the summary from the live store and fails if
-the committed file disagrees (skipped when there is no workspace store, i.e. in CI).
+**After any batch: `npm run derive:disposition` + `npm run derive:kb-summary`, commit
+both.** They are derived data under version control, so they go stale silently. `npm
+test` pins that: `tests/kb-summary.test.mjs` recomputes the summary from the live store
+and fails if the committed file disagrees (skipped when there is no workspace store,
+i.e. in CI). This is not hypothetical bookkeeping — it fired on 2026-08-10: an upstream
+commit added 8 files to a counted corpus, `sources-disposition.json` went stale
+(155 → 162 files), and the suite went red until it was re-derived. Treat that failure
+mode as the staleness guard doing its job, not as a flaky test.
 
 `derive:kb-summary` **refuses** to run when it can only see `data/kb-public/` — deriving
 there would write zeros over good data and render `/sources` as "nothing ingested", which
@@ -69,13 +73,33 @@ is the reading that could authorise archiving an unprocessed source.
 The summary carries counts and the source cards only. Object titles, bodies, slugs and
 origins are excluded, and the script asserts that rather than promising it.
 
-## Three lenses
+## Routes
 
-| Lens      | Path         | Audience                                                             |
-| --------- | ------------ | -------------------------------------------------------------------- |
-| Knowledge | `/knowledge` | Public. Reviewed, publishable knowledge pages.                       |
-| Review    | `/review`    | Internal. Built only under `COMMONS_REVIEW=1` and shipped encrypted. |
-| Atlas     | `/atlas`     | Public. Catalunya map — comarques and territorial context.           |
+The home page (`/`) is a dashboard: a status strip (objects · in review · published ·
+sources · collections) plus section cards to every surface below, in working order.
+
+| Route                                      | Audience                                              | What it is                                                                                                                                                                                                          |
+| ------------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/knowledge`, `/knowledge/<schema>/<slug>` | Public                                                | Reviewed, publishable knowledge base pages compiled from the org-os KB engine.                                                                                                                                      |
+| `/collections`, `/collections/<id>`        | Public definitions; gated entries                     | Curated sub-scopes over the store — see "Collections model" below.                                                                                                                                                  |
+| `/sources`, `/sources/<id>`                | Public                                                | One row per ingested source: what it holds and how far it has been processed.                                                                                                                                       |
+| `/slices`                                  | Public, not in the main nav                           | Four crosscuts over the store — domains × schemas, the review funnel, the high-risk queue, boundary tiers — plus a geography section deferred pending decision D9. Reachable from `/system` and the home dashboard. |
+| `/system`                                  | Public                                                | The data layer depicted from the data itself: Feeds → Store → Curation → Surfaces bands with live counts, an authority table, and a gate inventory. No hand-drawn numbers.                                          |
+| `/review`                                  | Internal only (`COMMONS_REVIEW=1`), shipped encrypted | The full internal KB app, including unreviewed content. A plain build renders a stub — see "The internal lens builds separately" below.                                                                             |
+| `/atlas`                                   | Public                                                | Catalunya map — comarques and territorial context.                                                                                                                                                                  |
+| `/organizations`, `/programs`, `/events`   | Public                                                | The directory — organizations, programs and events, fed from the Notion CRM.                                                                                                                                        |
+| `/priorities`, `/priorities/<id>`          | Public                                                | Priority areas and the indicators tracked against them, also fed from the Notion CRM.                                                                                                                               |
+
+### Collections model
+
+A collection is a committed _definition_ over the store (`src/data/collections.yaml`,
+zod-validated), never a copy — its membership rules (containers, domains, schemas,
+explicit ids, minus excludes) are evaluated at build time. Members still render through
+the existing gates: the public build shows a collection's scope and counts and lists
+only the members that pass `publishableKb()` as **entries** (unpublishable members
+appear as counts only), the internal build (`COMMONS_REVIEW=1`) lists every member with
+review deep-links, and `scripts/verify-public-kb.mjs` independently re-checks
+`dist/collections/` for leaked per-object links.
 
 ### Atlas data and assets
 

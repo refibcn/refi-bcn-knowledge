@@ -15,6 +15,18 @@ import {
   collectionMembers,
   collectionsViewModel,
 } from "../src/lib/collections.mjs";
+import { resolveKbDir, PUBLIC_KB_DIR } from "../src/lib/kb.mjs";
+
+// House pattern (tests/kb-sources.test.mjs, tests/archive-ready.test.mjs): a
+// standalone CI clone has no workspace store, so any test that calls
+// collectionsViewModel() with its DEFAULT `objects`/`fromSummary` reads the
+// committed summary — which legitimately has no `collections` rollup until
+// T1.2 lands it, and correctly throws. That is the module working as
+// designed, not a test failure, so the test self-skips instead of asserting
+// against a store that is not there. Tests that inject their own
+// objects/summary/defs are unaffected by this and must NOT skip — the whole
+// point of the injectables is that they run everywhere.
+const noWorkspace = resolveKbDir() === PUBLIC_KB_DIR;
 
 const o = (schema, slug, extra = {}) => ({
   id: `${schema}/${slug}`,
@@ -152,14 +164,18 @@ test("source-system cards are never members", () => {
   );
 });
 
-test("viewModel over the real store: publishable is gated, raw members count but do not list publicly", () => {
-  const vm = collectionsViewModel();
-  for (const row of vm.rows) {
-    assert.ok(row.members_total >= row.publishable_total, row.id);
-    assert.ok(Array.isArray(row.public_entries));
-    for (const e of row.public_entries) assert.notEqual(e.maturity, "raw");
-  }
-});
+test(
+  "viewModel over the real store: publishable is gated, raw members count but do not list publicly",
+  { skip: noWorkspace },
+  () => {
+    const vm = collectionsViewModel();
+    for (const row of vm.rows) {
+      assert.ok(row.members_total >= row.publishable_total, row.id);
+      assert.ok(Array.isArray(row.public_entries));
+      for (const e of row.public_entries) assert.notEqual(e.maturity, "raw");
+    }
+  },
+);
 
 test("the real collections.yaml parses to at least one collection", () => {
   assert.ok(Object.keys(loadCollections()).length > 0);
@@ -248,9 +264,11 @@ test("summary path throws when a rollup entry is missing members_total — prese
 
 test("summary path throws on the objects_total-instead-of-members_total trap — the containers rollup's key name, not the collections rollup's", () => {
   // derive-kb-summary.mjs's CONTAINER_KEYS names its count `objects_total`.
-  // A collections rollup that reused that shape by habit would, without a
-  // strict shape check, have `objects_total` silently stripped and
-  // `members_total` read as `undefined` — plausible, silent, wrong.
+  // A collections rollup that reused that shape by habit is caught here by
+  // the REQUIRED `members_total` field being absent — with or without
+  // `.strict()` on RollupSchema. `.strict()` earns its place on a different
+  // ground (rejecting an otherwise-correct rollup carrying an extra,
+  // unaccounted-for field) — see the comment on RollupSchema in collections.mjs.
   const defs = parseCollections({
     collections: { c: { title: "C", status: "curating" } },
   });
@@ -302,9 +320,9 @@ test("cross-path agreement: live and summary yield identical counts, ENTRIES, an
       domain: "bioregionalism",
       origin: "https://example.com/repoA/in",
     }),
-    // Genuinely clears publishableKb(): maturity reviewed, publish:true,
-    // not high-risk, no boundary pairing required. Verified directly against
-    // publishableKb() before relying on it here — see task report.
+    // Genuinely clears publishableKb() (src/lib/kb.mjs): `maturity: "reviewed"`
+    // is in OK_MATURITY, `raw.publish === true`, `high_risk` is false so no
+    // public-use-boundary pairing is required, and `ai_assisted` is unset.
     o("resource", "published-one", {
       domain: "bioregionalism",
       origin: "https://example.com/repoA/p",
@@ -371,4 +389,26 @@ test("cross-path agreement: live and summary yield identical counts, ENTRIES, an
     live.public_entries.map((m) => m.id).sort(),
   );
   assert.deepEqual(Object.keys(summary).sort(), Object.keys(live).sort());
+
+  // A third, `internal: false` call — the actual PUBLIC row shape. This is
+  // the only test exercising that branch of `members: internal ? members : []`
+  // with a non-empty member set; every other `.members` assertion above runs
+  // under `internal: true`. Two separate claims: member BODIES are gated...
+  const publicRow = collectionsViewModel({
+    objects,
+    fromSummary: false,
+    defs,
+  }).rows[0];
+  assert.deepEqual(
+    publicRow.members,
+    [],
+    "internal:false must not expose member bodies",
+  );
+  // ...but gating must not also hide the publishable ENTRIES — "gated" and
+  // "blanked" are different failure modes and this distinguishes them.
+  assert.deepEqual(
+    publicRow.public_entries.map((m) => m.id).sort(),
+    expectedPublicIds,
+    "gating members must not also hide publishable entries",
+  );
 });

@@ -118,51 +118,34 @@ function flattenCard(card) {
  *     leak from a shared proper noun, so it is not used.
  *   - case matters: `repos/ReFi-Barcelona/` in `origin_prefixes` is not the slug
  *     `refi-barcelona`.
- *   - a compound slug can BE a domain-vocabulary term (T1.2, `by_domain`): the
- *     encyclopedia entry about the "refi-ecosystem" domain is slugged
- *     `refi-ecosystem`, and `resource/refi-dao`'s slug is a hyphen-bounded
- *     prefix of the unrelated domain `refi-dao-org`. by_domain carries those
- *     domain names regardless of which objects use them, so this is scoped
- *     out below rather than flagged.
  *
  * A guard that cries wolf gets suppressed, so it is deliberately narrow here and
  * paired with the structural key/value assertions in deriveKbSummary(), which is
  * where "no object listings" is actually enforced.
  *
- * @param {string} json  The serialized summary.
+ * Every object is probed against everything in `json` — there is no per-object
+ * exemption here. `by_domain` (T1.2) publishes the domain TAXONOMY, and two
+ * domain terms happen to collide with unrelated object slugs on the real store
+ * (`encyclopedia-entry/refi-ecosystem`'s slug IS the domain name it is about;
+ * `resource/refi-dao`'s slug is a hyphen-bounded prefix of the domain
+ * `refi-dao-org`). That collision is handled by keeping the vocabulary OUT of
+ * the haystack at the call site (see `deriveKbSummary`'s `probeJson`) rather
+ * than exempting those two objects from the probe — an object-level exemption
+ * would have silently stopped checking those objects against every OTHER field
+ * in the artifact too, not just `by_domain`. See `assertDomainVocabOnly` for
+ * the positive check that replaces the coverage this rescope would otherwise
+ * lose.
+ *
+ * @param {string} json  The serialized summary (or a probe copy of it — see
+ *   `assertDomainVocabOnly`).
  * @param {import("../src/lib/kb.mjs").KbObject[]} objects
  */
 export function assertNoObjectLeak(json, objects) {
-  // A THIRD earned false-positive class (T1.2, `by_domain`): `o.domain` values
-  // are a small, enumerable, curated taxonomy (~40 terms today) that the
-  // by_domain rollup deliberately publishes — vocabulary, not object
-  // identity. Reproduced on the real store: the encyclopedia entry ABOUT the
-  // "refi-ecosystem" domain has that domain name as its own slug
-  // (`encyclopedia-entry/refi-ecosystem`), and `resource/refi-dao`'s slug is
-  // a hyphen-bounded PREFIX of the unrelated domain "refi-dao-org" carried by
-  // other objects entirely. Neither collision has anything to do with THESE
-  // two objects being exposed — by_domain would carry "refi-ecosystem" and
-  // "refi-dao-org" regardless of which objects happen to use those domains,
-  // exactly like the "Bar·celo·na" single-word case below, just compound.
-  // Scoped to the live domain vocabulary derived from the SAME `objects` this
-  // call already receives, so it tracks the corpus rather than a hardcoded
-  // list, and it exempts only the specific slug that collides — it does not
-  // touch the probe for any other object.
-  const domainVocab = [
-    ...new Set(objects.map((o) => o.domain).filter(Boolean)),
-  ];
-  const collidesWithDomainVocab = (slug) => {
-    const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const boundary = new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`);
-    return domainVocab.some((d) => d === slug || boundary.test(d));
-  };
-
   /** @type {string[]} */
   const hits = [];
   for (const o of objects) {
     if (o.schema === "source-system") continue; // the cards ARE the summary
     if (!o.slug || !o.slug.includes("-")) continue;
-    if (collidesWithDomainVocab(o.slug)) continue;
     const escaped = o.slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`).test(json)) {
       hits.push(`slug ${o.schema}/${o.slug}`);
@@ -173,6 +156,26 @@ export function assertNoObjectLeak(json, objects) {
       `derive-kb-summary: the summary carries object-level content — ` +
         `${hits.length} hit(s), first: ${hits[0]}. This artifact is committed and ` +
         "published; it must hold aggregates and source cards only.",
+    );
+  }
+}
+
+/** by_domain may key on domain terms and the "unset" bucket — nothing else.
+ *  This is what replaces `by_domain` being elided from the leak probe: rather
+ *  than trusting the rollup, we assert its key set is drawn from the live
+ *  vocabulary, so an object title or slug could never arrive here unnoticed.
+ *
+ * @param {Record<string, number>} by_domain
+ * @param {import("../src/lib/kb.mjs").KbObject[]} objects
+ */
+export function assertDomainVocabOnly(by_domain, objects) {
+  const vocab = new Set(objects.map((o) => o.domain).filter(Boolean));
+  vocab.add("unset");
+  const stray = Object.keys(by_domain).filter((k) => !vocab.has(k));
+  if (stray.length) {
+    throw new Error(
+      `derive-kb-summary: by_domain has non-vocabulary key(s) [${stray}] — ` +
+        'only domain values from the store and the "unset" bucket may appear.',
     );
   }
 }
@@ -434,7 +437,21 @@ export function deriveKbSummary(objects = loadKb()) {
     );
   }
 
-  assertNoObjectLeak(JSON.stringify(summary), objects);
+  // `by_domain` publishes the domain TAXONOMY — vocabulary, not object
+  // identity. Two of its terms collide with object slugs today (`refi-ecosystem`
+  // is both a domain and the slug of the encyclopedia entry ABOUT that domain;
+  // `resource/refi-dao`'s slug is a hyphen-bounded prefix of the domain
+  // `refi-dao-org`). Those are false positives for a check that hunts object
+  // identity — but the fix is to keep the vocabulary out of the HAYSTACK, not to
+  // stop probing the objects: every object stays fully checked against
+  // everything else in the artifact. `assertDomainVocabOnly` below is the
+  // positive check that covers what eliding by_domain here would otherwise miss.
+  const probeJson = JSON.stringify({
+    ...summary,
+    by_domain: Object.keys(summary.by_domain).length,
+  });
+  assertNoObjectLeak(probeJson, objects);
+  assertDomainVocabOnly(summary.by_domain, objects);
   return summary;
 }
 

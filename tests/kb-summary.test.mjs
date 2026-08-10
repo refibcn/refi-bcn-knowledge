@@ -25,6 +25,7 @@ import {
 import {
   deriveKbSummary,
   assertNoObjectLeak,
+  assertDomainVocabOnly,
   OUT_FILE,
 } from "../scripts/derive-kb-summary.mjs";
 import {
@@ -212,11 +213,84 @@ test("assertNoObjectLeak does not fire on a slug embedded in a longer word", () 
   );
 });
 
+// ── T1.2 rescope: elide the by_domain haystack, not the object from the probe ──
+// The original T1.2 fix exempted the two colliding OBJECTS from
+// assertNoObjectLeak entirely via a per-object `continue`, which silently
+// stopped checking those two objects against every field, not just by_domain.
+// The rescope elides the by_domain VOCABULARY from the haystack instead
+// (see deriveKbSummary's `probeJson`) and replaces the lost coverage with
+// `assertDomainVocabOnly`. These tests pin the rescope, not the diagnosis
+// (already covered above).
+
+test("assertDomainVocabOnly throws on a non-vocabulary key", () => {
+  const objects = [{ schema: "resource", slug: "a", domain: "finance" }];
+  assert.throws(
+    () => assertDomainVocabOnly({ "some-object-slug": 1 }, objects),
+    /non-vocabulary key/,
+  );
+});
+
+test("assertDomainVocabOnly passes domain values and the unset bucket", () => {
+  const objects = [
+    { schema: "resource", slug: "a", domain: "finance" },
+    { schema: "resource", slug: "b", domain: "" },
+  ];
+  assert.doesNotThrow(() =>
+    assertDomainVocabOnly({ finance: 1, unset: 1 }, objects),
+  );
+});
+
 test(
-  "the committed artifact holds no object slug",
+  "assertDomainVocabOnly passes the real derived by_domain",
   { skip: noWorkspace },
   () => {
-    assertNoObjectLeak(readFileSync(OUT_FILE, "utf8"), loadKb(WORKSPACE_DIR));
+    const objects = loadKb(WORKSPACE_DIR);
+    const fresh = deriveKbSummary(objects);
+    assert.doesNotThrow(() => assertDomainVocabOnly(fresh.by_domain, objects));
+  },
+);
+
+test("the rescope regression: assertNoObjectLeak still catches a previously-exempt object's TITLE leaking outside by_domain", () => {
+  // Under the original (rejected) fix, `encyclopedia-entry/refi-ecosystem` was
+  // exempted from the ENTIRE probe because its slug collides with the
+  // by_domain vocabulary — so a leak of its TITLE, anywhere else in the
+  // artifact, would have gone undetected. This is the regression the rescope
+  // closes: the object stays fully probed once the exemption is object-level
+  // no longer, and by_domain's collision is handled by eliding the haystack
+  // instead. Title matching isn't how the guard works (see its own docstring
+  // on why), so this pins it via the object's SLUG appearing somewhere other
+  // than the by_domain vocabulary — the same detection mechanism the guard
+  // actually uses, proven still live for this exact object.
+  const objects = [
+    {
+      schema: "encyclopedia-entry",
+      slug: "refi-ecosystem",
+      title: "ReFi Ecosystem",
+      domain: "refi-ecosystem",
+    },
+  ];
+  assert.throws(
+    () => assertNoObjectLeak('{"leaked_elsewhere":"refi-ecosystem"}', objects),
+    /object-level content/,
+  );
+});
+
+test(
+  "the committed artifact holds no object slug outside the by_domain vocabulary",
+  { skip: noWorkspace },
+  () => {
+    // Mirrors deriveKbSummary()'s own probe exactly: by_domain is elided
+    // before the leak scan (its vocabulary strings are asserted separately,
+    // by assertDomainVocabOnly below), everything else in the committed file
+    // is probed unmodified.
+    const objects = loadKb(WORKSPACE_DIR);
+    const committed = JSON.parse(readFileSync(OUT_FILE, "utf8"));
+    const probeJson = JSON.stringify({
+      ...committed,
+      by_domain: Object.keys(committed.by_domain).length,
+    });
+    assertNoObjectLeak(probeJson, objects);
+    assertDomainVocabOnly(committed.by_domain, objects);
   },
 );
 

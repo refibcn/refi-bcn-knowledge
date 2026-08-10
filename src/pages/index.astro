@@ -200,10 +200,16 @@ const tools = [
                     <strong>{disp!.files_total}</strong> files awaiting
                     ingestion
                   </>
+                ) : disp === null ? (
+                  // normalizeDisposition() returns null for "corpus exists
+                  // but nothing has measured it yet" — a different claim
+                  // from "no corpus", and conflating them is how a page
+                  // asserts falsehoods about a freshly-added source.
+                  <> · file corpus not yet measured — see its page</>
                 ) : (
                   // No ingestable corpus at all — the disposition's own
                   // reason says why, in its own words.
-                  <> · {disp?.reason ?? "no object corpus — see its page"}</>
+                  <> · {disp.reason ?? "no object corpus"}</>
                 )}
               </p>
               {Object.keys(r.by_maturity).length > 0 && (
@@ -367,9 +373,14 @@ const tools = [
   </SectionBlock>
 
   <!-- ── the tools band: over the pipeline, not a stage of it ─────────── -->
-  <section class="home-tools">
+  <section class="home-tools" aria-label="Working tools">
     <div class="home-tools__inner">
-      <span class="home-tools__eyebrow">Working tools</span>
+      {
+        /* A real heading, not a styled span: /slices and /review are absent
+          from the top nav, so this band is their only homepage path — it
+          must exist in the accessible outline like every other section. */
+      }
+      <h2 class="home-tools__eyebrow">Working tools</h2>
       <ul>
         {
           tools.map((t) => (
@@ -606,6 +617,8 @@ const tools = [
     gap: var(--space-6);
   }
   .home-tools__eyebrow {
+    margin: 0;
+    font-weight: 500;
     font-family: var(--mono);
     font-size: var(--text-xs);
     text-transform: uppercase;

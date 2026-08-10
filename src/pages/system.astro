@@ -36,13 +36,20 @@ const bands = [
   {
     name: "Feeds",
     items: [
+      // "Ingested sources", not "Repo sources": one of the four is
+      // `notion-refi-bcn`, a Notion extraction rather than a repository, so
+      // the old label both misdescribed the set and made the line below read
+      // as a fifth feed when it is a different KIND of feed entirely.
       {
-        label: "Repo sources",
+        label: "Ingested sources",
         n: src.rows.filter((r) => r.role === "source").length,
         href: "sources/",
       },
+      // Distinct from the `notion-refi-bcn` container above: that one holds
+      // objects already extracted INTO the store, this is the live read the
+      // directory pages perform at build time and never persist.
       {
-        label: "Notion CRM (build-time, read-only)",
+        label: "Notion CRM (live at build, never stored)",
         n: null,
         href: "organizations/",
       },
@@ -51,7 +58,12 @@ const bands = [
   {
     name: `Store (data/kb, ${schemaCount} schemas)`,
     items: [
-      { label: "Typed objects", n: objectsTotal, href: "sources/" },
+      // "Objects", not "typed objects": this counts the WHOLE store, source
+      // cards included. /slices reserves "typed objects" for the store minus
+      // those 6 cards (416), and the two pages link to each other — reusing
+      // its term for a different number is how a reader ends up comparing
+      // 422 against 416 with nothing to reconcile them.
+      { label: "Objects", n: objectsTotal, href: "sources/" },
       { label: "In review (raw)", n: inReview, href: null },
     ],
   },
@@ -136,9 +148,9 @@ const GATES = [
   >
     <p class="lede">
       This is the pipeline that produces every other page on this site: sources
-      feed a typed object store, curation narrows it into collections, and a
-      handful of public surfaces render what has cleared review. Every number
-      below comes from the same view-models that render
+      feed an object store, curation narrows it into collections, and a handful
+      of public surfaces render what has cleared review. Every number below
+      comes from the same view-models that render
       <a href={withBase("sources/")}>/sources</a>,
       <a href={withBase("collections/")}>/collections</a> and
       <a href={withBase("knowledge/")}>/knowledge</a> — if this page ever disagrees
@@ -175,6 +187,26 @@ const GATES = [
         ))
       }
     </div>
+
+    <p class="sys-reconcile">
+      {
+        /* Both numbers are derived, never written down: `objectsTotal` is the
+          whole store, `src.totals.objects` is exactly what /sources renders.
+          The gap between them is stated rather than computed to a literal, so
+          this sentence stays true if either side moves. */
+      }
+      Two counts of the store are in circulation, and they differ by the{" "}
+      <strong>{objectsTotal - src.totals.objects}</strong> source cards. The{
+        " "
+      }
+      <strong>{objectsTotal}</strong> above is everything in <code>data/kb</code
+      >, cards included — a card describes a container rather than belonging to
+      one, so <a href={withBase("sources/")}>/sources</a> attributes{" "}
+      <strong>{src.totals.objects}</strong> objects to containers, and{" "}
+      <a href={withBase("slices/")}>/slices</a> counts that same set as typed objects.
+      Neither is wrong; they answer different questions, and this note is here so
+      nobody has to guess which.
+    </p>
 
     <h3 class="sys-h3">Authority — what is source of truth for what</h3>
     <p class="sys-note">
@@ -245,6 +277,17 @@ const GATES = [
 </Layout>
 
 <style>
+  .sys-reconcile {
+    margin: var(--space-6) 0 var(--space-10);
+    max-width: 72ch;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: var(--leading-body);
+  }
+  .sys-reconcile strong {
+    color: var(--text-primary);
+  }
+
   .lede {
     max-width: 60ch;
     color: var(--text-muted);

@@ -1,0 +1,679 @@
+---
+// /slices — crosscuts over the pipeline /system draws. Four anchored sections
+// (domains × schemas, the maturity funnel, the high-risk queue, boundary
+// tiers) plus one explicit deferral (geography, pending D9). Not in the main
+// nav — this is a working tool reached from /system, not a public surface.
+//
+// ── The arithmetic-honesty contract ────────────────────────────────────────
+// Three denominators are legitimately in play on this page and no section may
+// silently pick one for another:
+//   1. The STORE — every object, including the 6 source-system cards that
+//      describe a container rather than belonging to one.
+//   2. The TYPED total — the store minus those cards. This is what the live
+//      domain matrix, the funnel and the queue count.
+//   3. Narrower subsets within the typed total — the high-risk queue (a
+//      fraction of typed objects) and the boundary tiers (only the
+//      public-use-boundary schema). Both sections say so explicitly.
+// The committed summary's `by_domain` is a fourth wrinkle: derive-kb-summary
+// tallies it over EVERY stored object, cards included — unlike the live
+// matrix, which excludes them (see domainMatrix in slices.mjs). So on a
+// standalone-clone build the domains ranked list totals the STORE figure, not
+// the typed figure the funnel and queue use. The domains section names that
+// difference rather than letting two totals disagree silently.
+import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
+import { loadKb } from "../lib/kb.mjs";
+import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
+import { sourcesViewModel } from "../lib/sources.mjs";
+import {
+  domainMatrix,
+  maturityFunnel,
+  highRiskQueue,
+  boundaryTiers,
+} from "../lib/slices.mjs";
+import { withBase } from "../lib/paths";
+
+const INTERNAL = process.env.COMMONS_REVIEW === "1";
+const summaryPath = usingCommittedStore();
+
+// ── Container rows: sourcesViewModel() already handles its own dual path
+// (kb-summary.mjs), so nothing below branches on summaryPath to get them —
+// see the header note there and in system.astro.
+const { rows } = sourcesViewModel({ internal: INTERNAL });
+
+// TWO SEPARATE row sets, deliberately never merged. Both maturityFunnel() and
+// highRiskQueue() return a field named `total` meaning a different thing —
+// all objects in the container vs all high-risk objects in it. Spreading one
+// into the other (`{...funnelRow, ...queueRow}`) would silently clobber one
+// meaning with the other; keeping the arrays apart and joining only by `id`
+// when rendering is what keeps that from happening.
+const funnelRows = maturityFunnel(rows);
+const queueRows = highRiskQueue(rows);
+
+// by_maturity per container, for the funnel table's "other maturity" column —
+// maturityFunnel() only ever returns raw/reviewed/published, by design (see
+// its header comment), so anything else (today: `boundary`, the
+// public-use-boundary schema's maturity value) has to be read off the row
+// directly rather than invented.
+const byMaturity: Record<string, Record<string, number>> = Object.fromEntries(
+  rows.map((r: any) => [r.id, r.by_maturity ?? {}]),
+);
+function otherMaturity(id: string): {
+  entries: [string, number][];
+  total: number;
+} {
+  const by = byMaturity[id] ?? {};
+  const entries = (Object.entries(by) as [string, number][]).filter(
+    ([k]) => k !== "raw" && k !== "reviewed" && k !== "published",
+  );
+  const total = entries.reduce((n, [, c]) => n + c, 0);
+  return { entries, total };
+}
+
+// Rows with nothing to show (every count 0) are omitted from the tables
+// rather than padding them with empty containers — the omitted count is
+// named instead, so "omitted" never quietly means "hidden".
+const funnelShown = funnelRows.filter((r: any) => r.total > 0);
+const funnelOmitted = funnelRows.length - funnelShown.length;
+const funnelRawSum = funnelShown.reduce((n: number, r: any) => n + r.raw, 0);
+const funnelReviewedSum = funnelShown.reduce(
+  (n: number, r: any) => n + r.reviewed,
+  0,
+);
+const funnelPublishedSum = funnelShown.reduce(
+  (n: number, r: any) => n + r.published,
+  0,
+);
+const funnelOtherSum = funnelShown.reduce(
+  (n: number, r: any) => n + otherMaturity(r.id).total,
+  0,
+);
+const funnelTotalSum = funnelShown.reduce(
+  (n: number, r: any) => n + r.total,
+  0,
+);
+
+const queueShown = queueRows.filter((r: any) => r.total > 0);
+const queueOmitted = queueRows.length - queueShown.length;
+const queueTotalSum = queueShown.reduce((n: number, r: any) => n + r.total, 0);
+const queueUnresolvedSum = queueShown.reduce(
+  (n: number, r: any) => n + r.unresolved,
+  0,
+);
+const queueResolvedSum = queueShown.reduce(
+  (n: number, r: any) => n + r.resolved,
+  0,
+);
+
+// ── The typed-object denominator ────────────────────────────────────────
+// Live: the workspace store minus its source-system cards (same exclusion
+// domainMatrix applies). Summary: the committed containers' objects_total
+// summed — the committed by_domain figure is deliberately NOT used here, for
+// the reason in the header comment; it gets its own total in the domains
+// section below.
+//
+// `summary` is captured ONCE with a non-null assertion — kbSummary() throws
+// on a missing file rather than ever legitimately returning undefined (see
+// its header), so the assertion just tells TS what the runtime contract
+// already guarantees, rather than re-deriving it at every call site.
+const all = summaryPath ? null : loadKb();
+const summary = summaryPath ? kbSummary()! : null;
+const typedTotal = summaryPath
+  ? summary!.containers.reduce((n: number, c: any) => n + c.objects_total, 0)
+  : all!.filter((o: any) => o?.schema !== "source-system").length;
+const storeTotal = summaryPath ? summary!.objects_total : all!.length;
+const sourceCardTotal = storeTotal - typedTotal;
+
+// ── Domains × schemas ──────────────────────────────────────────────────
+type DomainMatrix = {
+  domains: string[];
+  schemas: string[];
+  cell: (domain: string, schema: string) => number;
+  rowTotal: (domain: string) => number;
+};
+const matrix: DomainMatrix | null = summaryPath ? null : domainMatrix(all!);
+
+const domainRanked: [string, number][] = summaryPath
+  ? (Object.entries(summary!.by_domain) as [string, number][]).sort(
+      ([da, na], [db, nb]) => nb - na || da.localeCompare(db),
+    )
+  : [];
+const domainListTotal = domainRanked.reduce((n, [, c]) => n + c, 0);
+
+// Which single source a matrix cell can honestly deep-link to. The review app
+// routes BY SOURCE, not by domain/schema (see review.astro — `#/src/<id>` is
+// the only container-scoped route), so a cell can only link into one source
+// when every typed object today sits in exactly one container. If that ever
+// stops being true, this degrades to "no link" rather than guessing which of
+// several sources a cell's objects came from.
+const populated = rows.filter(
+  (r: any) => r.id !== "unattributed" && r.objects_total > 0,
+);
+const matrixSourceId: string | null =
+  INTERNAL && matrix && populated.length === 1 ? populated[0].id : null;
+
+// ── Boundary tiers ───────────────────────────────────────────────────────
+const tiers: Record<string, number> = summaryPath
+  ? summary!.boundary_tiers
+  : boundaryTiers(all!);
+const tiersEntries: [string, number][] = Object.entries(tiers);
+const tiersTotal = tiersEntries.reduce((n, [, c]) => n + c, 0);
+
+const queuePct =
+  typedTotal > 0 ? Math.round((queueTotalSum / typedTotal) * 1000) / 10 : 0;
+
+const SECTIONS = [
+  { id: "domains", label: "Domains × schemas" },
+  { id: "funnel", label: "Maturity funnel" },
+  { id: "queue", label: "High-risk queue" },
+  { id: "tiers", label: "Boundary tiers" },
+  { id: "geography", label: "Geography (deferred)" },
+];
+---
+
+<Layout
+  title="Slices"
+  current="system"
+  section="Knowledge"
+  description="Crosscuts over the knowledge pipeline — domains by schema, the review funnel, the high-risk queue, and public-use-boundary tiers, each against a named denominator."
+>
+  <SectionBlock
+    id="slices"
+    title="Slices"
+    tissue={true}
+    tissueSeed={13}
+    intro="Crosscuts over the same store /system draws as a pipeline — not a new diagram, just the store sliced four different ways, plus one slice this instance does not build yet."
+  >
+    <p class="lede">
+      The store holds <strong>{storeTotal}</strong> objects:{" "}
+      <strong>{typedTotal}</strong> typed objects and{" "}
+      <strong>{sourceCardTotal}</strong> source-system cards — infrastructure describing
+      a container, not corpus members. Every number below names the set it counts:
+      most sections work over the {typedTotal} typed objects, the high-risk queue
+      and boundary tiers work over a named subset of them, and the domains list on
+      a summary build works over a slightly different total again, for a reason given
+      in that section. If a number here can't be traced to a stated denominator, that's
+      a bug in this page.
+    </p>
+
+    <nav class="sl-nav" aria-label="Sections on this page">
+      {
+        SECTIONS.map((s, i) => (
+          <>
+            {i > 0 && <span class="sl-nav__sep">·</span>}
+            <a href={`#${s.id}`}>{s.label}</a>
+          </>
+        ))
+      }
+    </nav>
+
+    <!-- ── Domains × schemas ────────────────────────────────────────────── -->
+    <section id="domains" class="sl-section">
+      <h3 class="sl-h3">Domains × schemas</h3>
+      {
+        matrix ? (
+          <>
+            <p class="sl-note">
+              <strong>{typedTotal}</strong> typed objects — the store's{" "}
+              {storeTotal} minus its {sourceCardTotal} source-system cards —
+              across <strong>{matrix.domains.length}</strong> domains ×{" "}
+              <strong>{matrix.schemas.length}</strong> schemas. A blank domain
+              groups under <code>unset</code> rather than vanishing from the
+              total.
+            </p>
+            <div class="sl-tablewrap">
+              <table class="sl-table sl-matrix">
+                <thead>
+                  <tr>
+                    <th scope="col">Domain</th>
+                    {matrix.schemas.map((s) => (
+                      <th scope="col">{s}</th>
+                    ))}
+                    <th scope="col">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrix.domains.map((d) => (
+                    <tr>
+                      <td>{d}</td>
+                      {matrix!.schemas.map((s) => {
+                        const n = matrix!.cell(d, s);
+                        return (
+                          <td class:list={[{ "sl-zero": n === 0 }]}>
+                            {n > 0 && matrixSourceId ? (
+                              <a
+                                href={withBase(
+                                  `review/#/src/${matrixSourceId}`,
+                                )}
+                              >
+                                {n}
+                              </a>
+                            ) : (
+                              n
+                            )}
+                          </td>
+                        );
+                      })}
+                      <td class="sl-rowtotal">{matrix!.rowTotal(d)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>All domains</td>
+                    {matrix.schemas.map((s) => {
+                      const colTotal = matrix!.domains.reduce(
+                        (n, d) => n + matrix!.cell(d, s),
+                        0,
+                      );
+                      return <td>{colTotal}</td>;
+                    })}
+                    <td class="sl-rowtotal">
+                      {matrix.domains.reduce(
+                        (n, d) => n + matrix!.rowTotal(d),
+                        0,
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            {INTERNAL && matrixSourceId && (
+              <p class="sl-note">
+                Internal build: non-zero cells open the review lens for{" "}
+                <code>{matrixSourceId}</code> — currently the only container
+                holding typed objects, so every cell resolves to it
+                unambiguously. Domain and schema filters are set inside the app;
+                the review app routes by source only, so this link does not
+                carry them.
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            <p class="sl-note">
+              No per-schema breakdown is committed for a standalone build, so
+              this renders as a <strong>ranked list, not a matrix</strong> —
+              filling in cells this build cannot see would be fake data. It
+              totals <strong>{domainListTotal}</strong>, which is{" "}
+              {sourceCardTotal} more than the {typedTotal} typed objects the
+              funnel and queue below count: the committed <code>by_domain</code>{" "}
+              rollup was tallied over every stored object, source-system cards
+              included, unlike the live matrix above (which excludes them).
+              Those {sourceCardTotal} cards all carry no domain, so they land in{" "}
+              <code>unset</code> alongside everything else with none set.
+            </p>
+            <ol class="sl-ranked">
+              {domainRanked.map(([d, n]) => (
+                <li>
+                  <span class="sl-ranked__label">{d}</span>
+                  <span class="sl-ranked__n">{n}</span>
+                </li>
+              ))}
+            </ol>
+          </>
+        )
+      }
+    </section>
+
+    <!-- ── Maturity funnel ──────────────────────────────────────────────── -->
+    <section id="funnel" class="sl-section">
+      <h3 class="sl-h3">Maturity funnel</h3>
+      <p class="sl-note">
+        Per-container <code>raw</code> / <code>reviewed</code> /{" "}
+        <code>published</code> — the review funnel's three stages. Where a container's
+        total is larger than those three added together, the rest is named in its
+        own column rather than silently making the funnel sum to the container total:
+        today that gap is entirely{" "}
+        <code>boundary</code>, the maturity value public-use-boundary records
+        carry (a governance classification, not a review stage — see{" "}
+        <a href="#tiers">boundary tiers</a> below).
+      </p>
+      {
+        funnelShown.length > 0 && (
+          <div class="sl-tablewrap">
+            <table class="sl-table">
+              <thead>
+                <tr>
+                  <th scope="col">Source</th>
+                  <th scope="col">Raw</th>
+                  <th scope="col">Reviewed</th>
+                  <th scope="col">Published</th>
+                  <th scope="col">Other maturity</th>
+                  <th scope="col">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {funnelShown.map((f: any) => {
+                  const other = otherMaturity(f.id);
+                  return (
+                    <tr>
+                      <td>{f.title}</td>
+                      <td>{f.raw}</td>
+                      <td>{f.reviewed}</td>
+                      <td>{f.published}</td>
+                      <td>
+                        {other.entries.length > 0
+                          ? other.entries
+                              .map(([k, n]) => `${n} ${k}`)
+                              .join(", ")
+                          : "—"}
+                      </td>
+                      <td class="sl-rowtotal">{f.total}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>All sources shown</td>
+                  <td>{funnelRawSum}</td>
+                  <td>{funnelReviewedSum}</td>
+                  <td>{funnelPublishedSum}</td>
+                  <td>{funnelOtherSum}</td>
+                  <td class="sl-rowtotal">{funnelTotalSum}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )
+      }
+      <p class="sl-sum">
+        {funnelRawSum} raw + {funnelReviewedSum} reviewed +{" "}
+        {funnelPublishedSum} published + {funnelOtherSum} other maturity ={" "}
+        {funnelTotalSum} typed objects shown here.
+      </p>
+      {
+        funnelOmitted > 0 && (
+          <p class="sl-note">
+            {funnelOmitted} container(s) hold no typed objects yet and are
+            omitted from this table — every count for them would read 0.
+          </p>
+        )
+      }
+    </section>
+
+    <!-- ── High-risk queue ──────────────────────────────────────────────── -->
+    <section id="queue" class="sl-section">
+      <h3 class="sl-h3">High-risk queue</h3>
+      <p class="sl-note">
+        A narrower denominator than the rest of this page:{" "}
+        <strong>{queueTotalSum}</strong> of the {typedTotal} typed objects (
+        {queuePct}%) carry a high-risk flag (Indigenous/TEK, personal, or
+        governance-sensitive material) — not all {typedTotal}, only that subset. <code
+          >unresolved</code
+        > means still at maturity{" "}
+        <code>raw</code>; <code>resolved</code> is total minus unresolved, floored
+        at 0.
+      </p>
+      {
+        queueShown.length > 0 && (
+          <div class="sl-tablewrap">
+            <table class="sl-table">
+              <thead>
+                <tr>
+                  <th scope="col">Source</th>
+                  <th scope="col">High-risk</th>
+                  <th scope="col">Unresolved</th>
+                  <th scope="col">Resolved</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queueShown.map((r: any) => (
+                  <tr>
+                    <td>
+                      {INTERNAL ? (
+                        <a href={withBase(`review/#/src/${r.id}`)}>{r.title}</a>
+                      ) : (
+                        r.title
+                      )}
+                    </td>
+                    <td class="sl-rowtotal">{r.total}</td>
+                    <td>{r.unresolved}</td>
+                    <td>{r.resolved}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>All sources shown</td>
+                  <td class="sl-rowtotal">{queueTotalSum}</td>
+                  <td>{queueUnresolvedSum}</td>
+                  <td>{queueResolvedSum}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )
+      }
+      <p class="sl-sum">
+        {queueUnresolvedSum} unresolved + {queueResolvedSum} resolved ={" "}
+        {queueTotalSum} high-risk objects shown here.
+      </p>
+      {
+        INTERNAL && queueShown.length > 0 && (
+          <p class="sl-note">
+            Internal build: each source name opens the review lens scoped to
+            that container — the high-risk and raw filters are set inside the
+            app, not carried by the link.
+          </p>
+        )
+      }
+      {
+        queueOmitted > 0 && (
+          <p class="sl-note">
+            {queueOmitted} container(s) hold no high-risk objects and are
+            omitted from this table.
+          </p>
+        )
+      }
+    </section>
+
+    <!-- ── Boundary tiers ───────────────────────────────────────────────── -->
+    <section id="tiers" class="sl-section">
+      <h3 class="sl-h3">Boundary tiers</h3>
+      <p class="sl-note">
+        Another named subset: <strong>{tiersTotal}</strong>{" "}
+        public-use-boundary records, tiered by how each may be reused publicly — not
+        {typedTotal} typed objects, just the ones carrying the <code
+          >boundary</code
+        > maturity value named in the funnel above.
+      </p>
+      <dl class="sl-tiers">
+        {
+          tiersEntries.map(([tier, n]) => (
+            <>
+              <dt>{tier}</dt>
+              <dd>{n}</dd>
+            </>
+          ))
+        }
+      </dl>
+    </section>
+
+    <!-- ── Geography (deferred) ─────────────────────────────────────────── -->
+    <section id="geography" class="sl-section">
+      <h3 class="sl-h3">Geography</h3>
+      <p class="sl-note">
+        Deferred pending <strong>D9</strong> — the open decision on Catalonia map
+        convergence (Giulio's actor map vs. <code>/atlas</code>
+        , both maintained today, neither authoritative). Once D9 resolves, this section
+        will show <strong
+          >CRM comarca coverage crossed with KB entity coverage</strong
+        >: for each comarca, how many CRM-tracked actors sit there (the <code
+          >Area2</code
+        > field <code>/atlas</code>{" "}
+        already places by) against how many KB objects reference that comarca, surfacing
+        gaps between who the CRM knows about and what the knowledge base has actually
+        written up. No numbers here today — building that crosscut before D9 lands
+        would presume an answer nobody has given yet.
+      </p>
+    </section>
+
+    {
+      summaryPath && (
+        <p class="sl-dualpath">
+          This build has no workspace store, so the domains section above
+          renders the committed ranked list rather than the live matrix — the
+          standalone-clone half of the dual-path contract. See the header
+          comment in <code>src/lib/kb-summary.mjs</code>.
+        </p>
+      )
+    }
+  </SectionBlock>
+</Layout>
+
+<style>
+  .lede {
+    max-width: 66ch;
+    color: var(--text-muted);
+    line-height: var(--leading-body);
+  }
+  .sl-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: var(--space-6) 0 var(--space-10);
+    padding: 10px 14px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    background: var(--surface-1);
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .sl-nav a {
+    color: var(--text-primary);
+  }
+  .sl-nav__sep {
+    color: var(--text-muted);
+  }
+  .sl-section {
+    margin-top: var(--space-12);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border-subtle);
+  }
+  .sl-section:first-of-type {
+    margin-top: 0;
+  }
+  .sl-h3 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--text-md);
+    scroll-margin-top: var(--space-8);
+  }
+  .sl-note {
+    margin: 0 0 var(--space-4);
+    max-width: 74ch;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: var(--leading-body);
+  }
+  .sl-note code {
+    font-size: 0.82rem;
+  }
+  .sl-sum {
+    margin: var(--space-3) 0 0;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+  }
+  .sl-tablewrap {
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .sl-table {
+    border-collapse: collapse;
+    font-size: 0.82rem;
+    min-width: 100%;
+  }
+  .sl-table th,
+  .sl-table td {
+    text-align: left;
+    padding: 6px 10px 6px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: top;
+    white-space: nowrap;
+  }
+  .sl-table th {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+  }
+  .sl-table td:first-child {
+    color: var(--text-primary);
+    white-space: normal;
+    max-width: 32ch;
+  }
+  .sl-table tfoot td {
+    border-top: 1px solid var(--border-default);
+    border-bottom: none;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .sl-matrix td,
+  .sl-matrix th {
+    text-align: right;
+    padding: 4px 8px;
+  }
+  .sl-matrix td:first-child,
+  .sl-matrix th:first-child {
+    text-align: left;
+  }
+  .sl-zero {
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+  .sl-rowtotal {
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .sl-ranked {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 3px;
+    max-width: 60ch;
+    font-size: 0.85rem;
+  }
+  .sl-ranked li {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .sl-ranked__label {
+    color: var(--text-primary);
+  }
+  .sl-ranked__n {
+    font-family: var(--serif);
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .sl-tiers {
+    display: grid;
+    grid-template-columns: max-content max-content;
+    gap: 4px var(--space-6);
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  .sl-tiers dt {
+    color: var(--text-muted);
+  }
+  .sl-tiers dd {
+    margin: 0;
+    font-family: var(--serif);
+    color: var(--text-primary);
+  }
+  .sl-dualpath {
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+</style>

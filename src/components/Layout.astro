@@ -62,7 +62,12 @@ const canonical = new URL(Astro.url.pathname, site.url).href;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
-    {noindex && <meta name="robots" content="noindex" />}
+    {
+      /* Site-wide gate first (site.yaml `indexing: false` while the hub is
+        internal-in-purpose), per-page `noindex` prop as the override for
+        individual pages once indexing flips on at launch. */
+    }
+    {(!site.indexing || noindex) && <meta name="robots" content="noindex" />}
     <title>{pageTitle}</title>
     <link rel="icon" href={withBase("favicon.ico")} sizes="32x32" />
     <link rel="icon" href={withBase("favicon.svg")} type="image/svg+xml" />

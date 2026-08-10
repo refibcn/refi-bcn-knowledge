@@ -29,6 +29,10 @@ export interface Site {
   description: string;
   /** Legal / status line in the footer. */
   legalNote: string;
+  /** When false, Layout emits a site-wide `<meta name="robots" content="noindex">`.
+   *  The hub is internal-in-purpose while curation runs; the September launch
+   *  flips this to true in site.yaml and nothing else moves. */
+  indexing: boolean;
 }
 
 const SOURCE = "src/data/site.yaml";
@@ -59,11 +63,21 @@ function loadSite(): Site {
     throw new Error(`${SOURCE} "url" is not an absolute URL: ${url}`);
   }
 
+  // Explicitly boolean, and REQUIRED: an absent key must not silently mean
+  // "indexable". Making the author write `indexing: true` is what makes the
+  // launch flip a deliberate act rather than a default nobody chose.
+  if (typeof record["indexing"] !== "boolean") {
+    throw new Error(
+      `${SOURCE} "indexing" must be an explicit boolean — false while the hub is internal, true at launch.`,
+    );
+  }
+
   return {
     name: record["name"] as string,
     url,
     description: record["description"] as string,
     legalNote: record["legalNote"] as string,
+    indexing: record["indexing"],
   };
 }
 

@@ -5,3 +5,7 @@ name: ReFi Barcelona
 url: https://knowledge.refibcn.cat
 description: Shared knowledge base for ReFi Barcelona — organizations, programs, events and bioregional priorities, each entry reviewed and carrying its source.
 legalNote: ReFi BCN · Cooperative in formation · Barcelona
+# The hub is internal-in-purpose while curation runs (its own hero says
+# "internal working surface"), so it ships site-wide noindex. Flipping this to
+# true at the September launch is this one line — nothing else moves.
+indexing: false

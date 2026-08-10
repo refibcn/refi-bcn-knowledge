@@ -35,7 +35,10 @@ const year = new Date().getFullYear();
             >refibcn.cat</a
           >
         </li>
-        <li><a href={withBase("about/")}>About</a></li>
+        {
+          /* No "About" link — src/pages/about.astro has never existed and this
+            404'd on every page. Restore alongside the page, not before. */
+        }
       </ul>
     </div>
   </div>

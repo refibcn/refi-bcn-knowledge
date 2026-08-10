@@ -272,5 +272,71 @@
       "high_risk_count": 0,
       "unresolved_high_risk": 0
     }
-  ]
+  ],
+  "collections": {
+    "catalunya": {
+      "members_total": 15,
+      "publishable_total": 0,
+      "by_schema": {
+        "claim-evidence": 2,
+        "concept-lineage": 1,
+        "encyclopedia-entry": 2,
+        "resource": 5,
+        "signal": 5
+      },
+      "by_container": {
+        "refi-bcn-old-kb": 15
+      }
+    }
+  },
+  "by_domain": {
+    "bioregional-catalunya": 17,
+    "bioregional-education": 3,
+    "bioregional-finance": 118,
+    "bioregional-international": 3,
+    "bioregionalism": 5,
+    "community-building": 4,
+    "cooperative": 4,
+    "cooperative-culture": 1,
+    "cooperative-culture-barcelona": 12,
+    "cooperative-finance": 11,
+    "cooperative-governance": 3,
+    "digital-commons": 1,
+    "eco-design": 1,
+    "ecosystem": 3,
+    "ecosystem-mapping": 4,
+    "environmental-education": 1,
+    "finance": 1,
+    "funding": 13,
+    "funding-public-goods": 13,
+    "global-ecosystem": 6,
+    "governance": 17,
+    "governance-coordination": 7,
+    "knowledge-commons": 3,
+    "knowledge-infrastructure": 1,
+    "knowledge-management": 1,
+    "local-economies": 1,
+    "local-governance": 13,
+    "local-nodes": 16,
+    "refi-dao-org": 1,
+    "refi-ecosystem": 9,
+    "regenerant-catalunya": 28,
+    "regenerative-economics": 3,
+    "regenerative-finance": 10,
+    "unset": 68,
+    "urban-ecology": 4,
+    "web3-blockchain": 2,
+    "web3-funding-mechanisms": 5,
+    "web3-infrastructure": 9
+  },
+  "maturity": {
+    "raw": 368,
+    "reviewed": 0,
+    "published": 0,
+    "boundary": 54
+  },
+  "boundary_tiers": {
+    "never-publish-without-consent": 1,
+    "public-with-caveat": 53
+  }
 }

@@ -27,6 +27,10 @@ import {
   assertNoObjectLeak,
   OUT_FILE,
 } from "../scripts/derive-kb-summary.mjs";
+import {
+  loadCollections,
+  collectionsViewModel,
+} from "../src/lib/collections.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const WORKSPACE_DIR = resolve(REPO_ROOT, "..", "..", "data", "kb");
@@ -239,3 +243,90 @@ test("a missing summary file throws rather than degrading to zeros", () => {
     /derive:kb-summary/,
   );
 });
+
+// ── T1.2: the four rollups — collections, by_domain, maturity, boundary_tiers ──
+// collections.mjs's `collectionsViewModel()` THROWS on the summary path until
+// this rollup exists (deliberately — see its module header). These tests pin
+// the write side: the rollups the read side depends on, present and shaped
+// exactly right. Anything that reads the committed file (rather than
+// re-deriving from the live store) needs no `noWorkspace` skip.
+
+test("every collection in collections.yaml has a rollup entry in the committed summary", () => {
+  const defs = loadCollections();
+  const s = kbSummary();
+  for (const id of Object.keys(defs)) {
+    assert.ok(
+      s.collections && s.collections[id],
+      `missing collections rollup for "${id}" — re-run \`npm run derive:kb-summary\``,
+    );
+  }
+});
+
+test("a collections rollup entry has exactly the four keys — members_total, not objects_total (TRAP 1)", () => {
+  const s = kbSummary();
+  assert.ok(s.collections && Object.keys(s.collections).length > 0);
+  for (const [id, entry] of Object.entries(s.collections)) {
+    assert.deepEqual(
+      Object.keys(entry).sort(),
+      ["by_container", "by_schema", "members_total", "publishable_total"],
+      id,
+    );
+  }
+});
+
+test("by_domain sums to objects_total, with unset domains bucketed rather than dropped", () => {
+  const s = kbSummary();
+  assert.ok(s.by_domain);
+  const tally = Object.values(s.by_domain).reduce((a, b) => a + b, 0);
+  assert.equal(tally, s.objects_total);
+});
+
+test("maturity sums to objects_total and always carries raw/reviewed/published", () => {
+  const s = kbSummary();
+  assert.ok(s.maturity);
+  for (const k of ["raw", "reviewed", "published"]) {
+    assert.ok(
+      Number.isInteger(s.maturity[k]),
+      `maturity.${k} must be present even at zero`,
+    );
+  }
+  const tally = Object.values(s.maturity).reduce((a, b) => a + b, 0);
+  assert.equal(tally, s.objects_total);
+});
+
+test("boundary_tiers sums to the public-use-boundary count in by_schema", () => {
+  const s = kbSummary();
+  assert.ok(s.boundary_tiers);
+  const tally = Object.values(s.boundary_tiers).reduce((a, b) => a + b, 0);
+  assert.equal(tally, s.by_schema["public-use-boundary"] ?? 0);
+});
+
+test(
+  "round trip: the freshly derived summary feeds collectionsViewModel() and agrees with the live path",
+  { skip: noWorkspace },
+  () => {
+    const objects = loadKb(WORKSPACE_DIR);
+    const fresh = deriveKbSummary(objects);
+    const defs = loadCollections();
+
+    const live = collectionsViewModel({ objects, fromSummary: false, defs });
+    let vm;
+    assert.doesNotThrow(() => {
+      vm = collectionsViewModel({
+        objects: [],
+        fromSummary: true,
+        summary: fresh,
+        defs,
+      });
+    });
+    for (const row of live.rows) {
+      const summaryRow = vm.rows.find((r) => r.id === row.id);
+      assert.equal(
+        summaryRow.members_total,
+        row.members_total,
+        `${row.id}.members_total: summary path and live path must agree`,
+      );
+      assert.equal(summaryRow.publishable_total, row.publishable_total, row.id);
+    }
+  },
+);

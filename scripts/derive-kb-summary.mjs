@@ -44,7 +44,10 @@ import {
   sourceContainers,
   resolveKbDir,
   PUBLIC_KB_DIR,
+  UNATTRIBUTED,
+  sortedCounts,
 } from "../src/lib/kb.mjs";
+import { loadCollections, collectionMembers } from "../src/lib/collections.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
@@ -69,6 +72,18 @@ const CONTAINER_KEYS = [
   "by_maturity",
   "high_risk_count",
   "unresolved_high_risk",
+];
+
+/** Collections-rollup keys. NOTE the count field is `members_total`, not
+ *  `objects_total` — the neighbouring CONTAINER_KEYS above names its count
+ *  `objects_total`, but src/lib/collections.mjs's `RollupSchema` (`.strict()`)
+ *  requires `members_total` and throws at read time on anything else,
+ *  `objects_total` included. Do not copy CONTAINER_KEYS's name here. */
+const COLLECTION_KEYS = [
+  "members_total",
+  "publishable_total",
+  "by_schema",
+  "by_container",
 ];
 
 /**
@@ -103,6 +118,12 @@ function flattenCard(card) {
  *     leak from a shared proper noun, so it is not used.
  *   - case matters: `repos/ReFi-Barcelona/` in `origin_prefixes` is not the slug
  *     `refi-barcelona`.
+ *   - a compound slug can BE a domain-vocabulary term (T1.2, `by_domain`): the
+ *     encyclopedia entry about the "refi-ecosystem" domain is slugged
+ *     `refi-ecosystem`, and `resource/refi-dao`'s slug is a hyphen-bounded
+ *     prefix of the unrelated domain `refi-dao-org`. by_domain carries those
+ *     domain names regardless of which objects use them, so this is scoped
+ *     out below rather than flagged.
  *
  * A guard that cries wolf gets suppressed, so it is deliberately narrow here and
  * paired with the structural key/value assertions in deriveKbSummary(), which is
@@ -112,11 +133,36 @@ function flattenCard(card) {
  * @param {import("../src/lib/kb.mjs").KbObject[]} objects
  */
 export function assertNoObjectLeak(json, objects) {
+  // A THIRD earned false-positive class (T1.2, `by_domain`): `o.domain` values
+  // are a small, enumerable, curated taxonomy (~40 terms today) that the
+  // by_domain rollup deliberately publishes — vocabulary, not object
+  // identity. Reproduced on the real store: the encyclopedia entry ABOUT the
+  // "refi-ecosystem" domain has that domain name as its own slug
+  // (`encyclopedia-entry/refi-ecosystem`), and `resource/refi-dao`'s slug is
+  // a hyphen-bounded PREFIX of the unrelated domain "refi-dao-org" carried by
+  // other objects entirely. Neither collision has anything to do with THESE
+  // two objects being exposed — by_domain would carry "refi-ecosystem" and
+  // "refi-dao-org" regardless of which objects happen to use those domains,
+  // exactly like the "Bar·celo·na" single-word case below, just compound.
+  // Scoped to the live domain vocabulary derived from the SAME `objects` this
+  // call already receives, so it tracks the corpus rather than a hardcoded
+  // list, and it exempts only the specific slug that collides — it does not
+  // touch the probe for any other object.
+  const domainVocab = [
+    ...new Set(objects.map((o) => o.domain).filter(Boolean)),
+  ];
+  const collidesWithDomainVocab = (slug) => {
+    const escaped = slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const boundary = new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`);
+    return domainVocab.some((d) => d === slug || boundary.test(d));
+  };
+
   /** @type {string[]} */
   const hits = [];
   for (const o of objects) {
     if (o.schema === "source-system") continue; // the cards ARE the summary
     if (!o.slug || !o.slug.includes("-")) continue;
+    if (collidesWithDomainVocab(o.slug)) continue;
     const escaped = o.slug.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     if (new RegExp(`(?<![A-Za-z0-9])${escaped}(?![A-Za-z0-9])`).test(json)) {
       hits.push(`slug ${o.schema}/${o.slug}`);
@@ -173,6 +219,72 @@ export function deriveKbSummary(objects = loadKb()) {
     schemas.map((s) => [s, objects.filter((o) => o.schema === s).length]),
   );
 
+  // by_domain — objects per domain. Empty/missing domain is bucketed as
+  // "unset" rather than left out or keyed on `undefined` — the same rule
+  // sourceContainers()'s by_maturity tally follows in kb.mjs ("never let
+  // `undefined` become a property name, and never let it vanish from the
+  // tally"). sortedCounts() so this orders identically to every other rollup
+  // here, and to the live collectionsViewModel() computation.
+  const domainTally = new Map();
+  for (const o of objects) {
+    const d = o.domain || "unset";
+    domainTally.set(d, (domainTally.get(d) ?? 0) + 1);
+  }
+  const by_domain = sortedCounts(domainTally);
+
+  // maturity — the global funnel. raw/reviewed/published are seeded at zero so
+  // a consumer can read `summary.maturity.published` without an `?? 0` guard;
+  // any OTHER value (e.g. "boundary", the maturity loadKb() assigns
+  // public-use-boundary objects — see kb.mjs's normalization) gets its own
+  // bucket rather than being folded into one of the three or dropped.
+  const maturity = { raw: 0, reviewed: 0, published: 0 };
+  for (const o of objects) {
+    const m = o.maturity || "unset";
+    maturity[m] = (maturity[m] ?? 0) + 1;
+  }
+
+  // boundary_tiers — public-use-boundary objects by tier, "unset" for a
+  // missing tier.
+  const tierTally = new Map();
+  for (const o of objects) {
+    if (o.schema !== "public-use-boundary") continue;
+    const t = o.raw?.tier ?? "unset";
+    tierTally.set(t, (tierTally.get(t) ?? 0) + 1);
+  }
+  const boundary_tiers = sortedCounts(tierTally);
+
+  // collections — per-collection rollup, computed with the T1.1 API
+  // (collectionMembers) so this script never reimplements membership. This is
+  // the write-side twin of collectionsViewModel()'s live-path computation in
+  // src/lib/collections.mjs — same containerOf/pub construction, same tallies
+  // — so the two paths agree by construction rather than by coincidence.
+  const byObject = new Map();
+  for (const c of containers)
+    for (const o of c.objects) byObject.set(o.id, c.id);
+  const containerOf = (id) => byObject.get(id) ?? UNATTRIBUTED;
+  const pub = new Set(publishableKb(objects).map((o) => o.id));
+
+  const collections = {};
+  for (const def of Object.values(loadCollections())) {
+    const members = collectionMembers(def, objects, containerOf);
+    const bySchemaTally = new Map();
+    const byContainerTally = new Map();
+    for (const m of members) {
+      bySchemaTally.set(m.schema, (bySchemaTally.get(m.schema) ?? 0) + 1);
+      const c = containerOf(m.id);
+      byContainerTally.set(c, (byContainerTally.get(c) ?? 0) + 1);
+    }
+    collections[def.id] = {
+      // NOT `objects_total` — see COLLECTION_KEYS above and TRAP 1 in the
+      // T1.2 plan. src/lib/collections.mjs's RollupSchema is `.strict()` and
+      // requires exactly this name.
+      members_total: members.length,
+      publishable_total: members.filter((m) => pub.has(m.id)).length,
+      by_schema: sortedCounts(bySchemaTally),
+      by_container: sortedCounts(byContainerTally),
+    };
+  }
+
   const summary = {
     _comment: GENERATED_COMMENT,
     objects_total: objects.length,
@@ -196,6 +308,10 @@ export function deriveKbSummary(objects = loadKb()) {
       // check (3).
       unresolved_high_risk: c.unresolved_high_risk,
     })),
+    collections,
+    by_domain,
+    maturity,
+    boundary_tiers,
   };
 
   // Shape assertions. Cheap, and they turn a future silent omission — a renamed
@@ -208,6 +324,10 @@ export function deriveKbSummary(objects = loadKb()) {
     "published",
     "by_schema",
     "containers",
+    "collections",
+    "by_domain",
+    "maturity",
+    "boundary_tiers",
   ];
   if (top !== [...TOP_KEYS].sort().join(",")) {
     throw new Error(
@@ -259,6 +379,58 @@ export function deriveKbSummary(objects = loadKb()) {
       `derive-kb-summary: ${contained} objects in containers + ${cardCount} cards ` +
         `!= ${summary.objects_total} objects in the store — some object is in no container ` +
         "and not a card, which the `unattributed` canary should have caught.",
+    );
+  }
+
+  for (const [id, c] of Object.entries(summary.collections)) {
+    const keys = Object.keys(c).sort();
+    if (keys.join(",") !== [...COLLECTION_KEYS].sort().join(",")) {
+      throw new Error(
+        `derive-kb-summary: collection "${id}" has keys [${keys}], expected [${[...COLLECTION_KEYS].sort()}] — ` +
+          "the count field must be `members_total`, not `objects_total` (that name belongs to " +
+          "the containers rollup only; collections.mjs's RollupSchema is .strict() and rejects it).",
+      );
+    }
+    const tally = Object.values(c.by_schema).reduce((a, b) => a + b, 0);
+    if (tally !== c.members_total) {
+      throw new Error(
+        `derive-kb-summary: collection "${id}" by_schema sums to ${tally} but members_total is ${c.members_total}`,
+      );
+    }
+    if (c.publishable_total > c.members_total) {
+      throw new Error(
+        `derive-kb-summary: collection "${id}" reports ${c.publishable_total} publishable out of ` +
+          `${c.members_total} members — the subset cannot exceed the set.`,
+      );
+    }
+  }
+
+  const domainSum = Object.values(summary.by_domain).reduce((a, b) => a + b, 0);
+  if (domainSum !== summary.objects_total) {
+    throw new Error(
+      `derive-kb-summary: by_domain sums to ${domainSum} but objects_total is ${summary.objects_total}`,
+    );
+  }
+
+  const maturitySum = Object.values(summary.maturity).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  if (maturitySum !== summary.objects_total) {
+    throw new Error(
+      `derive-kb-summary: maturity sums to ${maturitySum} but objects_total is ${summary.objects_total}`,
+    );
+  }
+
+  const boundaryCount = summary.by_schema["public-use-boundary"] ?? 0;
+  const boundaryTierTally = Object.values(summary.boundary_tiers).reduce(
+    (a, b) => a + b,
+    0,
+  );
+  if (boundaryTierTally !== boundaryCount) {
+    throw new Error(
+      `derive-kb-summary: boundary_tiers sums to ${boundaryTierTally} but by_schema["public-use-boundary"] ` +
+        `is ${boundaryCount}`,
     );
   }
 

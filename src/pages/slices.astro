@@ -133,6 +133,22 @@ type DomainMatrix = {
 };
 const matrix: DomainMatrix | null = summaryPath ? null : domainMatrix(all!);
 
+// Render order only — slices.mjs itself sorts `domains` alphabetically, and
+// that stays right for the module: it's what makes domainMatrix()'s output
+// deterministic for every consumer, not just this page, and the module is
+// frozen. But the store is steeply long-tailed (bioregional-finance 118,
+// then unset, then a long run of domains at 1-4), so alphabetical order
+// buries the signal among thirty-odd single-digit rows on the page. Sorting
+// by weight here — heaviest first, alphabetical tiebreak for determinism,
+// since built output is diffed — is a presentation choice local to this
+// page, not a change to what the module returns or how any other page uses
+// it.
+const matrixDomains: string[] = matrix
+  ? [...matrix.domains].sort(
+      (a, b) => matrix!.rowTotal(b) - matrix!.rowTotal(a) || a.localeCompare(b),
+    )
+  : [];
+
 const domainRanked: [string, number][] = summaryPath
   ? (Object.entries(summary!.by_domain) as [string, number][]).sort(
       ([da, na], [db, nb]) => nb - na || da.localeCompare(db),
@@ -219,10 +235,16 @@ const SECTIONS = [
               across <strong>{matrix.domains.length}</strong> domains ×{" "}
               <strong>{matrix.schemas.length}</strong> schemas. A blank domain
               groups under <code>unset</code> rather than vanishing from the
-              total.
+              total. Rows are ordered by weight — heaviest domain first, ties
+              alphabetical — so the long tail of single-digit domains doesn't
+              bury the signal.
             </p>
             <div class="sl-tablewrap">
               <table class="sl-table sl-matrix">
+                <caption class="sl-caption">
+                  Domain × schema counts for the {typedTotal} typed objects,
+                  ordered by domain weight (heaviest first).
+                </caption>
                 <thead>
                   <tr>
                     <th scope="col">Domain</th>
@@ -233,9 +255,9 @@ const SECTIONS = [
                   </tr>
                 </thead>
                 <tbody>
-                  {matrix.domains.map((d) => (
+                  {matrixDomains.map((d) => (
                     <tr>
-                      <td>{d}</td>
+                      <th scope="row">{d}</th>
                       {matrix!.schemas.map((s) => {
                         const n = matrix!.cell(d, s);
                         return (
@@ -260,16 +282,16 @@ const SECTIONS = [
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td>All domains</td>
+                    <th scope="row">All domains</th>
                     {matrix.schemas.map((s) => {
-                      const colTotal = matrix!.domains.reduce(
+                      const colTotal = matrixDomains.reduce(
                         (n, d) => n + matrix!.cell(d, s),
                         0,
                       );
                       return <td>{colTotal}</td>;
                     })}
                     <td class="sl-rowtotal">
-                      {matrix.domains.reduce(
+                      {matrixDomains.reduce(
                         (n, d) => n + matrix!.rowTotal(d),
                         0,
                       )}
@@ -278,14 +300,25 @@ const SECTIONS = [
                 </tfoot>
               </table>
             </div>
-            {INTERNAL && matrixSourceId && (
+            {INTERNAL && (
               <p class="sl-note">
-                Internal build: non-zero cells open the review lens for{" "}
-                <code>{matrixSourceId}</code> — currently the only container
-                holding typed objects, so every cell resolves to it
-                unambiguously. Domain and schema filters are set inside the app;
-                the review app routes by source only, so this link does not
-                carry them.
+                {matrixSourceId ? (
+                  <>
+                    Internal build: non-zero cells open the review lens for{" "}
+                    <code>{matrixSourceId}</code> — currently the only container
+                    holding typed objects, so every cell resolves to it
+                    unambiguously. Domain and schema filters are set inside the
+                    app; the review app routes by source only, so this link does
+                    not carry them.
+                  </>
+                ) : (
+                  <>
+                    Internal build: cells are plain numbers here because typed
+                    objects now span more than one container — a cell can no
+                    longer resolve to a single source unambiguously, so this
+                    page stops linking rather than guessing which one.
+                  </>
+                )}
               </p>
             )}
           </>
@@ -299,8 +332,9 @@ const SECTIONS = [
               {sourceCardTotal} more than the {typedTotal} typed objects the
               funnel and queue below count: the committed <code>by_domain</code>{" "}
               rollup was tallied over every stored object, source-system cards
-              included, unlike the live matrix above (which excludes them).
-              Those {sourceCardTotal} cards all carry no domain, so they land in{" "}
+              included, unlike the domains × schemas matrix a workspace build
+              renders in this section, which excludes them. Those{" "}
+              {sourceCardTotal} cards all carry no domain, so they land in{" "}
               <code>unset</code> alongside everything else with none set.
             </p>
             <ol class="sl-ranked">
@@ -333,6 +367,10 @@ const SECTIONS = [
         funnelShown.length > 0 && (
           <div class="sl-tablewrap">
             <table class="sl-table">
+              <caption class="sl-caption">
+                Per-container raw / reviewed / published counts, with any other
+                maturity value named separately.
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Source</th>
@@ -348,7 +386,7 @@ const SECTIONS = [
                   const other = otherMaturity(f.id);
                   return (
                     <tr>
-                      <td>{f.title}</td>
+                      <th scope="row">{f.title}</th>
                       <td>{f.raw}</td>
                       <td>{f.reviewed}</td>
                       <td>{f.published}</td>
@@ -366,7 +404,7 @@ const SECTIONS = [
               </tbody>
               <tfoot>
                 <tr>
-                  <td>All sources shown</td>
+                  <th scope="row">All sources shown</th>
                   <td>{funnelRawSum}</td>
                   <td>{funnelReviewedSum}</td>
                   <td>{funnelPublishedSum}</td>
@@ -410,6 +448,10 @@ const SECTIONS = [
         queueShown.length > 0 && (
           <div class="sl-tablewrap">
             <table class="sl-table">
+              <caption class="sl-caption">
+                Per-container high-risk object counts — total, unresolved, and
+                resolved.
+              </caption>
               <thead>
                 <tr>
                   <th scope="col">Source</th>
@@ -421,13 +463,13 @@ const SECTIONS = [
               <tbody>
                 {queueShown.map((r: any) => (
                   <tr>
-                    <td>
+                    <th scope="row">
                       {INTERNAL ? (
                         <a href={withBase(`review/#/src/${r.id}`)}>{r.title}</a>
                       ) : (
                         r.title
                       )}
-                    </td>
+                    </th>
                     <td class="sl-rowtotal">{r.total}</td>
                     <td>{r.unresolved}</td>
                     <td>{r.resolved}</td>
@@ -436,7 +478,7 @@ const SECTIONS = [
               </tbody>
               <tfoot>
                 <tr>
-                  <td>All sources shown</td>
+                  <th scope="row">All sources shown</th>
                   <td class="sl-rowtotal">{queueTotalSum}</td>
                   <td>{queueUnresolvedSum}</td>
                   <td>{queueResolvedSum}</td>
@@ -587,6 +629,13 @@ const SECTIONS = [
     font-size: 0.82rem;
     min-width: 100%;
   }
+  .sl-caption {
+    caption-side: top;
+    text-align: left;
+    margin: 0 0 6px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
   .sl-table th,
   .sl-table td {
     text-align: left;
@@ -595,19 +644,25 @@ const SECTIONS = [
     vertical-align: top;
     white-space: nowrap;
   }
-  .sl-table th {
+  .sl-table th[scope="col"] {
     font-family: var(--mono);
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--text-muted);
   }
-  .sl-table td:first-child {
+  .sl-table th[scope="row"] {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
     color: var(--text-primary);
     white-space: normal;
     max-width: 32ch;
   }
-  .sl-table tfoot td {
+  .sl-table tfoot td,
+  .sl-table tfoot th {
     border-top: 1px solid var(--border-default);
     border-bottom: none;
     font-weight: 500;
@@ -624,7 +679,6 @@ const SECTIONS = [
   }
   .sl-zero {
     color: var(--text-muted);
-    opacity: 0.5;
   }
   .sl-rowtotal {
     font-weight: 500;

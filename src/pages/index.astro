@@ -1,20 +1,29 @@
 ---
+// / — the hub home, structured AS the architecture (restructure 2026-08-10,
+// plan: docs/superpowers/plans/2026-08-10-hub-home-restructure.md).
+//
+// The page reads top-to-bottom as the pipeline reads left-to-right: several
+// BASES being consolidated (one card each, planned ones included) → ONE STORE
+// (the consolidation point, with the review gate stated) → CURATED COLLECTIONS
+// (definitions over the store) → PUBLIC SURFACES (what renders what cleared
+// review), with the working TOOLS in their own visually-distinct band. The
+// flow sentences live in each section's intro, so the interconnection is
+// narrated where it happens rather than asserted in a diagram.
+//
+// Honesty contract, unchanged from the rest of the site: every count comes
+// from a view-model or the dual-path store read — never a literal; every
+// number's denominator is stated in the adjacent prose; conditionals are
+// explicit (`> 0`), never bare `{arr.length && …}`.
 import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
 import { loadKb, publishableKb } from "../lib/kb.mjs";
 import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
 import { withBase } from "../lib/paths";
 
-// ── Status strip: same dual-path contract as /system and /knowledge ───────
-//
-// Count the LIVE workspace store when there is one, and fall back to the
-// committed aggregate only in a standalone clone (no workspace store).
-// Reading `kbSummary()` unconditionally would show stale numbers whenever the
-// store moves ahead of the committed file; reading `loadKb().length`
-// unconditionally would publish "0 objects" in a CI clone, a false public
-// claim about the corpus. Copied verbatim from system.astro, itself copied
-// from knowledge.astro:25-31.
+// ── Store counts: same dual-path contract as /system and /knowledge ───────
+// Live workspace store when there is one, committed aggregate in a clone.
 const all = loadKb();
 const summary = usingCommittedStore() ? kbSummary() : null;
 const objectsTotal = summary ? summary.objects_total : all.length;
@@ -23,71 +32,75 @@ const inReview = summary
   : all.filter((o) => o.maturity === "raw").length;
 const publishedCount = summary ? summary.published : publishableKb(all).length;
 
-// sourcesViewModel() already resolves its own dual path internally
-// (kb-summary.mjs), so no branch is needed here.
-const sourcesTotal = sourcesViewModel().totals.containers;
+// Per-schema tally for the store section, dual-path like everything above.
+const bySchemaTally: Record<string, number> = summary
+  ? (summary.by_schema as Record<string, number>)
+  : all.reduce((acc: Record<string, number>, o: any) => {
+      acc[o.schema] = (acc[o.schema] ?? 0) + 1;
+      return acc;
+    }, {});
+const bySchema: [string, number][] = Object.entries(bySchemaTally).sort(
+  (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+);
+const schemaCount = bySchema.length;
 
-// Collection DEFINITIONS come from a committed YAML file, identical on both
-// build paths — membership counts differ across the dual path, but the
-// number of defined collections does not, so no branch is needed here.
-const collectionsCount = collectionsViewModel().rows.length;
+// Both view-models resolve their own dual path internally.
+const src = sourcesViewModel();
+const col = collectionsViewModel();
+
+// The canary row belongs on /sources; here it appears only when it FAILS
+// (unattributed > 0), because a healthy zero is /sources' detail, not the
+// hub's headline.
+const bases = src.rows.filter((r) => r.id !== "unattributed");
+const attributedTotal = src.totals.objects;
 
 const statusStrip = [
   { label: "Objects", n: objectsTotal },
   { label: "In review", n: inReview },
   { label: "Published", n: publishedCount },
-  { label: "Sources", n: sourcesTotal },
-  { label: "Collections", n: collectionsCount },
+  { label: "Sources", n: src.totals.containers },
+  { label: "Collections", n: col.rows.length },
 ];
 
-// Working order: Collections is the curation frontier, Knowledge the public
-// lens on the same store, Sources what feeds it, System how it fits
-// together, Slices the crosscuts over that pipeline, Atlas the spatial lens,
-// Directory the CRM-fed trio, Priorities the indicators above all of it.
-const sections = [
-  {
-    label: "Collections",
-    href: withBase("collections/"),
-    blurb:
-      "Curated sub-scopes over the knowledge base — the curation frontier, where entries earn their way toward publication.",
-  },
+// One-line maturity summary per base, heaviest first — same vocabulary the
+// funnel on /slices uses, compressed to a phrase.
+const matLine = (by: Record<string, number>): string =>
+  Object.entries(by)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([m, n]) => `${n} ${m}`)
+    .join(" · ");
+
+const ROLE_LABEL: Record<string, string> = {
+  source: "source",
+  self: "self",
+  "render-target": "render target",
+};
+
+const surfaces = [
   {
     label: "Knowledge",
     href: withBase("knowledge/"),
-    blurb: "Public knowledge base pages compiled from the org-os KB engine.",
-  },
-  {
-    label: "Sources",
-    href: withBase("sources/"),
-    blurb:
-      "What feeds the knowledge base — every ingested source, what it holds, and how far it's been processed.",
-  },
-  {
-    label: "System",
-    href: withBase("system/"),
-    blurb:
-      "How the pipeline fits together — feeds, store, curation and surfaces, with live counts throughout.",
-  },
-  {
-    label: "Slices",
-    href: withBase("slices/"),
-    blurb:
-      "Crosscuts over the pipeline — domains by schema, the review funnel, the high-risk queue, and boundary tiers.",
+    blurb: "The public lens on the store — entries that cleared review.",
   },
   {
     label: "Atlas",
     href: withBase("atlas/"),
-    blurb:
-      "Catalunya map — comarques, territories and where the work is happening.",
+    blurb: "Catalunya map — comarques and where the work is happening.",
   },
   {
-    label: "Directory",
+    label: "Organizations",
     href: withBase("organizations/"),
-    // Names where the link actually lands. The card markup carries one link,
-    // and programs and events are separate CRM-fed pages reachable from the
-    // nav — a blurb naming all three would promise more than the click gives.
-    blurb:
-      "Organizations, fed from the Notion CRM — programs and events sit alongside it in the nav.",
+    blurb: "Actor directory, fed live from the Notion CRM at build time.",
+  },
+  {
+    label: "Programs",
+    href: withBase("programs/"),
+    blurb: "Programs & initiatives, fed live from the Notion CRM.",
+  },
+  {
+    label: "Events",
+    href: withBase("events/"),
+    blurb: "Gatherings and assemblies, fed live from the Notion CRM.",
   },
   {
     label: "Priorities",
@@ -95,25 +108,40 @@ const sections = [
     blurb: "Bioregional priorities and the indicators behind them.",
   },
 ];
+
+const tools = [
+  {
+    label: "System",
+    href: withBase("system/"),
+    note: "the pipeline drawn from its own data",
+  },
+  {
+    label: "Slices",
+    href: withBase("slices/"),
+    note: "crosscuts — domains, funnel, high-risk, tiers",
+  },
+  {
+    label: "Review",
+    href: withBase("review/"),
+    note: "the working set — password-gated",
+  },
+];
 ---
 
 <Layout title="Home" current="home">
-  <header class="intro">
+  <header class="home-intro">
     <p class="eyebrow">Knowledge base</p>
     <h1 class="display">A shared knowledge base for ReFi Barcelona.</h1>
     <p class="lede">
-      Two feeds — the local knowledge base compiled by the org-os KB engine, and
-      the Notion CRM behind the directory and the atlas. Each entry is
-      human-reviewed and carries the source it came from.
+      Several knowledge bases are being consolidated into one store, curated
+      into scoped collections, and published as they clear review. This page is
+      that pipeline, stage by stage.
     </p>
-    <p class="intro-note">
+    <p class="home-note">
       Internal working surface of the knowledge base — public entries appear as
       review promotes them.
     </p>
-  </header>
-
-  <section class="status">
-    <dl class="status-strip">
+    <dl class="home-strip">
       {
         statusStrip.map((s) => (
           <div>
@@ -123,73 +151,433 @@ const sections = [
         ))
       }
     </dl>
-  </section>
+  </header>
 
-  <section class="sections">
-    <ul>
+  <!-- ── STAGE 1 · the bases ─────────────────────────────────────────── -->
+  <SectionBlock
+    id="bases"
+    title="The bases"
+    tissue={true}
+    tissueSeed={5}
+    intro="Each base being consolidated, as its own container: what it is, what it holds, and how far its ingestion has come. Together they account for every attributed object in the store."
+  >
+    <ul class="home-bases">
       {
-        sections.map((s) => (
+        bases.map((r) => {
+          // Narrowed local: `r.disposition` is legitimately nullable, and TS
+          // cannot carry an optional-chain narrowing into sibling JSX.
+          const disp = r.disposition;
+          const awaiting =
+            r.objects_total === 0 &&
+            disp !== null &&
+            disp.applicable !== false &&
+            (disp.files_total ?? 0) > 0;
+          return (
+            <li class="home-base">
+              <div class="home-base__head">
+                <h3>
+                  <a href={withBase(r.href)}>{r.title}</a>
+                </h3>
+                <span
+                  class:list={["home-chip", `home-chip--${r.verdict.status}`]}
+                >
+                  {r.verdict.status}
+                </span>
+              </div>
+              <p class="home-base__meta">
+                <span class="home-role">{ROLE_LABEL[r.role] ?? r.role}</span>
+                {r.objects_total > 0 ? (
+                  <>
+                    {" · "}
+                    <strong>{r.objects_total}</strong> objects
+                  </>
+                ) : awaiting ? (
+                  // Un-batched corpus: nothing extracted yet, but the files
+                  // are counted and waiting — "how far its ingestion has
+                  // come" must show queued work, not render it as emptiness.
+                  <>
+                    {" · "}
+                    <strong>{disp!.files_total}</strong> files awaiting
+                    ingestion
+                  </>
+                ) : (
+                  // No ingestable corpus at all — the disposition's own
+                  // reason says why, in its own words.
+                  <> · {disp?.reason ?? "no object corpus — see its page"}</>
+                )}
+              </p>
+              {Object.keys(r.by_maturity).length > 0 && (
+                <p class="home-base__mat">{matLine(r.by_maturity)}</p>
+              )}
+            </li>
+          );
+        })
+      }
+      {
+        src.planned.map((p) => (
+          <li class="home-base home-base--planned">
+            <div class="home-base__head">
+              <h3>{p.title}</h3>
+              <span class="home-chip home-chip--planned">planned</span>
+            </div>
+            <p class="home-base__meta">{p.why}</p>
+            <p class="home-base__mat">Blocked on: {p.blocked_on}</p>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="home-sum">
+      The {src.totals.containers} bases above hold{" "}
+      <strong>{attributedTotal}</strong> attributed objects between them; the store's
+      own total is <strong>{objectsTotal}</strong> because each base also carries
+      a source card describing it — infrastructure, not corpus.
+      {
+        src.totals.unattributed > 0 && (
+          <strong>
+            {" "}
+            ⚠ {src.totals.unattributed} objects match no base — that is a fault;
+            see <a href={withBase("sources/")}>/sources</a>.
+          </strong>
+        )
+      }
+    </p>
+  </SectionBlock>
+
+  <div class="home-flow" aria-hidden="true">
+    <span class="home-flow__line"></span>
+    <span class="home-flow__label">every base lands in the same store</span>
+  </div>
+
+  <!-- ── STAGE 2 · one store ─────────────────────────────────────────── -->
+  <SectionBlock
+    id="store"
+    title="One store"
+    alt={true}
+    intro="The consolidation point: one typed store, one review gate. Nothing publishes from here until human review promotes it — the gate fails closed."
+  >
+    <dl class="home-store">
+      <div>
+        <dt>Objects</dt>
+        <dd>{objectsTotal}</dd>
+      </div>
+      <div>
+        <dt>Schemas</dt>
+        <dd>{schemaCount}</dd>
+      </div>
+      <div>
+        <dt>In review</dt>
+        <dd>{inReview}</dd>
+      </div>
+      <div>
+        <dt>Published</dt>
+        <dd>{publishedCount}</dd>
+      </div>
+    </dl>
+    <ul class="home-schemas">
+      {
+        bySchema.map(([schema, n]) => (
+          <li>
+            <span class="home-schemas__label">{schema}</span>
+            <span class="home-schemas__n">{n}</span>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="home-sum">
+      Typed objects from every base share one store and one vocabulary — that is
+      what makes them one knowledge base rather than several. How the pieces fit
+      is drawn, from this same data, at{" "}
+      <a href={withBase("system/")}>/system</a>.
+    </p>
+  </SectionBlock>
+
+  <div class="home-flow" aria-hidden="true">
+    <span class="home-flow__line"></span>
+    <span class="home-flow__label"
+      >curation draws scoped collections out of the store</span
+    >
+  </div>
+
+  <!-- ── STAGE 3 · curated collections ───────────────────────────────── -->
+  <SectionBlock
+    id="collections"
+    title="Curated collections"
+    tissue={true}
+    tissueSeed={3}
+    intro="Definitions over the store, never copies: each collection names a scope, an audience and a goal, and its membership is recomputed at every build. Entries appear publicly as review promotes them."
+  >
+    <ul class="home-cols">
+      {
+        col.rows.map((c) => (
+          <li class="home-col">
+            <div class="home-base__head">
+              <h3>
+                <a href={withBase(c.href)}>{c.title}</a>
+              </h3>
+              <span class:list={["home-chip", `home-chip--${c.status}`]}>
+                {c.status}
+              </span>
+            </div>
+            {c.goal && <p class="home-base__meta">{c.goal}</p>}
+            <p class="home-base__mat">
+              <strong>{c.members_total}</strong> members ·{" "}
+              <strong>{c.publishable_total}</strong> publishable
+              {c.publishable_total === 0 &&
+                " — entries appear as review promotes them"}
+            </p>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="home-sum">
+      More collections are defined as scopes settle — the definitions live in
+      one reviewed file, and{" "}
+      <a href={withBase("collections/")}>/collections</a> renders whatever it holds.
+    </p>
+  </SectionBlock>
+
+  <div class="home-flow" aria-hidden="true">
+    <span class="home-flow__line"></span>
+    <span class="home-flow__label"
+      >what clears review reaches the public surfaces</span
+    >
+  </div>
+
+  <!-- ── STAGE 4 · public surfaces ───────────────────────────────────── -->
+  <SectionBlock
+    id="surfaces"
+    title="Public surfaces"
+    alt={true}
+    intro="The lenses a visitor reads: the knowledge base itself, the spatial and directory views fed live from the CRM, and the priorities above all of it."
+  >
+    <ul class="home-cards">
+      {
+        surfaces.map((s) => (
           <li class="card">
             <div class="card__body">
-              <h2 class="card__title">
+              <h3 class="card__title">
                 <a href={s.href}>{s.label}</a>
-              </h2>
+              </h3>
               <p class="card__text">{s.blurb}</p>
             </div>
           </li>
         ))
       }
     </ul>
+  </SectionBlock>
+
+  <!-- ── the tools band: over the pipeline, not a stage of it ─────────── -->
+  <section class="home-tools">
+    <div class="home-tools__inner">
+      <span class="home-tools__eyebrow">Working tools</span>
+      <ul>
+        {
+          tools.map((t) => (
+            <li>
+              <a href={t.href}>{t.label}</a>
+              <span class="home-tools__note"> — {t.note}</span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
   </section>
 </Layout>
 
 <style>
-  .intro {
+  .home-intro {
     max-width: var(--container-prose);
-    margin: var(--space-16) auto var(--space-8);
+    margin: var(--space-16) auto var(--space-10);
     padding: 0 var(--gutter);
   }
-  .intro-note {
+  .home-note {
     margin-top: var(--space-4);
     font-size: 0.85rem;
     color: var(--text-muted);
   }
-  .status {
-    max-width: var(--container-prose);
-    margin: 0 auto var(--space-12);
-    padding: 0 var(--gutter);
-  }
-  .status-strip {
+  .home-strip {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-8);
-    margin: 0;
+    margin: var(--space-6) 0 0;
     padding: var(--space-5) 0;
     border-top: 1px solid var(--border-subtle);
     border-bottom: 1px solid var(--border-subtle);
   }
-  .status-strip div {
+  .home-strip div {
     display: flex;
     flex-direction: column;
   }
-  .status-strip dt {
+  .home-strip dt {
     font-family: var(--mono);
     font-size: var(--text-xs);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-muted);
   }
-  .status-strip dd {
+  .home-strip dd {
     margin: 2px 0 0;
     font-family: var(--serif);
     font-size: var(--text-lg);
     color: var(--text-primary);
   }
-  .sections {
-    max-width: var(--container-default);
-    margin: 0 auto var(--space-24);
+
+  /* ── base cards ── */
+  .home-bases,
+  .home-cols {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--space-5);
   }
-  .sections ul {
+  .home-base,
+  .home-col {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--surface-1);
+  }
+  .home-base--planned {
+    border-style: dashed;
+    opacity: 0.85;
+  }
+  .home-base__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .home-base__head h3 {
+    margin: 0;
+    font-size: var(--text-md);
+  }
+  .home-base__head h3 a {
+    color: inherit;
+  }
+  .home-chip {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    border: 1px solid var(--border-default);
+    border-radius: 999px;
+    padding: 1px 9px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .home-chip--archive-ready {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .home-chip--planned,
+  .home-chip--defining {
+    border-style: dashed;
+  }
+  .home-base__meta,
+  .home-base__mat {
+    margin: 6px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .home-base__meta strong,
+  .home-base__mat strong {
+    color: var(--text-primary);
+  }
+  .home-role {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .home-sum {
+    margin: var(--space-8) 0 0;
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    max-width: 72ch;
+  }
+  .home-sum strong {
+    color: var(--text-primary);
+  }
+
+  /* ── flow connectors ── */
+  .home-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: var(--space-6) var(--gutter);
+  }
+  .home-flow__line {
+    display: block;
+    width: 1px;
+    height: 28px;
+    background: var(--border-default);
+  }
+  .home-flow__label {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+
+  /* ── store ── */
+  .home-store {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-8);
+    margin: 0 0 var(--space-6);
+    padding: 0;
+  }
+  .home-store div {
+    display: flex;
+    flex-direction: column;
+  }
+  .home-store dt {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .home-store dd {
+    margin: 2px 0 0;
+    font-family: var(--serif);
+    font-size: var(--text-lg);
+  }
+  .home-schemas {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .home-schemas li {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    padding: 2px 12px;
+    font-size: 0.82rem;
+  }
+  .home-schemas__label {
+    color: var(--text-primary);
+  }
+  .home-schemas__n {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* ── surfaces grid (reuses global .card) ── */
+  .home-cards {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -202,5 +590,39 @@ const sections = [
   }
   .card__title a:hover {
     text-decoration: underline;
+  }
+
+  /* ── tools band ── */
+  .home-tools {
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--space-8) var(--gutter) var(--space-16);
+  }
+  .home-tools__inner {
+    max-width: var(--container-default);
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-6);
+  }
+  .home-tools__eyebrow {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .home-tools ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-6);
+    font-size: 0.9rem;
+  }
+  .home-tools__note {
+    color: var(--text-muted);
+    font-size: 0.85rem;
   }
 </style>

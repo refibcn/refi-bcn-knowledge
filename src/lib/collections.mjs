@@ -15,7 +15,8 @@
 // summary when there is no workspace store to count from directly. So here:
 // `objects` is loaded the same way on both paths and drives `members` /
 // `public_entries` on both paths; only the *counts* switch source. `from_summary`
-// is diagnostic only — see sources.mjs:217-219 — no page may branch on it.
+// is diagnostic only — same rule as the `from_summary` note on sources.mjs's
+// `sourcesViewModel` — no page may branch on it.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -130,6 +131,23 @@ export function loadCollections(file = COLLECTIONS_FILE) {
 // therefore always-unconstrained) axis instead of a validation error.
 const hit = (list, v) => list.length === 0 || list.includes(v);
 
+// The shape a summary rollup entry must have. `.strict()` is the guard that
+// matters: the neighbouring containers rollup in derive-kb-summary.mjs names
+// its count `objects_total`, not `members_total` — a future collections
+// rollup that reuses that shape by habit would, without `.strict()`, simply
+// have its `objects_total` key stripped and `members_total` silently read as
+// `undefined`. The build would stay green and every collection would render
+// "undefined members". `.strict()` turns that into a named validation error
+// naming the exact mismatch.
+const RollupSchema = z
+  .object({
+    members_total: z.number().int().nonnegative(),
+    publishable_total: z.number().int().nonnegative(),
+    by_schema: z.record(z.number()),
+    by_container: z.record(z.number()),
+  })
+  .strict();
+
 /** Membership: (all include axes match) OR explicit include id; excludes always
  *  win. `containerOf(objectId)` keeps this module free of a second grouping
  *  implementation — the caller supplies attribution from sourceContainers. */
@@ -149,14 +167,22 @@ export function collectionMembers(def, objects, containerOf) {
 }
 
 /**
- * The summary's `collections` rollup, validated. Throws rather than degrading
- * to zeros — same reasoning as `kbSummary()` and `disposition()` in kb.mjs:
- * "0 members" is a claim about the corpus, and it is the one value that is
- * both plausible and wrong when the real statement is "the build has not
- * been taught this collection yet". This is the exact failure mode that
- * nearly shipped a "Sources 0 · Objects 0" page on 2026-08-10 — reproduced
- * again on this module's own first draft (15 members in the workspace, 0 in
- * a clone simulation, tests green both ways) before this guard existed.
+ * The summary's `collections` rollup for one collection, validated PRESENT
+ * and validated SHAPE. Throws rather than degrading to zeros or `undefined`
+ * — same reasoning as `kbSummary()` and `disposition()` in kb.mjs: "0
+ * members" is a claim about the corpus, and it is the one value that is both
+ * plausible and wrong when the real statement is "the build has not been
+ * taught this collection yet". This is the exact failure mode that nearly
+ * shipped a "Sources 0 · Objects 0" page on 2026-08-10 — reproduced again on
+ * this module's own first draft (15 members in the workspace, 0 in a clone
+ * simulation, tests green both ways) before the presence guard existed.
+ *
+ * The shape guard (RollupSchema) exists for a second, subtler version of the
+ * same failure: present-but-wrong. A rollup entry that reuses a neighbouring
+ * shape by habit (e.g. `objects_total` instead of `members_total`, matching
+ * derive-kb-summary.mjs's CONTAINER_KEYS) would otherwise pass the presence
+ * check, then read as `undefined` — plausible, silent, and wrong in exactly
+ * the same way.
  *
  * @param {Record<string, any>} summaryDoc  Injectable for tests; defaults to
  *   the real committed file via kbSummary().
@@ -176,7 +202,16 @@ function summaryAggFor(summaryDoc, id) {
       `collections.mjs: no rollup for collection "${id}" — re-run \`npm run derive:kb-summary\` after editing ${COLLECTIONS_FILE}.`,
     );
   }
-  return a;
+  try {
+    return RollupSchema.parse(a);
+  } catch (e) {
+    if (!(e instanceof z.ZodError)) throw e;
+    throw new Error(
+      `collections.mjs: malformed rollup for "${id}" in ${SUMMARY_FILE} — ` +
+        e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") +
+        ". Re-run `npm run derive:kb-summary`.",
+    );
+  }
 }
 
 /**
@@ -248,7 +283,8 @@ export function collectionsViewModel({
   return {
     rows,
     // Diagnostic only — no page may branch on it, or the two paths start
-    // drifting again. Same rule as sources.mjs:217-219.
+    // drifting again. Same rule as the `from_summary` note on sources.mjs's
+    // `sourcesViewModel`.
     from_summary: fromSummary,
   };
 }

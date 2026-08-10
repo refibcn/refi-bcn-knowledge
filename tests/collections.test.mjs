@@ -228,7 +228,59 @@ test("summary path throws when a specific collection has no rollup entry — nev
   );
 });
 
-test("cross-path agreement: live and summary yield identical counts and row shape for the same objects", () => {
+test("summary path throws when a rollup entry is missing members_total — present is not the same as well-shaped", () => {
+  const defs = parseCollections({
+    collections: { c: { title: "C", status: "curating" } },
+  });
+  assert.throws(() =>
+    collectionsViewModel({
+      objects: [],
+      fromSummary: true,
+      defs,
+      summary: {
+        collections: {
+          c: { publishable_total: 0, by_schema: {}, by_container: {} },
+        },
+      },
+    }),
+  );
+});
+
+test("summary path throws on the objects_total-instead-of-members_total trap — the containers rollup's key name, not the collections rollup's", () => {
+  // derive-kb-summary.mjs's CONTAINER_KEYS names its count `objects_total`.
+  // A collections rollup that reused that shape by habit would, without a
+  // strict shape check, have `objects_total` silently stripped and
+  // `members_total` read as `undefined` — plausible, silent, wrong.
+  const defs = parseCollections({
+    collections: { c: { title: "C", status: "curating" } },
+  });
+  assert.throws(() =>
+    collectionsViewModel({
+      objects: [],
+      fromSummary: true,
+      defs,
+      summary: {
+        collections: {
+          c: {
+            objects_total: 15,
+            publishable_total: 0,
+            by_schema: {},
+            by_container: {},
+          },
+        },
+      },
+    }),
+  );
+});
+
+test("cross-path agreement: live and summary yield identical counts, ENTRIES, and row shape for the same objects", () => {
+  // This is the test the C2 fork bug would fail: a mutant that hard-codes
+  // `members: []` / `public_entries: []` on the summary path changes no key
+  // NAME, and the four counts still come from the injected rollup either way
+  // — so key-set equality and count equality alone cannot catch it. What
+  // catches it is comparing the actual entry ids, and only on a fixture where
+  // publishable_total is non-zero (otherwise `public_entries` is `[]` on both
+  // sides regardless of whether the fork is present).
   const defs = parseCollections({
     collections: {
       c: {
@@ -250,6 +302,15 @@ test("cross-path agreement: live and summary yield identical counts and row shap
       domain: "bioregionalism",
       origin: "https://example.com/repoA/in",
     }),
+    // Genuinely clears publishableKb(): maturity reviewed, publish:true,
+    // not high-risk, no boundary pairing required. Verified directly against
+    // publishableKb() before relying on it here — see task report.
+    o("resource", "published-one", {
+      domain: "bioregionalism",
+      origin: "https://example.com/repoA/p",
+      maturity: "reviewed",
+      raw: { publish: true },
+    }),
     o("resource", "wrong-domain", {
       domain: "other",
       origin: "https://example.com/repoA/wrong",
@@ -262,23 +323,35 @@ test("cross-path agreement: live and summary yield identical counts and row shap
   // Independently derived, not read back off either row — otherwise the
   // assertion would just be checking that the code agrees with itself.
   const expected = {
-    members_total: 1,
-    publishable_total: 0,
-    by_schema: { resource: 1 },
-    by_container: { cardA: 1 },
+    members_total: 2,
+    publishable_total: 1,
+    by_schema: { resource: 2 },
+    by_container: { cardA: 2 },
   };
+  const expectedMemberIds = ["resource/in", "resource/published-one"];
+  const expectedPublicIds = ["resource/published-one"];
 
-  const live = collectionsViewModel({ objects, fromSummary: false, defs })
-    .rows[0];
+  const live = collectionsViewModel({
+    objects,
+    fromSummary: false,
+    defs,
+    internal: true,
+  }).rows[0];
   assert.equal(live.members_total, expected.members_total);
   assert.equal(live.publishable_total, expected.publishable_total);
   assert.deepEqual(live.by_schema, expected.by_schema);
   assert.deepEqual(live.by_container, expected.by_container);
+  assert.deepEqual(live.members.map((m) => m.id).sort(), expectedMemberIds);
+  assert.deepEqual(
+    live.public_entries.map((m) => m.id).sort(),
+    expectedPublicIds,
+  );
 
   const summary = collectionsViewModel({
     objects,
     fromSummary: true,
     defs,
+    internal: true,
     summary: { collections: { c: expected } },
   }).rows[0];
   assert.equal(summary.members_total, expected.members_total);
@@ -286,5 +359,16 @@ test("cross-path agreement: live and summary yield identical counts and row shap
   assert.deepEqual(summary.by_schema, expected.by_schema);
   assert.deepEqual(summary.by_container, expected.by_container);
 
+  // The entries themselves — not just the counts — must agree between the
+  // two paths. This is the assertion a members:[]/public_entries:[] fork on
+  // the summary branch would fail.
+  assert.deepEqual(
+    summary.members.map((m) => m.id).sort(),
+    live.members.map((m) => m.id).sort(),
+  );
+  assert.deepEqual(
+    summary.public_entries.map((m) => m.id).sort(),
+    live.public_entries.map((m) => m.id).sort(),
+  );
   assert.deepEqual(Object.keys(summary).sort(), Object.keys(live).sort());
 });

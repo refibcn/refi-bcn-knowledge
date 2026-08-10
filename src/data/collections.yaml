@@ -1,0 +1,22 @@
+# src/data/collections.yaml
+# Collection DEFINITIONS — curated sub-scopes over the KMS store (D6: one
+# internal broad base → curated public collections). Definitions, never copies:
+# membership is computed at build in src/lib/collections.mjs, and public
+# rendering of members still passes publishableKb().
+#
+# `title` for the first collection is a RATIFICATION SLOT: BD-2026-060 named the
+# sub-scopes but the 2026-08-11 sync owns the final labels — keep neutral until then.
+collections:
+  catalunya:
+    title: "Regeneration in Catalunya" # provisional label — ratification slot
+    status: curating # defining | curating | published
+    audience: "Catalan regenerative ecosystem — practitioners, Miceli network, funders"
+    goal: "The first public artifact of the knowledge base: the Catalonia regeneration sub-scope, co-developed with Miceli."
+    scope: "Catalunya-anchored entities, initiatives, claims and resources."
+    include:
+      containers: [refi-bcn-old-kb, notion-refi-bcn]
+      domains: [bioregionalism, regenerative-finance]
+      schemas: [] # empty list = no constraint on this axis
+      ids: [] # explicit adds (schema/slug), for objects the rules miss
+    exclude:
+      ids: []

@@ -29,19 +29,33 @@ for (const f of walk("dist")) {
     }
 }
 
-// ── /sources: summaries only (DC-3) ──────────────────────────────────────
-// The container pages are the one public surface that knows the full object
-// list, so they are the likeliest place for a listing to leak in by accident —
-// an `INTERNAL ?` branch dropped during a refactor would not fail any test.
-// This checks the built output for object DETAIL links, which only the internal
-// listing emits. Counts, status chips and the archive checklist stay allowed;
-// those are the point of the page.
-const sourcesDir = join("dist", "sources");
-if (existsSync(sourcesDir)) {
-  for (const f of walk(sourcesDir).filter((x) => x.endsWith(".html"))) {
+// ── Listing surfaces: summaries only (DC-2 / DC-3) ───────────────────────
+// These are the public surfaces that know a full object list — /sources per
+// container, /collections per curated sub-scope, /slices per crosscut — so
+// they are the likeliest place for a listing to leak in by accident: an
+// `INTERNAL ?` branch dropped during a refactor would not fail any test.
+// This checks the built output for object DETAIL links, which only the
+// internal listings emit. Counts, status chips, the archive checklist and the
+// collection definition stay allowed; those are the point of the pages.
+//
+// `slices` arrives in Phase 4. It is listed now rather than later so the gate
+// covers the surface the day it appears instead of the day someone remembers
+// to widen this array — an absent directory is reported below, not skipped in
+// silence, so "checked" never quietly means "found nothing to check".
+const LISTING_SECTIONS = ["sources", "collections", "slices"];
+for (const section of LISTING_SECTIONS) {
+  const dir = join("dist", section);
+  if (!existsSync(dir)) {
+    console.log(
+      `verify-public-kb: no dist/${section} in this build — nothing to check.`,
+    );
+    continue;
+  }
+  const pages = walk(dir).filter((x) => x.endsWith(".html"));
+  for (const f of pages) {
     const body = readFileSync(f, "utf8");
     // `review/#/o/<schema>/<slug>` is emitted once per object by the internal
-    // listing and never by the public branch.
+    // listings and never by the public branch.
     const objectLinks = body.match(/review\/#\/o\//g);
     if (objectLinks) {
       console.error(
@@ -51,7 +65,7 @@ if (existsSync(sourcesDir)) {
     }
   }
   console.log(
-    `verify-public-kb: checked ${walk(sourcesDir).filter((x) => x.endsWith(".html")).length} dist/sources pages for object listings.`,
+    `verify-public-kb: checked ${pages.length} dist/${section} pages for object listings.`,
   );
 }
 

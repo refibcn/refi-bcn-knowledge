@@ -8,14 +8,29 @@ import Layout from "../components/Layout.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
+import { loadKb, publishableKb } from "../lib/kb.mjs";
 import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { withBase } from "../lib/paths";
 
 const src = sourcesViewModel();
 const col = collectionsViewModel();
-// Non-null: kbSummary() throws (never returns undefined) when the committed
-// artifact is missing — see the header comment on kb-summary.mjs.
-const sum = kbSummary()!;
+
+// Dual path, exactly as knowledge.astro:25-31 does it: count the LIVE store
+// when there is one, fall back to the committed aggregate only in a standalone
+// clone. Reading the committed file unconditionally would make this page
+// disagree with /sources and /knowledge in the window between a data change
+// and the next `npm run derive:kb-summary` — the one thing this page's own
+// lede promises cannot happen.
+const all = loadKb();
+const summary = usingCommittedStore() ? kbSummary() : null;
+const objectsTotal = summary ? summary.objects_total : all.length;
+const inReview = summary
+  ? summary.in_review
+  : all.filter((o) => o.maturity === "raw").length;
+const publishedCount = summary ? summary.published : publishableKb(all).length;
+const schemaCount = summary
+  ? Object.keys(summary.by_schema).length
+  : new Set(all.map((o) => o.schema)).size;
 
 const bands = [
   {
@@ -34,17 +49,17 @@ const bands = [
     ],
   },
   {
-    name: "Store (data/kb, 7 schemas)",
+    name: `Store (data/kb, ${schemaCount} schemas)`,
     items: [
-      { label: "Typed objects", n: sum.objects_total, href: "sources/" },
-      { label: "In review (raw)", n: sum.in_review, href: null },
+      { label: "Typed objects", n: objectsTotal, href: "sources/" },
+      { label: "In review (raw)", n: inReview, href: null },
     ],
   },
   {
     name: "Curation",
     items: [
       { label: "Collections", n: col.rows.length, href: "collections/" },
-      { label: "Published", n: sum.published, href: "knowledge/" },
+      { label: "Published", n: publishedCount, href: "knowledge/" },
     ],
   },
   {
@@ -97,7 +112,7 @@ const GATES = [
   },
   {
     what: "computed archive-ready verdicts",
-    note: "A source is archive-ready only when disposition counts reconcile and a real signoff is recorded — an absent input reads as not ready, never as no objection found.",
+    note: "A source is archive-ready only when all four checks pass: every file is dispositioned, the batch numbers reconcile against the checkout, every high-risk object (Indigenous/TEK, personal, governance-sensitive material) has cleared raw review, and a real signoff is recorded. Any missing input fails the verdict closed — it must never read ready because it has less information, the bug this module was hardened against.",
   },
   {
     what: "summary aggregates-only",
@@ -136,20 +151,22 @@ const GATES = [
           <>
             <div class="sys-band">
               <h3 class="sys-band__name">{band.name}</h3>
-              <ul class="sys-band__items">
+              <dl class="sys-band__items">
                 {band.items.map((item) => (
-                  <li class="sys-item">
-                    {item.href ? (
-                      <a href={withBase(item.href)}>{item.label}</a>
-                    ) : (
-                      <span>{item.label}</span>
-                    )}
-                    <strong class="sys-item__n">
+                  <div class="sys-item">
+                    <dt>
+                      {item.href ? (
+                        <a href={withBase(item.href)}>{item.label}</a>
+                      ) : (
+                        <span>{item.label}</span>
+                      )}
+                    </dt>
+                    <dd class="sys-item__n">
                       {item.n !== null ? item.n : "—"}
-                    </strong>
-                  </li>
+                    </dd>
+                  </div>
                 ))}
-              </ul>
+              </dl>
             </div>
             {i < bands.length - 1 && (
               <div class="sys-connector" aria-hidden="true" />
@@ -251,7 +268,6 @@ const GATES = [
     color: var(--text-muted);
   }
   .sys-band__items {
-    list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
@@ -264,7 +280,12 @@ const GATES = [
     gap: 10px;
     font-size: 0.9rem;
   }
-  .sys-item a {
+  .sys-item dt,
+  .sys-item dd {
+    margin: 0;
+    font-weight: normal;
+  }
+  .sys-item dt a {
     color: var(--text-primary);
   }
   .sys-item__n {

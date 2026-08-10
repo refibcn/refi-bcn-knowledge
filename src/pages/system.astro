@@ -1,0 +1,327 @@
+---
+// /system — the data layer, depicted from the data itself (DC-3). Four bands:
+// FEEDS → STORE → CURATION → SURFACES, each box carrying live counts and
+// linking to its surface. Below: the authority table (what is source of truth
+// for what) and the gate inventory (what stops content leaking).
+// No hand-drawn numbers anywhere — this page cannot rot the way a diagram would.
+import Layout from "../components/Layout.astro";
+import SectionBlock from "../components/SectionBlock.astro";
+import { sourcesViewModel } from "../lib/sources.mjs";
+import { collectionsViewModel } from "../lib/collections.mjs";
+import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
+import { withBase } from "../lib/paths";
+
+const src = sourcesViewModel();
+const col = collectionsViewModel();
+// Non-null: kbSummary() throws (never returns undefined) when the committed
+// artifact is missing — see the header comment on kb-summary.mjs.
+const sum = kbSummary()!;
+
+const bands = [
+  {
+    name: "Feeds",
+    items: [
+      {
+        label: "Repo sources",
+        n: src.rows.filter((r) => r.role === "source").length,
+        href: "sources/",
+      },
+      {
+        label: "Notion CRM (build-time, read-only)",
+        n: null,
+        href: "organizations/",
+      },
+    ],
+  },
+  {
+    name: "Store (data/kb, 7 schemas)",
+    items: [
+      { label: "Typed objects", n: sum.objects_total, href: "sources/" },
+      { label: "In review (raw)", n: sum.in_review, href: null },
+    ],
+  },
+  {
+    name: "Curation",
+    items: [
+      { label: "Collections", n: col.rows.length, href: "collections/" },
+      { label: "Published", n: sum.published, href: "knowledge/" },
+    ],
+  },
+  {
+    name: "Surfaces",
+    items: [
+      {
+        label: "Knowledge · Atlas · Directory · Review",
+        n: null,
+        href: "knowledge/",
+      },
+    ],
+  },
+];
+
+const AUTHORITY = [
+  {
+    what: "KB objects",
+    sot: "refi-bcn-os data/kb",
+    note: "Local YAML is the source of truth.",
+  },
+  {
+    what: "CRM records",
+    sot: "data/crm.yaml",
+    note: "Notion is the pushed mirror — the instance reads the mirror, at build time, read-only.",
+  },
+  {
+    what: "Collections",
+    sot: "src/data/collections.yaml",
+    note: "Hand-authored definitions; membership is computed, not stored.",
+  },
+  {
+    what: "Disposition / summary",
+    sot: "src/data/*.json",
+    note: "Derived, committed for CI — never hand-edited.",
+  },
+];
+
+const GATES = [
+  {
+    what: "publishableKb",
+    note: "Fail-closed: an object publishes only if it is marked in-scope, cleared to reviewed/published maturity, not AI-assisted, and clears its paired public-use boundary tier.",
+  },
+  {
+    what: "dist canary + listing scan",
+    note: "scripts/verify-public-kb.mjs walks the built dist/ tree after every public build, checking for known raw-content canaries; fails the build closed.",
+  },
+  {
+    what: "staticrypt internal lens",
+    note: "The internal review build is encrypted before it leaves the machine; a separate gate asserts exactly one HTML file, a staticrypt marker, and no /_astro references.",
+  },
+  {
+    what: "computed archive-ready verdicts",
+    note: "A source is archive-ready only when disposition counts reconcile and a real signoff is recorded — an absent input reads as not ready, never as no objection found.",
+  },
+  {
+    what: "summary aggregates-only",
+    note: "The committed kb-summary.json carries counts and source-system cards only — never object titles, bodies, slugs or origins.",
+  },
+];
+---
+
+<Layout
+  title="System"
+  current="system"
+  section="Knowledge"
+  description="The architecture of this instance, drawn from its own data — feeds, store, curation and surfaces, with live counts and the gates that keep content from leaking."
+>
+  <SectionBlock
+    id="system"
+    title="System"
+    tissue={true}
+    tissueSeed={11}
+    intro="Four bands, feeds through surfaces, each carrying counts read live off the store — not drawn by hand, so this page cannot describe a system that no longer exists."
+  >
+    <p class="lede">
+      This is the pipeline that produces every other page on this site: sources
+      feed a typed object store, curation narrows it into collections, and a
+      handful of public surfaces render what has cleared review. Every number
+      below comes from the same view-models that render
+      <a href={withBase("sources/")}>/sources</a>,
+      <a href={withBase("collections/")}>/collections</a> and
+      <a href={withBase("knowledge/")}>/knowledge</a> — if this page ever disagrees
+      with one of those, that is a bug in this page, not in them.
+    </p>
+
+    <div class="sys-flow">
+      {
+        bands.map((band, i) => (
+          <>
+            <div class="sys-band">
+              <h3 class="sys-band__name">{band.name}</h3>
+              <ul class="sys-band__items">
+                {band.items.map((item) => (
+                  <li class="sys-item">
+                    {item.href ? (
+                      <a href={withBase(item.href)}>{item.label}</a>
+                    ) : (
+                      <span>{item.label}</span>
+                    )}
+                    <strong class="sys-item__n">
+                      {item.n !== null ? item.n : "—"}
+                    </strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            {i < bands.length - 1 && (
+              <div class="sys-connector" aria-hidden="true" />
+            )}
+          </>
+        ))
+      }
+    </div>
+
+    <h3 class="sys-h3">Authority — what is source of truth for what</h3>
+    <p class="sys-note">
+      Condensed from <code>docs/governance/SOURCE-OF-TRUTH-MATRIX.md</code> in the
+      refi-bcn-os workspace, which is canonical — read it there for the full sync
+      protocol and conflict-resolution rules.
+    </p>
+    <table class="sys-table">
+      <thead>
+        <tr>
+          <th scope="col">What</th>
+          <th scope="col">Source of truth</th>
+          <th scope="col">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          AUTHORITY.map((row) => (
+            <tr>
+              <td>{row.what}</td>
+              <td>
+                <code>{row.sot}</code>
+              </td>
+              <td>{row.note}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+
+    <h3 class="sys-h3">Gates — what stops content leaking</h3>
+    <table class="sys-table">
+      <thead>
+        <tr>
+          <th scope="col">Gate</th>
+          <th scope="col">What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          GATES.map((row) => (
+            <tr>
+              <td>{row.what}</td>
+              <td>{row.note}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+
+    {
+      usingCommittedStore() && (
+        <p class="sys-dualpath">
+          This build has no workspace store, so the counts above come from the
+          committed summary (<code>src/data/kb-summary.json</code>) rather than
+          the live workspace — the standalone-clone half of the dual-path
+          contract. See the header comment in{" "}
+          <code>src/lib/kb-summary.mjs</code>.
+        </p>
+      )
+    }
+  </SectionBlock>
+</Layout>
+
+<style>
+  .lede {
+    max-width: 60ch;
+    color: var(--text-muted);
+    line-height: var(--leading-body);
+  }
+  .sys-flow {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    margin: var(--space-8) 0 var(--space-10);
+    max-width: 46ch;
+  }
+  .sys-band {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    background: var(--surface-1);
+  }
+  .sys-band__name {
+    margin: 0 0 8px;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .sys-band__items {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 4px;
+  }
+  .sys-item {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 0.9rem;
+  }
+  .sys-item a {
+    color: var(--text-primary);
+  }
+  .sys-item__n {
+    font-family: var(--serif);
+    color: var(--text-primary);
+    white-space: nowrap;
+  }
+  .sys-connector {
+    width: 1px;
+    height: 22px;
+    margin: 0 0 0 20px;
+    background: var(--border-default);
+  }
+  .sys-h3 {
+    margin: var(--space-10) 0 var(--space-2);
+    font-size: var(--text-md);
+  }
+  .sys-note {
+    margin: 0 0 var(--space-4);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .sys-note code {
+    font-size: 0.82rem;
+  }
+  .sys-table {
+    width: 100%;
+    max-width: 80ch;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .sys-table th,
+  .sys-table td {
+    text-align: left;
+    padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: top;
+  }
+  .sys-table th {
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+  }
+  .sys-table td:first-child {
+    white-space: nowrap;
+    color: var(--text-primary);
+  }
+  .sys-table code {
+    font-size: 0.8rem;
+  }
+  .sys-dualpath {
+    margin-top: var(--space-8);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--border-subtle);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+</style>

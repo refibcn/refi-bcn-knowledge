@@ -16,7 +16,7 @@ batch-processed rather than lost in chat.
 
 - First deploy of the standalone instance: **6 source containers · 416 knowledge objects · 0 unattributed**. The old KB reads 272 files → 88 ingested · 9 merged · 175 excluded · 0 pending.
 - **Publishing is fail-closed by design**: zero public objects until review promotes them. The public build carries the leak guard; review happens through the password-gated lens.
-- **Naming (`BD-2026-060`):** "knowledge commons" is dropped as a working label — this instance is **Regenerant Catalunya**, named directly. What the *container* above the public sub-scopes is called is still open and gates any route/domain renames.
+- **Naming (`BD-2026-060`):** "knowledge commons" is dropped as a working label — this instance is **Regenerant Catalunya**, named directly. What the _container_ above the public sub-scopes is called is still open and gates any route/domain renames.
 - The consolidated ingestion batch (`BD-2026-065` — old KB + Catalonia map + Telegram history, exception-based review) lands here when it runs.
 
 ---
@@ -92,8 +92,8 @@ batch-processed rather than lost in chat.
 ## Bugs & Issues
 
 | Issue | Where (URL) | Browser/Device | Reporter |
-|-------|-------------|----------------|----------|
-| | | | |
+| ----- | ----------- | -------------- | -------- |
+|       |             |                |          |
 
 ---
 
@@ -108,15 +108,15 @@ batch-processed rather than lost in chat.
 
 ## Decisions Made
 
-| Decision | Date | Context |
-|----------|------|---------|
+| Decision                                                                                                    | Date       | Context                     |
+| ----------------------------------------------------------------------------------------------------------- | ---------- | --------------------------- |
 | "Knowledge commons" dropped as working name; instances named directly (Regenerant Catalunya · Bioregioning) | 2026-08-06 | `BD-2026-060`, work session |
-| One consolidated ingestion batch, exception-based review via agent flags | 2026-08-06 | `BD-2026-065`, work session |
-| One internal broad base → curated public sub-scopes; Catalonia first public artifact | 2026-07-21 | D6/D7, ops sync |
-| Instance shipped standalone at knowledge.refibcn.cat; website's /commons + /atlas became redirect stubs | 2026-08-10 | convergence session |
+| One consolidated ingestion batch, exception-based review via agent flags                                    | 2026-08-06 | `BD-2026-065`, work session |
+| One internal broad base → curated public sub-scopes; Catalonia first public artifact                        | 2026-07-21 | D6/D7, ops sync             |
+| Instance shipped standalone at knowledge.refibcn.cat; website's /commons + /atlas became redirect stubs     | 2026-08-10 | convergence session         |
 
 ---
 
-*Add your name when you file feedback.*
+_Add your name when you file feedback._
 
 **Contributors:**

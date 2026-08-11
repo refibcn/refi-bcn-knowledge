@@ -20,10 +20,16 @@ columns:
     public: { text: "Knowledge — fail-closed", href: "knowledge/" }
   - id: notion-refi-bcn
     label: "Notion / CRM"
+    # No corpus_path on the card — a Notion workspace has no file corpus — so the
+    # location cell has nothing to compute from and must be asserted here.
+    location: "data/crm.yaml (source of truth) · Notion workspace (pushed mirror)"
     origin_note: "~571 records — data/crm.yaml is the source of truth; Notion is the pushed mirror"
     ingestion: "Telegram intake live · KB→CRM fold ready · research-agent stream held"
     ontology: "CRM rules — 27 live properties"
     ontology_ref: "packages/operations/projects/crm-rules/ (pulled 2026-08-10)"
+    # Its objects are not in store review (nothing is attributed to this
+    # container yet), but its RECORDS carry flags — which is what C1 is about.
+    review_note: "81 records carry review flags — pending the C1 convention change"
     gate: "C1 — Review-flags data-model call (blocks the BD-2026-065 batch)"
     owner: "Luiz + Giulio"
     internal: { text: "Notion workspace — internal ≥6 months" }

@@ -531,9 +531,11 @@ test("round-trip over the real matrix.yaml: refi-bcn-old-kb renders in full", ()
   });
 });
 
-test("round-trip: notion-refi-bcn carries its gate, owner and loop", () => {
-  // The blocked column — the one whose gate and owner the page must show, and
-  // the only one carrying a `loop` note.
+test("round-trip: notion-refi-bcn carries its gate, owner, loop and asserted cells", () => {
+  // The blocked column — the one whose gate and owner the page must show, the
+  // only one carrying a `loop` note, and the one where location and review are
+  // asserted because neither can be computed: the card has no corpus_path and
+  // the flags are on CRM records, not on store objects.
   const col = matrixViewModel().columns.find((c) => c.id === "notion-refi-bcn");
   assert.equal(
     col.gate,
@@ -547,7 +549,18 @@ test("round-trip: notion-refi-bcn carries its gate, owner and loop", () => {
   );
   // Files are the wrong unit here, so the asserted origin stands.
   assert.match(col.cells.origin.text, /^~571 records/);
-  assert.equal(col.cells.location, null);
+  assert.deepEqual(col.cells.location, {
+    text: "data/crm.yaml (source of truth) · Notion workspace (pushed mirror)",
+  });
+  assert.deepEqual(col.cells.review, {
+    text: "81 records carry review flags — pending the C1 convention change",
+  });
+  // No href on either: both are asserted, and an asserted href is relative by
+  // schema, so neither may carry the external flag.
+  assert.equal(col.cells.location.external, undefined);
+  // Deliberately NOT asserting `store` here — it renders "—" and that is
+  // correct, but the objects_total > 0 guard that produces it is already pinned
+  // by its own test above, on a synthetic row rather than on live data.
 });
 
 test("round-trip: the footnote lists the infra repos in full", () => {

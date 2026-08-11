@@ -1,0 +1,64 @@
+# src/data/matrix.yaml
+# MATRIX DEFINITIONS — the asserted cells of the home matrix (layers × containers),
+# the collections.yaml pattern: definitions in one reviewed file, computation in
+# src/lib/matrix.mjs. Computed values (store counts, review counts, dispositions,
+# card locations) come from the view-models at build and ALWAYS beat what is
+# written here; this file carries only what cannot be computed — mechanisms,
+# ontologies, gates, owners, and locations/origins for columns that have no card
+# yet (PLANNED_SOURCES doctrine: no card until the batch runs).
+#
+# 260811 architecture (D11): separate containers, each with its own ontology; a
+# common layer defined gradually. A blocked cell names its gate and its owner.
+as_of: "2026-08-12"
+columns:
+  - id: refi-bcn-old-kb
+    label: "Old knowledge base"
+    ingestion: "batch-1 complete"
+    ontology: "toolkit 7-schema"
+    ontology_ref: "docs/kms/INGEST-AGENT-BRIEF.md"
+    internal: { text: "Review lens", href: "review/" }
+    public: { text: "Knowledge — fail-closed", href: "knowledge/" }
+  - id: notion-refi-bcn
+    label: "Notion / CRM"
+    origin_note: "~571 records — data/crm.yaml is the source of truth; Notion is the pushed mirror"
+    ingestion: "Telegram intake live · KB→CRM fold ready · research-agent stream held"
+    ontology: "CRM rules — 27 live properties"
+    ontology_ref: "packages/operations/projects/crm-rules/ (pulled 2026-08-10)"
+    gate: "C1 — Review-flags data-model call (blocks the BD-2026-065 batch)"
+    owner: "Luiz + Giulio"
+    internal: { text: "Notion workspace — internal ≥6 months" }
+    public: { text: "Directory · Atlas", href: "organizations/" }
+    loop: "Ingestion feeds CRM entity processing; the CRM feeds the directory, the atlas and Giulio's public site — a loop, not a fork."
+  - id: regenerant-catalunya-repo
+    label: "Regenerant Catalunya repo"
+    ingestion: "batch-2 ready to prepare"
+  - id: refi-bcn-os-operations
+    label: "Operational records"
+    ingestion: "batch-3+ queued"
+    ontology: "org-os registries (data/*.yaml)"
+    internal: { text: "refi-bcn-os workspace" }
+  - id: telegram-history
+    label: "Telegram history"
+    location: "Telegram — ReFi BCN group"
+    origin_note: "group topics · consent granted (BD-2026-038)"
+    ingestion: "export pending"
+    gate: "Luiz produces the export"
+    owner: "Luiz"
+  - id: catalunya-map
+    label: "Catalunya map"
+    location: "Giulio's personal namespace — transfer owed"
+    origin_note: "~300–400 mapped organizations"
+    ingestion: "second stream of the consolidated batch"
+    ontology: "own map ontology, CRM-connected"
+    gate: "D9 — the coordinate-source answer"
+    owner: "Giulio"
+    public: { text: "his public site (external)" }
+  - id: research-agent
+    label: "Research agent"
+    location: "serverito — Giulio's server"
+    origin_note: "464 crawled → 93 candidates · 51 already in CRM (coverage evidence)"
+    ingestion: "continuous scouting — candidates only, no direct writes"
+    ontology: "CRM rules"
+    review_note: "38 new candidates awaiting review"
+    gate: "write path held (F6) until C1 lands"
+    owner: "Giulio"

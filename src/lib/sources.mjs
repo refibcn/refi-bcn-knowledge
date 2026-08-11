@@ -128,6 +128,14 @@ export const PLANNED_SOURCES = Object.freeze([
     blocked_on:
       "Team consent (task-260721) and Luiz producing the export. No card exists until the batch runs.",
   },
+  {
+    id: "research-agent",
+    title: "Research agent (serverito)",
+    planned: true,
+    why: "Continuous scouting stream over funding portals and the regenerative web — candidates reviewed before anything reaches the CRM.",
+    blocked_on:
+      "Write path held (F6) until the C1 data-model call lands; candidates stay on serverito. No card exists until its stream lands in the store.",
+  },
 ]);
 
 /**

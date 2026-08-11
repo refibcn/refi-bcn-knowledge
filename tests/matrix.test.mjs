@@ -281,3 +281,288 @@ test("the committed matrix.yaml resolves: every id is a summary container or a p
     assert.ok(known.has(c.id), `unknown column ${c.id}`);
   assert.equal(vm.asOf, "2026-08-12");
 });
+
+// ---------------------------------------------------------------------------
+// The href contract. A cell's href is either instance-relative (the page wraps
+// it in withBase()) or an absolute card URL (used as-is). Before `external`
+// existed, withBase() would have rendered "/https://github.com/refibcn/..." on
+// three of the four carded columns.
+// ---------------------------------------------------------------------------
+
+test("a card's absolute URL is flagged external", () => {
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "One" }])),
+    rows: [row()],
+    planned: [],
+  });
+  const loc = m.columns[0].cells.location;
+  assert.equal(loc.href, "https://x/one");
+  assert.equal(loc.external, true);
+});
+
+test("a relative href is NOT flagged external, and no YAML cell ever is", () => {
+  // The negative half: `external` must mean "absolute", not "has an href".
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "One" }])),
+    rows: [
+      row({ card: { corpus_path: "packages/operations", url: undefined } }),
+    ],
+    planned: [],
+  });
+  assert.equal(m.columns[0].cells.location.external, undefined);
+  // And over the real file: hand-authored hrefs are relative by schema, so no
+  // asserted cell may carry the flag.
+  for (const c of matrixViewModel().columns)
+    for (const key of ["internal", "public", "ontology"])
+      assert.equal(c.cells[key]?.external, undefined, `${c.id}.${key}`);
+});
+
+test("an absolute href in the YAML is rejected, not silently marked external", () => {
+  assert.throws(
+    () =>
+      parseMatrixDefs(
+        defs([
+          {
+            id: "r1",
+            label: "One",
+            public: { text: "Site", href: "https://example.org/" },
+          },
+        ]),
+      ),
+    /instance-relative/,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Schema strictness and operator-legible errors.
+// ---------------------------------------------------------------------------
+
+test("the cells object carries exactly the LAYERS ids, in order", () => {
+  // The eight keys are written out in cardedColumn and again in plannedColumn;
+  // nothing but this ties either to LAYERS. Add a layer and forget one, and the
+  // page throws at build time reading an undefined cell.
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(
+      defs([
+        { id: "r1", label: "One" },
+        { id: "p1", label: "Planned" },
+      ]),
+    ),
+    rows: [row()],
+    planned: [{ id: "p1", title: "Planned", planned: true }],
+  });
+  const layerIds = LAYERS.map((l) => l.id);
+  assert.equal(m.columns.length, 2);
+  for (const c of m.columns)
+    assert.deepEqual(Object.keys(c.cells), layerIds, `column ${c.id}`);
+});
+
+test("parseMatrixDefs: a duplicate column id throws, naming it", () => {
+  assert.throws(
+    () =>
+      parseMatrixDefs(
+        defs([
+          { id: "r1", label: "One" },
+          { id: "r1", label: "One again" },
+        ]),
+      ),
+    /duplicate column id "r1"/,
+  );
+});
+
+test("parseMatrixDefs: an empty defs file names the file, not `: Required`", () => {
+  // An empty YAML file parses to undefined; reaching zod it produced an issue
+  // with an empty path, i.e. an error naming nothing.
+  assert.throws(() => parseMatrixDefs(undefined), /must hold a mapping/);
+  assert.throws(() => parseMatrixDefs([]), /must hold a mapping/);
+});
+
+test("parseMatrixDefs: errors name the offending column and the file", () => {
+  assert.throws(
+    () =>
+      parseMatrixDefs(
+        defs([
+          { id: "r1", label: "One" },
+          { id: "notion-refi-bcn" }, // no label
+        ]),
+      ),
+    /column "notion-refi-bcn" in .*matrix\.yaml is invalid/,
+  );
+});
+
+test("CellSchema is strict: a typo'd `hef:` throws instead of dropping the link", () => {
+  assert.throws(
+    () =>
+      parseMatrixDefs(
+        defs([
+          { id: "r1", label: "One", public: { text: "Knowledge", hef: "k/" } },
+        ]),
+      ),
+    /hef/,
+  );
+});
+
+test("as_of must be an ISO date — `soon` is not a freshness claim", () => {
+  assert.throws(
+    () =>
+      parseMatrixDefs({ as_of: "soon", columns: [{ id: "r1", label: "L" }] }),
+    /ISO date/,
+  );
+});
+
+test('an empty string is not an assertion: `ingestion: ""` throws', () => {
+  // Absent and empty are different claims. Without .min(1), `ingestion: ""`
+  // silently became a null cell while `gate: ""` reached the page as a blank.
+  assert.throws(
+    () => parseMatrixDefs(defs([{ id: "r1", label: "One", ingestion: "" }])),
+    /ingestion/,
+  );
+  assert.throws(
+    () => parseMatrixDefs(defs([{ id: "r1", label: "One", gate: "" }])),
+    /gate/,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The asserted cells actually reach the output.
+// ---------------------------------------------------------------------------
+
+test("label: the defs label wins, and a bare column falls back to the row title", () => {
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "Old knowledge base" }])),
+    rows: [row(), row({ id: "r2", title: "Row Two", href: "sources/r2/" })],
+    planned: [],
+  });
+  assert.equal(m.columns[0].label, "Old knowledge base"); // def.label
+  assert.equal(m.columns[1].label, "Row Two"); // ?? r.title
+});
+
+test("ontology carries its ref as {text, ref}; without a ref, text alone", () => {
+  const withRef = assembleMatrix({
+    defs: parseMatrixDefs(
+      defs([
+        {
+          id: "r1",
+          label: "One",
+          ontology: "toolkit 7-schema",
+          ontology_ref: "docs/kms/INGEST-AGENT-BRIEF.md",
+        },
+      ]),
+    ),
+    rows: [row()],
+    planned: [],
+  });
+  assert.deepEqual(withRef.columns[0].cells.ontology, {
+    text: "toolkit 7-schema",
+    ref: "docs/kms/INGEST-AGENT-BRIEF.md",
+  });
+  const bare = assembleMatrix({
+    defs: parseMatrixDefs(
+      defs([{ id: "r1", label: "One", ontology: "CRM rules" }]),
+    ),
+    rows: [row()],
+    planned: [],
+  });
+  assert.deepEqual(bare.columns[0].cells.ontology, { text: "CRM rules" });
+});
+
+test("ingestion carries the asserted mechanism AND the computed detail together", () => {
+  // Production's actual shape on every batched container — previously only the
+  // detail-without-text and text-without-detail halves were covered.
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(
+      defs([{ id: "r1", label: "One", ingestion: "batch-1 complete" }]),
+    ),
+    rows: [row()],
+    planned: [],
+  });
+  assert.deepEqual(m.columns[0].cells.ingestion, {
+    text: "batch-1 complete",
+    detail: "5 ingested · 1 merged · 4 excluded · 10 pending",
+  });
+});
+
+test("store is null at zero objects — never the invented claim `0 typed objects`", () => {
+  // regenerant-catalunya-repo is live at 0: it is carded and measured (330
+  // files) but nothing is ingested yet, and "0 typed objects" would read as a
+  // finding about the corpus rather than as work not yet done.
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "One" }])),
+    rows: [row({ objects_total: 0 })],
+    planned: [],
+  });
+  assert.equal(m.columns[0].cells.store, null);
+});
+
+test("round-trip over the real matrix.yaml: refi-bcn-old-kb renders in full", () => {
+  // Couples to the live store's counts on purpose — tests/kb-summary.test.mjs
+  // already fails when src/data/kb-summary.json goes stale against it, so the
+  // two paths cannot disagree here without that test saying so first.
+  const col = matrixViewModel().columns.find((c) => c.id === "refi-bcn-old-kb");
+  assert.deepEqual(col, {
+    id: "refi-bcn-old-kb",
+    label: "Old knowledge base",
+    href: "sources/refi-bcn-old-kb/",
+    steward: "ReFi BCN (Luiz Fernando)",
+    planned: false,
+    gate: null,
+    owner: null,
+    loop: null,
+    cells: {
+      location: {
+        text: "repos/ReFi-Barcelona",
+        href: "https://github.com/refibcn/ReFi-Barcelona",
+        external: true,
+      },
+      origin: { text: "272 files" },
+      ingestion: {
+        text: "batch-1 complete",
+        detail: "88 ingested · 9 merged · 175 excluded · 0 pending",
+      },
+      store: { text: "416 typed objects" },
+      ontology: {
+        text: "toolkit 7-schema",
+        ref: "docs/kms/INGEST-AGENT-BRIEF.md",
+      },
+      review: { text: "362 raw · 104 high-risk unresolved" },
+      internal: { text: "Review lens", href: "review/" },
+      public: { text: "Knowledge — fail-closed", href: "knowledge/" },
+    },
+  });
+});
+
+test("round-trip: notion-refi-bcn carries its gate, owner and loop", () => {
+  // The blocked column — the one whose gate and owner the page must show, and
+  // the only one carrying a `loop` note.
+  const col = matrixViewModel().columns.find((c) => c.id === "notion-refi-bcn");
+  assert.equal(
+    col.gate,
+    "C1 — Review-flags data-model call (blocks the BD-2026-065 batch)",
+  );
+  assert.equal(col.owner, "Luiz + Giulio");
+  assert.match(col.loop, /^Ingestion feeds CRM entity processing/);
+  assert.equal(
+    col.steward,
+    "ReFi BCN team (Giulio — CRM/workspace restructuring lead)",
+  );
+  // Files are the wrong unit here, so the asserted origin stands.
+  assert.match(col.cells.origin.text, /^~571 records/);
+  assert.equal(col.cells.location, null);
+});
+
+test("round-trip: the footnote lists the infra repos in full", () => {
+  assert.deepEqual(matrixViewModel().footnote, [
+    {
+      id: "refi-bcn",
+      title: "ReFi BCN Organizational OS",
+      role: "self",
+      href: "sources/refi-bcn/",
+    },
+    {
+      id: "refibcn-site",
+      title: "ReFi BCN website (Astro)",
+      role: "render-target",
+      href: "sources/refibcn-site/",
+    },
+  ]);
+});

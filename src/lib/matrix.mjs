@@ -49,48 +49,119 @@ export const LAYERS = Object.freeze([
   { id: "public", label: "Public" },
 ]);
 
-// hrefs in this file are instance-relative by contract (pages wrap them in
-// withBase()); externals are text-only cells. `.strict()` everywhere for the
-// same reason collections.mjs documents: zod silently strips unknown keys, and
-// a typo'd field name must fail the build, not quietly drop an assertion.
+// A cell's `href` comes in two kinds and the page MUST tell them apart:
+// instance-relative (wrapped in withBase()) and absolute-external (used as-is,
+// and worth a target="_blank" rel="noopener", the way sources.astro already
+// renders a card's URL). `cell()` marks the second kind `external: true`;
+// without that marker withBase() would emit "/https://github.com/…".
+// Hand-authored hrefs are relative BY SCHEMA — an absolute one in the YAML is
+// rejected below rather than silently marked, so "no YAML cell is external"
+// stays an invariant instead of an accident of the current file.
+//
+// `.strict()` everywhere for the same reason collections.mjs documents: zod
+// silently strips unknown keys, so a typo'd `hef:` would drop a link with no
+// error anywhere. `.min(1)` on every optional string for this file's own
+// doctrine: absent and empty are different claims, and `ingestion: ""` must not
+// quietly become the same null cell as an omitted `ingestion:`.
+const relativeHref = z
+  .string()
+  .min(1)
+  .refine((h) => !/^[a-z][a-z0-9+.-]*:/i.test(h) && !h.startsWith("//"), {
+    message:
+      "must be instance-relative (pages wrap it in withBase()); put an external link in the cell text",
+  });
 const CellSchema = z
-  .object({ text: z.string().min(1), href: z.string().optional() })
+  .object({ text: z.string().min(1), href: relativeHref.optional() })
   .strict();
 const ColumnDefSchema = z
   .object({
     id: z.string().regex(/^[a-z0-9][a-z0-9-]*$/),
     label: z.string().min(1),
-    location: z.string().optional(),
-    origin_note: z.string().optional(),
-    ingestion: z.string().optional(),
-    ontology: z.string().optional(),
-    ontology_ref: z.string().optional(),
-    review_note: z.string().optional(),
+    location: z.string().min(1).optional(),
+    origin_note: z.string().min(1).optional(),
+    ingestion: z.string().min(1).optional(),
+    ontology: z.string().min(1).optional(),
+    ontology_ref: z.string().min(1).optional(),
+    review_note: z.string().min(1).optional(),
     internal: CellSchema.optional(),
     public: CellSchema.optional(),
-    gate: z.string().optional(),
-    owner: z.string().optional(),
-    loop: z.string().optional(),
+    gate: z.string().min(1).optional(),
+    owner: z.string().min(1).optional(),
+    loop: z.string().min(1).optional(),
   })
   .strict();
-const MatrixDefsSchema = z
+// The envelope only; columns are parsed one at a time below so the error can
+// name the offending column rather than an array index.
+const MatrixEnvelopeSchema = z
   .object({
-    as_of: z.string().min(1),
-    columns: z.array(ColumnDefSchema).min(1),
+    // Dated, not free text: `as_of: soon` would render as a freshness claim.
+    as_of: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "must be an ISO date (YYYY-MM-DD)"),
+    columns: z.array(z.unknown()).min(1),
   })
   .strict();
 
-/** Validated defs. Throws with the offending column named. */
-export function parseMatrixDefs(doc) {
+/** True IFF `v` is a non-array, non-null object. An empty YAML file parses to
+ *  `undefined`, which would otherwise reach zod and produce `: Required` — an
+ *  empty path segment naming nothing. collections.mjs guards this the same way. */
+function isPlainObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+
+/** Name the offending location AND the file. A bare ZodError with path
+ *  ["label"] tells an operator nothing when the file holds seven columns —
+ *  the lesson collections.mjs records at its own parse site. */
+function parseOrThrow(schema, value, where) {
   try {
-    return MatrixDefsSchema.parse(doc);
+    return schema.parse(value);
   } catch (e) {
     if (!(e instanceof z.ZodError)) throw e;
     throw new Error(
-      `matrix: definitions invalid — ` +
-        e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; "),
+      `${where} — ` +
+        e.issues
+          .map(
+            (i) =>
+              `${i.path.length ? i.path.join(".") : "(root)"}: ${i.message}`,
+          )
+          .join("; "),
     );
   }
+}
+
+/** Validated defs. Throws with the offending column and the file named. */
+export function parseMatrixDefs(doc, file = MATRIX_FILE) {
+  if (!isPlainObject(doc))
+    throw new Error(
+      `matrix: ${file} must hold a mapping with \`as_of\` and \`columns\` — got ${JSON.stringify(doc) ?? typeof doc}`,
+    );
+  const envelope = parseOrThrow(
+    MatrixEnvelopeSchema,
+    doc,
+    `matrix: ${file} is invalid`,
+  );
+  const columns = envelope.columns.map((raw, i) =>
+    parseOrThrow(
+      ColumnDefSchema,
+      raw,
+      `matrix: column ${
+        isPlainObject(raw) && typeof raw.id === "string"
+          ? `"${raw.id}"`
+          : `#${i + 1}`
+      } in ${file} is invalid`,
+    ),
+  );
+  // The ordered list is deliberate — column order is semantic — but it gives up
+  // the uniqueness a keyed map gets for free, so check it explicitly. Two
+  // entries with one id would render the container twice and let the second
+  // silently shadow the first for anyone reading by id.
+  const seen = new Set();
+  for (const c of columns) {
+    if (seen.has(c.id))
+      throw new Error(`matrix: duplicate column id "${c.id}" in ${file}`);
+    seen.add(c.id);
+  }
+  return { as_of: envelope.as_of, columns };
 }
 
 export function loadMatrixDefs(file = MATRIX_FILE) {
@@ -98,15 +169,30 @@ export function loadMatrixDefs(file = MATRIX_FILE) {
     throw new Error(
       `matrix.mjs: missing ${file} — the hand-authored matrix definitions.`,
     );
-  return parseMatrixDefs(yaml.load(readFileSync(file, "utf8")));
+  return parseMatrixDefs(yaml.load(readFileSync(file, "utf8")), file);
 }
 
-const text = (t, href) => (t ? { text: t, ...(href ? { href } : {}) } : null);
+/** One cell, or null when there is nothing to say — the page's "—". An absolute
+ *  href is flagged `external` (see the CellSchema note above). */
+const cell = (text, href) =>
+  text
+    ? {
+        text,
+        ...(href
+          ? { href, ...(/^https?:/i.test(href) ? { external: true } : {}) }
+          : {}),
+      }
+    : null;
 
-/** One real (carded) column. `r` is a sourcesViewModel row — card already flat. */
-function realColumn(def, r) {
+/** One carded column. `r` is a sourcesViewModel row — card already flat. */
+function cardedColumn(def, r) {
   const d = r.disposition;
-  if ((r.high_risk_count ?? 0) > 0 && r.unresolved_high_risk === undefined)
+  // `== null`, not `=== undefined`: this crosses a JSON boundary (the committed
+  // kb-summary) where an explicit null is representable, and a null slipping
+  // past the guard would reach `?? 0` and understate exactly what the guard
+  // exists to prevent. derive-kb-summary.mjs already refuses to emit one; this
+  // is the belt to that pair of braces.
+  if ((r.high_risk_count ?? 0) > 0 && r.unresolved_high_risk == null)
     throw new Error(
       `matrix: ${r.id} has high_risk_count ${r.high_risk_count} but no unresolved_high_risk — refusing to understate`,
     );
@@ -114,14 +200,14 @@ function realColumn(def, r) {
   const unresolved = r.unresolved_high_risk ?? 0;
   const review =
     raw > 0
-      ? text(
+      ? cell(
           `${raw} raw${unresolved > 0 ? ` · ${unresolved} high-risk unresolved` : ""}`,
         )
-      : text(def.review_note);
+      : cell(def.review_note);
   const origin =
     d?.applicable && d.files_total
-      ? text(`${d.files_total} files`)
-      : text(
+      ? cell(`${d.files_total} files`)
+      : cell(
           def.origin_note ??
             d?.reason ??
             (d === null ? "not yet measured" : undefined),
@@ -149,12 +235,12 @@ function realColumn(def, r) {
     loop: def.loop ?? null,
     cells: {
       location: r.card?.corpus_path
-        ? text(r.card.corpus_path, r.card.url)
-        : text(def.location),
+        ? cell(r.card.corpus_path, r.card.url)
+        : cell(def.location),
       origin,
       ingestion,
       store:
-        r.objects_total > 0 ? text(`${r.objects_total} typed objects`) : null,
+        r.objects_total > 0 ? cell(`${r.objects_total} typed objects`) : null,
       ontology: def.ontology
         ? {
             text: def.ontology,
@@ -168,8 +254,11 @@ function realColumn(def, r) {
   };
 }
 
-/** One planned (card-less) column — asserted cells only; store/review stay null
- *  unless the defs say otherwise, because nothing has been ingested. */
+/** One planned (card-less) column: every cell is asserted, because there is no
+ *  card to compute from. `store` is always null — nothing has been ingested, and
+ *  the defs deliberately have no way to claim otherwise. `review` and the rest
+ *  render only what the YAML states (`review_note` for a queue that exists
+ *  outside the store, e.g. the research agent's candidates on serverito). */
 function plannedColumn(def, p) {
   return {
     id: p.id,
@@ -181,8 +270,8 @@ function plannedColumn(def, p) {
     owner: def.owner ?? null,
     loop: def.loop ?? null,
     cells: {
-      location: text(def.location),
-      origin: text(def.origin_note),
+      location: cell(def.location),
+      origin: cell(def.origin_note),
       ingestion: def.ingestion ? { text: def.ingestion, detail: null } : null,
       store: null,
       ontology: def.ontology
@@ -191,7 +280,7 @@ function plannedColumn(def, p) {
             ...(def.ontology_ref ? { ref: def.ontology_ref } : {}),
           }
         : null,
-      review: text(def.review_note),
+      review: cell(def.review_note),
       internal: def.internal ?? null,
       public: def.public ?? null,
     },
@@ -201,7 +290,7 @@ function plannedColumn(def, p) {
 /** A source-role row with no defs entry: bare computed column. Appended, never
  *  dropped — a new card must be visible before it is described (DC-1). */
 function bareColumn(r) {
-  return realColumn({ id: r.id, label: r.title }, r);
+  return cardedColumn({ id: r.id, label: r.title }, r);
 }
 
 /**
@@ -214,7 +303,7 @@ export function assembleMatrix({ defs, rows, planned }) {
   const listed = new Set(defs.columns.map((c) => c.id));
   const columns = defs.columns.map((def) => {
     const r = rowById.get(def.id);
-    if (r) return realColumn(def, r);
+    if (r) return cardedColumn(def, r);
     const p = plannedById.get(def.id);
     if (p) return plannedColumn(def, p);
     throw new Error(

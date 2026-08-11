@@ -170,6 +170,12 @@ export const PLANNED_SOURCES = Object.freeze([
  * @property {Record<string, number>} by_maturity
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count
+ * @property {number} unresolved_high_risk  High-risk objects still at maturity
+ *   `raw`. Supplied on BOTH paths (sourceContainers tallies it; the committed
+ *   kb-summary carries it) and depended on by archive-ready.mjs, matrix.mjs and
+ *   the /sources pages — absent, each of them fails closed rather than reading
+ *   it as 0, because 0 is a claim about the corpus and absent is one about the
+ *   build.
  * @property {Disposition | null} disposition
  * @property {import("./archive-ready.mjs").Verdict} verdict
  * @property {string} role

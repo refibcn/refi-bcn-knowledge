@@ -13,7 +13,7 @@ object: `kb/<schema>/<slug>.md`.
   lineage and cross-references.
 - **Publication stays fail-closed** in the site build (`publishableKb()`);
   nothing here is public by virtue of existing.
-- **Views** live in the `.base` files at this root (Obsidian Bases). They are
+
   hand-tunable in the Obsidian UI; the `.base` file is the config
   source of truth.
 - **Edited via Obsidian or scripts** — both are first-class; keep frontmatter
@@ -22,3 +22,8 @@ object: `kb/<schema>/<slug>.md`.
 Migrated 2026-08-12 from `refi-bcn-os/data/kb/*.yaml` with a 422/422
 round-trip fidelity proof (`scripts/migrate-kb-to-md.mjs` — the script header
 documents the exact body-reattachment rule a loader must mirror).
+
+
+## Views
+
+One base, many views — **`kb.base`** (the Notion shape: one database, per-schema views + workflow views). Scoped to this tree (`file.inFolder`, md-only); if a view ever shows non-store files, fix the base-level filter. Views: All objects · Review queue (raw) · High risk · Resources · Signals · Encyclopedia · Claims & evidence · Concept lineages · Boundaries · Source systems. Hand-tune in Obsidian — this file is the config SoT.

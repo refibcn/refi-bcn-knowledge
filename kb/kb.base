@@ -1,0 +1,158 @@
+# kb.base — THE knowledge store base (one database, many views — the Notion shape).
+# Scoped HARD to this store: markdown only, inside the kb/ tree, via either vault
+# path (the knowledge/kb symlink or the repos/ real path). If you see non-store
+# files in any view, the filter below is what to fix — views are hand-tunable in
+# Obsidian and this file is the config source of truth.
+filters:
+  and:
+    - file.ext == "md"
+    - file.name != "README"
+    - or:
+        - file.inFolder("03 Libraries/refi-bcn-os/knowledge/kb")
+        - file.inFolder("03 Libraries/refi-bcn-os/repos/refi-bcn-knowledge/kb")
+properties:
+  title:
+    displayName: Title
+  domain:
+    displayName: Domain
+  maturity:
+    displayName: Status
+  high_risk:
+    displayName: Risk
+  file.folder:
+    displayName: Schema
+views:
+  - type: table
+    name: All objects
+    order:
+      - title
+      - file.folder
+      - domain
+      - maturity
+      - high_risk
+    sort:
+      - property: file.folder
+        direction: ASC
+      - property: title
+        direction: ASC
+  - type: table
+    name: "Review queue (raw)"
+    filters:
+      and:
+        - maturity == "raw"
+    order:
+      - title
+      - file.folder
+      - domain
+      - high_risk
+    sort:
+      - property: high_risk
+        direction: DESC
+      - property: domain
+        direction: ASC
+  - type: table
+    name: "High risk"
+    filters:
+      and:
+        - high_risk == true
+    order:
+      - title
+      - file.folder
+      - domain
+      - maturity
+    sort:
+      - property: file.folder
+        direction: ASC
+  - type: table
+    name: Resources
+    filters:
+      and:
+        - file.folder.endsWith("kb/resource")
+    order:
+      - title
+      - resource_type
+      - domain
+      - url
+      - link_status
+      - maturity
+    sort:
+      - property: resource_type
+        direction: ASC
+  - type: table
+    name: Signals
+    filters:
+      and:
+        - file.folder.endsWith("kb/signal")
+    order:
+      - title
+      - signal_type
+      - affected_layer
+      - domain
+      - maturity
+    sort:
+      - property: signal_type
+        direction: ASC
+  - type: table
+    name: Encyclopedia
+    filters:
+      and:
+        - file.folder.endsWith("kb/encyclopedia-entry")
+    order:
+      - title
+      - domain
+      - maturity
+      - high_risk
+    sort:
+      - property: domain
+        direction: ASC
+  - type: table
+    name: Claims & evidence
+    filters:
+      and:
+        - file.folder.endsWith("kb/claim-evidence")
+    order:
+      - title
+      - domain
+      - maturity
+      - high_risk
+    sort:
+      - property: domain
+        direction: ASC
+  - type: table
+    name: Concept lineages
+    filters:
+      and:
+        - file.folder.endsWith("kb/concept-lineage")
+    order:
+      - title
+      - domain
+      - maturity
+    sort:
+      - property: title
+        direction: ASC
+  - type: table
+    name: Boundaries
+    filters:
+      and:
+        - file.folder.endsWith("kb/public-use-boundary")
+    order:
+      - title
+      - tier
+      - domain
+      - maturity
+    sort:
+      - property: tier
+        direction: ASC
+  - type: table
+    name: Source systems
+    filters:
+      and:
+        - file.folder.endsWith("kb/source-system")
+    order:
+      - title
+      - container_role
+      - steward
+      - corpus_path
+    sort:
+      - property: title
+        direction: ASC

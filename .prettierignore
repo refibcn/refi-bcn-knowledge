@@ -10,6 +10,12 @@ public/CNAME.pending
 public/geo/
 data/kb-public/
 
+# Generated store content, not prose: kb/<schema>/<slug>.md files are written
+# by scripts/migrate-kb-to-md.mjs under a byte-fidelity contract (frontmatter +
+# body must round-trip deepStrictEqual against the source entries). Prettier
+# reformatting them would break that contract.
+kb/
+
 # prettier-plugin-astro cannot parse this file: its whole body is one JSX
 # conditional whose branch contains a raw `<script is:inline>`, and the plugin
 # tries to parse that script as an expression ("SyntaxError: Unexpected token,

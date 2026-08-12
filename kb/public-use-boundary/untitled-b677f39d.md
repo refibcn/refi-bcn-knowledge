@@ -1,0 +1,7 @@
+---
+tier: public-with-caveat
+review_type: domain
+consent_note: No personal/identity data involved. Caveat is about unverified funding/ecological-measurement figures (Catalonia urban-rural divide stats; Rural-Urban Digital Work Program outcomes incl. €840,000 salary flows and ecosystem-service payment ratio) quoted from an uncited 03-wip draft article. Do not cite these figures externally as verified facts until a source is located or the program is confirmed with whoever ran it; flag as "per ReFi Barcelona internal draft, unverified" if reused internally in the interim.
+work_order: wo-37ee452d88fd
+source_lineage: repos/ReFi-Barcelona/content/03-wip/articles/article-bioregionalism/bridging-urban-rural-divide.md
+---

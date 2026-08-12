@@ -1,25 +1,30 @@
 ---
-// / — the hub home, structured AS the architecture (restructure 2026-08-10,
-// plan: docs/superpowers/plans/2026-08-10-hub-home-restructure.md).
+// / — the hub home, structured AS the architecture the 2026-08-11 sync stated
+// (D11): SEPARATE CONTAINERS, each with its own ontology, being linked through
+// a COMMON LAYER that is defined gradually.
 //
-// The page reads top-to-bottom as the pipeline reads left-to-right: several
-// BASES being consolidated (one card each, planned ones included) → ONE STORE
-// (the consolidation point, with the review gate stated) → CURATED COLLECTIONS
-// (definitions over the store) → PUBLIC SURFACES (what renders what cleared
-// review), with the working TOOLS in their own visually-distinct band. The
-// flow sentences live in each section's intro, so the interconnection is
-// narrated where it happens rather than asserted in a diagram.
+// The containers are the main elements, so they are the page's first and
+// largest object: a matrix with the system's eight layers as rows and one
+// column per knowledge space, gates and owners on the foot row. Everything
+// shared between them — the typed store, the (undefined) common ontology, the
+// publication gate, the flows — comes AFTER, as bands of a layer under
+// construction. The store is deliberately no longer the protagonist, and this
+// page no longer claims "one vocabulary": that was tabled, not settled.
 //
 // Honesty contract, unchanged from the rest of the site: every count comes
 // from a view-model or the dual-path store read — never a literal; every
 // number's denominator is stated in the adjacent prose; conditionals are
 // explicit (`> 0`), never bare `{arr.length && …}`.
+//
+// The instance carries no name here on purpose — BD-2026-060 dropped the
+// working name and the container name is unratified.
 import Layout from "../components/Layout.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { loadKb, publishableKb } from "../lib/kb.mjs";
 import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
+import { matrixViewModel, LAYERS } from "../lib/matrix.mjs";
 import { withBase } from "../lib/paths";
 
 // ── Store counts: same dual-path contract as /system and /knowledge ───────
@@ -32,7 +37,7 @@ const inReview = summary
   : all.filter((o) => o.maturity === "raw").length;
 const publishedCount = summary ? summary.published : publishableKb(all).length;
 
-// Per-schema tally for the store section, dual-path like everything above.
+// Per-schema tally for the store band, dual-path like everything above.
 const bySchemaTally: Record<string, number> = summary
   ? (summary.by_schema as Record<string, number>)
   : all.reduce((acc: Record<string, number>, o: any) => {
@@ -44,24 +49,18 @@ const bySchema: [string, number][] = Object.entries(bySchemaTally).sort(
 );
 const schemaCount = bySchema.length;
 
-// Both view-models resolve their own dual path internally.
-const src = sourcesViewModel();
+// All three view-models resolve their own dual path internally.
+const m = matrixViewModel();
 const col = collectionsViewModel();
+// `src` is still read directly for two things the matrix does not carry: the
+// status strip's container count, and the unattributed canary — objects no
+// container claimed, which surfaces here only when it FAILS.
+const src = sourcesViewModel();
 
-// The BASES are the knowledge repos being consolidated — `role === "source"`
-// only. The store also has infrastructure containers (the organizational OS
-// self-card, the website render-target): they belong in /sources' full
-// inventory, but rendering them as "bases" here made the consolidation story
-// unreadable — a reader could not tell a knowledge repo from the machinery
-// around it (Luiz, 2026-08-10). The canary row (`unattributed`) likewise
-// surfaces here only when it FAILS.
-const bases = src.rows.filter((r) => r.role === "source");
-const infra = src.rows.filter(
-  (r) => r.id !== "unattributed" && r.role !== "source",
-);
-const attributedTotal = src.totals.objects;
-const basesSum = bases.reduce((n, r) => n + r.objects_total, 0);
-const infraSum = attributedTotal - basesSum;
+// The instance ↔ CRM loop. Stated once, in the matrix summary: the sync's
+// single most important correction was that ingestion and the CRM are a loop,
+// not a fork. Exactly one column declares it; `null` when none does.
+const crmLoop = m.columns.find((c) => c.loop)?.loop ?? null;
 
 const statusStrip = [
   { label: "Objects", n: objectsTotal },
@@ -70,20 +69,6 @@ const statusStrip = [
   { label: "Sources", n: src.totals.containers },
   { label: "Collections", n: col.rows.length },
 ];
-
-// One-line maturity summary per base, heaviest first — same vocabulary the
-// funnel on /slices uses, compressed to a phrase.
-const matLine = (by: Record<string, number>): string =>
-  Object.entries(by)
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([m, n]) => `${n} ${m}`)
-    .join(" · ");
-
-const ROLE_LABEL: Record<string, string> = {
-  source: "source",
-  self: "self",
-  "render-target": "render target",
-};
 
 const surfaces = [
   {
@@ -122,7 +107,7 @@ const tools = [
   {
     label: "System",
     href: withBase("system/"),
-    note: "the pipeline drawn from its own data",
+    note: "the common layer drawn from its own data",
   },
   {
     label: "Slices",
@@ -142,9 +127,9 @@ const tools = [
     <p class="eyebrow">Knowledge base</p>
     <h1 class="display">A shared knowledge base for ReFi Barcelona.</h1>
     <p class="lede">
-      Several knowledge bases are being consolidated into one store, curated
-      into scoped collections, and published as they clear review. This page is
-      that pipeline, stage by stage.
+      Separate containers — each with its own ontology — being collected and
+      linked through a common layer that is defined gradually. This page is that
+      system: every container, every layer, every gate.
     </p>
     <p class="home-note">
       Internal working surface of the knowledge base — public entries appear as
@@ -162,121 +147,157 @@ const tools = [
     </dl>
   </header>
 
-  <!-- ── STAGE 1 · the bases ─────────────────────────────────────────── -->
+  <!-- ── the containers: layers × containers ─────────────────────────── -->
   <SectionBlock
-    id="bases"
-    title="The bases"
+    id="containers"
+    title="The containers"
     tissue={true}
     tissueSeed={5}
-    intro="Each base being consolidated, as its own container: what it is, what it holds, and how far its ingestion has come. Together they account for every attributed object in the store."
+    intro="Every knowledge space is one column; the system's layers are the rows. Computed values are read live from the store, asserted ones carry a date. Where a container is blocked, the foot row names the gate and who owns it."
   >
-    <ul class="home-bases">
-      {
-        bases.map((r) => {
-          // Narrowed local: `r.disposition` is legitimately nullable, and TS
-          // cannot carry an optional-chain narrowing into sibling JSX.
-          const disp = r.disposition;
-          const awaiting =
-            r.objects_total === 0 &&
-            disp !== null &&
-            disp.applicable !== false &&
-            (disp.files_total ?? 0) > 0;
-          return (
-            <li class="home-base">
-              <div class="home-base__head">
-                <h3>
-                  <a href={withBase(r.href)}>{r.title}</a>
-                </h3>
-                <span
-                  class:list={["home-chip", `home-chip--${r.verdict.status}`]}
+    <div class="home-matrix-scroll">
+      <table class="home-matrix">
+        <thead>
+          <tr>
+            <th scope="col" class="home-matrix__corner">layer</th>
+            {
+              m.columns.map((c) => (
+                <th
+                  scope="col"
+                  class:list={[
+                    "home-matrix__col",
+                    { "home-matrix__col--planned": c.planned },
+                  ]}
                 >
-                  {r.verdict.status}
-                </span>
-              </div>
-              <p class="home-base__meta">
-                <span class="home-role">{ROLE_LABEL[r.role] ?? r.role}</span>
-                {r.objects_total > 0 ? (
-                  <>
-                    {" · "}
-                    <strong>{r.objects_total}</strong> objects
-                  </>
-                ) : awaiting ? (
-                  // Un-batched corpus: nothing extracted yet, but the files
-                  // are counted and waiting — "how far its ingestion has
-                  // come" must show queued work, not render it as emptiness.
-                  <>
-                    {" · "}
-                    <strong>{disp!.files_total}</strong> files awaiting
-                    ingestion
-                  </>
-                ) : disp === null ? (
-                  // normalizeDisposition() returns null for "corpus exists
-                  // but nothing has measured it yet" — a different claim
-                  // from "no corpus", and conflating them is how a page
-                  // asserts falsehoods about a freshly-added source.
-                  <> · file corpus not yet measured — see its page</>
-                ) : (
-                  // No ingestable corpus at all — the disposition's own
-                  // reason says why, in its own words.
-                  <> · {disp.reason ?? "no object corpus"}</>
-                )}
-              </p>
-              {Object.keys(r.by_maturity).length > 0 && (
-                <p class="home-base__mat">{matLine(r.by_maturity)}</p>
-              )}
-              {
-                // Whose base this is — the card's own steward field, already
-                // public on /sources/<id>. This is what lets a reader tell
-                // "Giulio's Notion-side curation" from "the old KB" without
-                // opening each container.
-                r.card?.steward && (
-                  <p class="home-base__steward">{r.card.steward}</p>
-                )
-              }
-            </li>
-          );
-        })
-      }
-      {
-        src.planned.map((p) => (
-          <li class="home-base home-base--planned">
-            <div class="home-base__head">
-              <h3>{p.title}</h3>
-              <span class="home-chip home-chip--planned">planned</span>
-            </div>
-            <p class="home-base__meta">{p.why}</p>
-            <p class="home-base__mat">Blocked on: {p.blocked_on}</p>
-          </li>
-        ))
-      }
-    </ul>
+                  <span class="home-matrix__name">
+                    {c.href !== null ? (
+                      <a href={withBase(c.href)}>{c.label}</a>
+                    ) : (
+                      c.label
+                    )}
+                    {c.planned && (
+                      <span class="home-chip home-chip--planned">planned</span>
+                    )}
+                  </span>
+                  {c.steward !== null && (
+                    <span class="home-matrix__steward">{c.steward}</span>
+                  )}
+                </th>
+              ))
+            }
+          </tr>
+        </thead>
+        <tbody>
+          {
+            LAYERS.map((layer) => (
+              <tr>
+                <th scope="row" class="home-matrix__layer">
+                  {layer.label}
+                </th>
+                {m.columns.map((c) => {
+                  const cell = c.cells[layer.id];
+                  return (
+                    <td
+                      class:list={[
+                        "home-matrix__td",
+                        { "home-matrix__td--planned": c.planned },
+                      ]}
+                    >
+                      {/* Three shapes live in this one slot, and each is a
+                          separate hazard: an `external` href must NOT go
+                          through withBase() (it would emit "/https://…");
+                          the ingestion cell is the only one whose `text` may
+                          be null; `detail` and `ref` are independent, and
+                          neither implies the other. */}
+                      {cell === null ? (
+                        <span class="home-matrix__none">—</span>
+                      ) : (
+                        <>
+                          {cell.text &&
+                            (cell.href ? (
+                              cell.external ? (
+                                <a
+                                  href={cell.href}
+                                  target="_blank"
+                                  rel="noopener"
+                                >
+                                  {cell.text}
+                                </a>
+                              ) : (
+                                <a href={withBase(cell.href)}>{cell.text}</a>
+                              )
+                            ) : (
+                              cell.text
+                            ))}
+                          {cell.detail && (
+                            <span class="home-matrix__detail">
+                              {cell.detail}
+                            </span>
+                          )}
+                          {cell.ref && (
+                            <span class="home-matrix__detail">{cell.ref}</span>
+                          )}
+                        </>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))
+          }
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row" class="home-matrix__layer">Gate</th>
+            {
+              m.columns.map((c) => (
+                <td
+                  class:list={[
+                    "home-matrix__td",
+                    { "home-matrix__td--planned": c.planned },
+                  ]}
+                >
+                  {c.gate !== null ? (
+                    <>
+                      <span class="home-matrix__gate">{c.gate}</span>
+                      {c.owner !== null && (
+                        <span class="home-matrix__owner">→ {c.owner}</span>
+                      )}
+                    </>
+                  ) : (
+                    <span class="home-matrix__none">—</span>
+                  )}
+                </td>
+              ))
+            }
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
     <p class="home-sum">
-      The {bases.length} bases above hold <strong>{basesSum}</strong>{" "}
-      attributed objects between them
       {
-        infraSum > 0 && (
+        crmLoop !== null && (
           <>
-            {" "}
-            (plus <strong>{infraSum}</strong> in infrastructure containers)
+            <strong>{crmLoop}</strong>{" "}
           </>
         )
-      }; the store's own total is <strong>{objectsTotal}</strong> because every container
-      also carries a source card describing it — infrastructure, not corpus.
+      }
+      Asserted values as of {m.asOf}; computed values are read from the store at
+      every build.
       {
-        infra.length > 0 && (
+        m.footnote.length > 0 && (
           <>
             {" "}
-            Not shown as bases:{" "}
-            {infra.map((r, i) => (
+            Not shown as containers:{" "}
+            {m.footnote.map((f, i) => (
               <>
                 {i > 0 && " · "}
-                <a href={withBase(r.href)}>{r.title}</a> (
-                {ROLE_LABEL[r.role] ?? r.role})
+                <a href={withBase(f.href)}>{f.title}</a>
               </>
             ))}{" "}
-            — machinery around the consolidation, not knowledge repos feeding
-            it. <a href={withBase("sources/")}>/sources</a> lists every
-            container.
+            — infrastructure around the consolidation, not knowledge spaces.{" "}
+            <a href={withBase("sources/")}>/sources</a> lists every container.
           </>
         )
       }
@@ -292,107 +313,107 @@ const tools = [
     </p>
   </SectionBlock>
 
-  <div class="home-flow" aria-hidden="true">
-    <span class="home-flow__line"></span>
-    <span class="home-flow__label">every base lands in the same store</span>
-  </div>
-
-  <!-- ── STAGE 2 · one store ─────────────────────────────────────────── -->
-  <SectionBlock
-    id="store"
-    title="One store"
-    alt={true}
-    intro="The consolidation point: one typed store, one review gate. Nothing publishes from here until human review promotes it — the gate fails closed."
-  >
-    <dl class="home-store">
-      <div>
-        <dt>Objects</dt>
-        <dd>{objectsTotal}</dd>
+  <!-- ── the common layer, band by band ──────────────────────────────── -->
+  <section class="home-bands" aria-labelledby="common-layer">
+    <div class="home-bands__inner">
+      <div class="home-bands__head">
+        <h2 id="common-layer">The common layer — defined gradually</h2>
+        <p class="home-bands__intro">
+          What the containers share is being built one band at a time, and only
+          the bands below are actually built. Nothing here merges the containers
+          — it links them.
+        </p>
       </div>
-      <div>
-        <dt>Schemas</dt>
-        <dd>{schemaCount}</dd>
-      </div>
-      <div>
-        <dt>In review</dt>
-        <dd>{inReview}</dd>
-      </div>
-      <div>
-        <dt>Published</dt>
-        <dd>{publishedCount}</dd>
-      </div>
-    </dl>
-    <ul class="home-schemas">
-      {
-        bySchema.map(([schema, n]) => (
-          <li>
-            <span class="home-schemas__label">{schema}</span>
-            <span class="home-schemas__n">{n}</span>
-          </li>
-        ))
-      }
-    </ul>
-    <p class="home-sum">
-      Typed objects from every base share one store and one vocabulary — that is
-      what makes them one knowledge base rather than several. How the pieces fit
-      is drawn, from this same data, at{" "}
-      <a href={withBase("system/")}>/system</a>.
-    </p>
-  </SectionBlock>
 
-  <div class="home-flow" aria-hidden="true">
-    <span class="home-flow__line"></span>
-    <span class="home-flow__label"
-      >curation draws scoped collections out of the store</span
-    >
-  </div>
+      <article class="home-band">
+        <h3>One store</h3>
+        <p class="home-band__stat">
+          <strong>{objectsTotal}</strong> typed objects ({schemaCount} schemas) ·{
+            " "
+          }
+          <strong>{inReview}</strong> in review · <strong
+            >{publishedCount}</strong
+          >{" "}
+          published
+        </p>
+        <ul class="home-schemas">
+          {
+            bySchema.map(([schema, n]) => (
+              <li>
+                <span class="home-schemas__label">{schema}</span>
+                <span class="home-schemas__n">{n}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p>
+          The typed store (<code>data/kb/</code>) sits beside the CRM registry (<code
+            >data/crm.yaml</code
+          >) and the org registries — one band of the common layer, not the
+          whole of it. Local YAML is the source of truth and Notion is a pushed
+          mirror;{" "}
+          <a href={withBase("system/")}>/system</a> carries the authority table.
+        </p>
+        <p>
+          The total above exceeds the store row of the matrix because every
+          container also carries a source card describing it — infrastructure,
+          not corpus.
+        </p>
+      </article>
 
-  <!-- ── STAGE 3 · curated collections ───────────────────────────────── -->
-  <SectionBlock
-    id="collections"
-    title="Curated collections"
-    tissue={true}
-    tissueSeed={3}
-    intro="Definitions over the store, never copies: each collection names a scope, an audience and a goal, and its membership is recomputed at every build. Entries appear publicly as review promotes them."
-  >
-    <ul class="home-cols">
-      {
-        col.rows.map((c) => (
-          <li class="home-col">
-            <div class="home-base__head">
-              <h3>
-                <a href={withBase(c.href)}>{c.title}</a>
-              </h3>
-              <span class:list={["home-chip", `home-chip--${c.status}`]}>
-                {c.status}
-              </span>
-            </div>
-            {c.goal && <p class="home-base__meta">{c.goal}</p>}
-            <p class="home-base__mat">
-              <strong>{c.members_total}</strong> members ·{" "}
-              <strong>{c.publishable_total}</strong> publishable
-              {c.publishable_total === 0 &&
-                " — entries appear as review promotes them"}
-            </p>
-          </li>
-        ))
-      }
-    </ul>
-    <p class="home-sum">
-      More collections are defined as scopes settle — the definitions live in
-      one reviewed file, and{" "}
-      <a href={withBase("collections/")}>/collections</a> renders whatever it holds.
-    </p>
-  </SectionBlock>
+      <article class="home-band">
+        <h3>Common ontology — being defined</h3>
+        <p>
+          Each container keeps its own ontology: toolkit schemas over the old
+          knowledge base, CRM rules over the registry, its own model over the
+          map. The shared layer between them is deliberately gradual — it was
+          tabled at the 260811 sync rather than settled, with Giulio leading and
+          the OS↔Notion mapping doc as the starting point.
+        </p>
+        <p>
+          Nothing here claims one vocabulary yet. The ontology row of the matrix
+          above states what each container actually uses today.
+        </p>
+      </article>
 
-  <div class="home-flow" aria-hidden="true">
-    <span class="home-flow__line"></span>
-    <span class="home-flow__label"
-      >what clears review reaches the public surfaces</span
-    >
-  </div>
+      <article class="home-band">
+        <h3>Publication gate</h3>
+        <p>
+          One gate, and it fails closed: only reviewed, in-scope objects
+          publish, and they publish cut as curated collections — definitions
+          over the store, never copies, recomputed at every build.
+        </p>
+        <ul class="home-band__list">
+          {
+            col.rows.map((c) => (
+              <li>
+                <a href={withBase(c.href)}>{c.title}</a> —{" "}
+                <strong>{c.members_total}</strong> members ·{" "}
+                <strong>{c.publishable_total}</strong> publishable
+                {c.publishable_total === 0 &&
+                  " — entries appear as review promotes them"}
+              </li>
+            ))
+          }
+        </ul>
+        <p>
+          <a href={withBase("collections/")}>/collections</a> renders whatever the
+          reviewed definitions file holds.
+        </p>
+      </article>
 
-  <!-- ── STAGE 4 · public surfaces ───────────────────────────────────── -->
+      <article class="home-band">
+        <h3>Flows</h3>
+        <ul class="home-band__list">
+          <li><code>notion:sync</code> pushes the mirror, never pulls.</li>
+          <li>The CRM build feed refreshes every 6 hours.</li>
+          <li>Git carries history and review.</li>
+        </ul>
+      </article>
+    </div>
+  </section>
+
+  <!-- ── public surfaces ─────────────────────────────────────────────── -->
   <SectionBlock
     id="surfaces"
     title="Public surfaces"
@@ -415,7 +436,7 @@ const tools = [
     </ul>
   </SectionBlock>
 
-  <!-- ── the tools band: over the pipeline, not a stage of it ─────────── -->
+  <!-- ── the tools band: over the system, not a container of it ───────── -->
   <section class="home-tools" aria-label="Working tools">
     <div class="home-tools__inner">
       {
@@ -476,40 +497,109 @@ const tools = [
     color: var(--text-primary);
   }
 
-  /* ── base cards ── */
-  .home-bases,
-  .home-cols {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-5);
-  }
-  .home-base,
-  .home-col {
+  /* ── the matrix ──
+     A real table: layers are row headers, containers are column headers, so a
+     screen reader announces "Ontology / Notion / CRM" rather than a soup of
+     divs. It is wider than any phone, and squeezing seven columns into 380px
+     would destroy the comparison the table exists for — so it scrolls
+     horizontally with the layer column pinned. */
+  .home-matrix-scroll {
+    overflow-x: auto;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius);
-    padding: 14px 16px;
     background: var(--surface-1);
   }
-  .home-base--planned {
-    border-style: dashed;
-    opacity: 0.85;
+  .home-matrix {
+    border-collapse: collapse;
+    min-width: 900px;
+    width: 100%;
+    font-size: 0.82rem;
   }
-  .home-base__head {
+  .home-matrix th,
+  .home-matrix td {
+    border-bottom: 1px solid var(--border-subtle);
+    border-right: 1px solid var(--border-subtle);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .home-matrix tr > *:last-child {
+    border-right: 0;
+  }
+  .home-matrix tfoot tr > * {
+    border-bottom: 0;
+  }
+  .home-matrix__corner,
+  .home-matrix__layer {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface-1);
+    width: 8rem;
+    min-width: 8rem;
+    font-family: var(--mono);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+  }
+  .home-matrix thead th {
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border-default);
+  }
+  .home-matrix__col {
+    min-width: 12rem;
+    font-weight: 500;
+  }
+  .home-matrix__col--planned,
+  .home-matrix__td--planned {
+    border-right-style: dashed;
+    opacity: 0.82;
+  }
+  .home-matrix__name {
     display: flex;
     align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-  }
-  .home-base__head h3 {
-    margin: 0;
+    font-family: var(--serif);
     font-size: var(--text-md);
+    color: var(--text-primary);
   }
-  .home-base__head h3 a {
+  .home-matrix__name a {
     color: inherit;
+  }
+  .home-matrix__steward {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--text-muted);
+  }
+  .home-matrix__none {
+    color: var(--text-muted);
+    opacity: 0.6;
+  }
+  .home-matrix__detail {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+  }
+  .home-matrix__gate {
+    display: block;
+    color: var(--text-primary);
+  }
+  .home-matrix__owner {
+    display: block;
+    margin-top: 4px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--text-muted);
   }
   .home-chip {
     font-family: var(--mono);
@@ -522,37 +612,8 @@ const tools = [
     color: var(--text-muted);
     white-space: nowrap;
   }
-  .home-chip--archive-ready {
-    border-color: var(--ink);
-    color: var(--ink);
-  }
-  .home-chip--planned,
-  .home-chip--defining {
+  .home-chip--planned {
     border-style: dashed;
-  }
-  .home-base__meta,
-  .home-base__mat {
-    margin: 6px 0 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-  }
-  .home-base__meta strong,
-  .home-base__mat strong {
-    color: var(--text-primary);
-  }
-  .home-base__steward {
-    margin: 8px 0 0;
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    border-top: 1px dashed var(--border-subtle);
-    padding-top: 6px;
-  }
-  .home-role {
-    font-family: var(--mono);
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
   }
   .home-sum {
     margin: var(--space-8) 0 0;
@@ -566,55 +627,83 @@ const tools = [
     color: var(--text-primary);
   }
 
-  /* ── flow connectors ── */
-  .home-flow {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: var(--space-6) var(--gutter);
+  /* ── the common-layer bands ── */
+  .home-bands {
+    padding: var(--space-16) var(--gutter);
+    background: var(--surface-1);
+    border-top: 1px solid var(--border-subtle);
   }
-  .home-flow__line {
-    display: block;
-    width: 1px;
-    height: 28px;
-    background: var(--border-default);
+  .home-bands__inner {
+    max-width: var(--container-default);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
   }
-  .home-flow__label {
-    font-family: var(--mono);
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+  .home-bands__head {
+    grid-column: 1 / -1;
+  }
+  .home-bands__head h2 {
+    margin: 0 0 var(--space-2);
+    font-size: clamp(2rem, 3.5vw, 2.75rem);
+  }
+  .home-bands__intro {
+    margin: 0;
+    font-size: var(--text-md);
     color: var(--text-muted);
+    max-width: 60ch;
+    line-height: var(--leading-body);
   }
-
-  /* ── store ── */
-  .home-store {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-8);
-    margin: 0 0 var(--space-6);
+  @media (min-width: 900px) {
+    .home-bands__inner {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  .home-band {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius);
+    padding: var(--space-5);
+    background: var(--bg);
+  }
+  .home-band h3 {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-md);
+  }
+  .home-band p {
+    margin: 0 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    max-width: 60ch;
+  }
+  .home-band p:last-child {
+    margin-bottom: 0;
+  }
+  .home-band strong {
+    color: var(--text-primary);
+  }
+  .home-band code {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+  }
+  .home-band__stat {
+    font-size: 0.9rem;
+  }
+  .home-band__list {
+    list-style: none;
+    margin: 0 0 var(--space-3);
     padding: 0;
-  }
-  .home-store div {
     display: flex;
     flex-direction: column;
-  }
-  .home-store dt {
-    font-family: var(--mono);
-    font-size: var(--text-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
+    gap: 6px;
+    font-size: 0.85rem;
     color: var(--text-muted);
   }
-  .home-store dd {
-    margin: 2px 0 0;
-    font-family: var(--serif);
-    font-size: var(--text-lg);
+  .home-band__list strong {
+    color: var(--text-primary);
   }
   .home-schemas {
     list-style: none;
-    margin: 0;
+    margin: 0 0 var(--space-4);
     padding: 0;
     display: flex;
     flex-wrap: wrap;

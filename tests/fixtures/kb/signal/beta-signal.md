@@ -1,0 +1,8 @@
+---
+title: Beta Signal
+signal_type: status-unknown
+domain: funding
+maturity: raw
+interpretation: Timeline elapsed.
+work_order: wo-aaa
+---

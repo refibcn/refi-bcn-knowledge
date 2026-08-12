@@ -1,7 +1,9 @@
-// Loader for the refi-bcn-os KMS typed store (data/kb/<schema>.yaml).
-// Ported from repos/refibcn-site — keep pure + dependency-light.
-// Data path: this repo lives at repos/refi-bcn-knowledge inside the refi-bcn-os
-// checkout, so the workspace store is two levels up at ../../data/kb/.
+// Loader for the ReFi BCN typed knowledge store: kb/<schema>/<slug>.md in
+// THIS repo — one markdown file per object, frontmatter = the object's fields,
+// body = its `notes` field. The folder carries the schema, the filename the
+// slug; there are no `schema:`/`id:` keys in frontmatter. The parse contract
+// (and the migration that proved it lossless 422/422) is documented in
+// scripts/migrate-kb-to-md.mjs and kb/README.md. Keep pure + dependency-light.
 import { existsSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,18 +23,18 @@ import yaml from "js-yaml";
 //      `ENOENT dist/data/site.yaml` failure and pushed `src/lib/site.ts` to a
 //      Vite `?raw` bundle-time import.
 //
-// `?raw` cannot solve it here: the store is ~1 MB of YAML across 9 files that
-// live OUTSIDE this repo, and it must stay readable by unbundled scripts too.
+// `?raw` cannot solve it here: the store is ~1 MB across 422 markdown files,
+// and it must stay readable by unbundled scripts too.
 //
 // So: anchor every path on the repo root, located by walking up from wherever
 // this module is executing until a `package.json` appears. That walk lands on
 // the repo root from `src/lib/` and from any `dist/**` chunk alike, so it does
 // not care how deep Vite buries the emitted code.
 //
-// Do NOT go back to `new URL("../../../../data/kb/", import.meta.url)`. It
-// happens to produce the right directory today only because `dist/pages/` sits
-// at the same depth as `src/lib/`; any change to Vite's chunk layout silently
-// repoints it at a directory that does not exist.
+// Do NOT go back to `new URL("../../kb/", import.meta.url)`. It would happen
+// to produce the right directory only while `dist/pages/` sits at the same
+// depth as `src/lib/`; any change to Vite's chunk layout silently repoints it
+// at a directory that does not exist.
 //
 // fileURLToPath, not .pathname — the checkout path contains spaces ("03 Libraries").
 function findRepoRoot() {
@@ -51,28 +53,19 @@ function findRepoRoot() {
 
 const REPO_ROOT = findRepoRoot();
 
-// The workspace KMS store, present only inside a refi-bcn-os checkout.
-const DEFAULT_KB_DIR = resolve(REPO_ROOT, "..", "..", "data", "kb");
+// The store lives in this repo since the 2026-08-12 migration (it used to be
+// parent-workspace YAML at ../../data/kb/, with a committed fallback for
+// standalone clones — both retired: a clone now carries the store).
+const DEFAULT_KB_DIR = resolve(REPO_ROOT, "kb");
 
-// The committed public subset — `npm run export:public-kb` writes exactly what
-// publishableKb() lets through, so committing it leaks nothing by construction.
-// CI clones this repo standalone and has no workspace store to read.
-export const PUBLIC_KB_DIR = resolve(REPO_ROOT, "data", "kb-public");
-
-/** Which store to read, in precedence order: env → workspace → committed public.
- *  `workspaceExists` is injectable so the fallback is testable without moving
- *  the real store around. */
-export function resolveKbDir({
-  workspaceExists = existsSync(DEFAULT_KB_DIR),
-} = {}) {
-  // Normalize the env override: the exporter compares this against PUBLIC_KB_DIR
-  // to refuse reading its own output as a source. A raw string compare is
+/** Which store to read: the KB_DIR env override, else the in-repo kb/. */
+export function resolveKbDir() {
+  // Normalize the env override: a consumer comparing resolved paths (the way
+  // the retired exporter guarded against reading its own output) must not be
   // bypassable by a relative path, a trailing slash, or a symlinked prefix
-  // (/tmp vs /private/tmp), and re-exporting from the output silently drops
-  // objects whose pairings aren't in the subset. Resolve so the guard holds.
+  // (/tmp vs /private/tmp). Resolve so any such guard holds.
   if (process.env.KB_DIR) return canonicalize(process.env.KB_DIR);
-  if (workspaceExists) return DEFAULT_KB_DIR; // dev inside the refi-bcn-os checkout
-  return PUBLIC_KB_DIR; // CI / standalone clone
+  return DEFAULT_KB_DIR;
 }
 
 /** Absolute + symlink-resolved when the path exists; absolute otherwise. */
@@ -104,16 +97,59 @@ function canonicalize(p) {
  * @property {Record<string, any>} raw  The untouched YAML entry.
  */
 
+/**
+ * One md file → the entry object it encodes. This mirrors — exactly — the
+ * body-reattachment rule the migration proved lossless (see the header of
+ * scripts/migrate-kb-to-md.mjs):
+ *
+ *   1. The file starts `---\n`; the closing delimiter is the FIRST `\n---\n`
+ *      after it (a later `---` line belongs to the body).
+ *   2. body = everything after the closing `\n---\n`.
+ *   3. Strip ONE leading `\n` from body (the writer's separator blank line),
+ *      then ALL trailing whitespace.
+ *   4. entry = { ...frontmatter, ...(body !== "" ? { notes: body } : {}) }.
+ *
+ * A malformed file throws, naming it — a store file that silently parsed to
+ * nothing would vanish an object from every count on the site.
+ *
+ * @param {string} content
+ * @param {string} label  `<schema>/<file>` for the error message.
+ * @returns {Record<string, any>}
+ */
+function parseMdEntry(content, label) {
+  if (!content.startsWith("---\n")) {
+    throw new Error(`kb.mjs: ${label}: missing opening \`---\` delimiter`);
+  }
+  const close = content.indexOf("\n---\n", 3);
+  if (close === -1) {
+    throw new Error(`kb.mjs: ${label}: missing closing \`---\` delimiter`);
+  }
+  const frontmatter = yaml.load(content.slice(4, close + 1)) ?? {};
+  let body = content.slice(close + 5);
+  if (body.startsWith("\n")) body = body.slice(1); // ONE leading blank line
+  body = body.replace(/\s+$/u, ""); // ALL trailing whitespace
+  return { ...frontmatter, ...(body !== "" ? { notes: body } : {}) };
+}
+
 /** @returns {KbObject[]} */
 export function loadKb(kbDir = resolveKbDir()) {
-  const schemas = readdirSync(kbDir)
-    .filter((f) => f.endsWith(".yaml"))
-    .map((f) => f.replace(/\.yaml$/, ""));
+  // Folders = schemas. Root-level files (README.md, the *.base Obsidian
+  // views) are not directories, so they never enter the walk.
+  const schemas = readdirSync(kbDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
   /** @type {KbObject[]} */
   const objects = [];
   for (const schema of schemas) {
-    const doc = yaml.load(readFileSync(join(kbDir, `${schema}.yaml`), "utf8"));
-    for (const [slug, o] of Object.entries(doc?.entries ?? {})) {
+    const files = readdirSync(join(kbDir, schema)).filter(
+      (f) => f.endsWith(".md") && f !== "README.md",
+    );
+    for (const file of files) {
+      const slug = file.replace(/\.md$/, "");
+      const o = parseMdEntry(
+        readFileSync(join(kbDir, schema, file), "utf8"),
+        `${schema}/${file}`,
+      );
       objects.push({
         id: `${schema}/${slug}`,
         schema,
@@ -417,18 +453,20 @@ export function sortedCounts(counts) {
  * @property {string} title
  * @property {Record<string, any> | null} card  null for "unattributed".
  * @property {KbObject[]} objects
- * @property {number} objects_total  `objects.length` — as a NAMED field, because
- *   a container built from the committed summary carries `objects: []` and every
- *   page must read the count from the same place on both paths.
+ * @property {number} objects_total  `objects.length` — as a NAMED field. Every
+ *   page reads the count here rather than off the array, a contract inherited
+ *   from the retired committed-summary path (whose rows carried `objects: []`)
+ *   and kept because a named count cannot be accidentally read off a filtered
+ *   or blanked array.
  * @property {Record<string, number>} by_maturity  Unset maturity buckets as "unset".
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count  Uses the loadKb-normalized `high_risk`,
  *   so it agrees with facets().highRisk rather than with the raw store flag.
  * @property {number} unresolved_high_risk  High-risk objects still at maturity
  *   "raw". THE canonical definition — archiveReady() consumes this number and
- *   must never recompute it from `objects`, because a container built from the
- *   committed summary carries `objects: []` and a filter over that would return
- *   0, turning "I cannot tell" into "nothing to review". See archive-ready.mjs.
+ *   must never recompute it from `objects`: a verdict recomputing it from a
+ *   row whose listing is empty or partial would turn "I cannot tell" into
+ *   "nothing to review". See archive-ready.mjs.
  */
 
 /** @returns {SourceContainer} */

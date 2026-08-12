@@ -1,6 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { loadKb, facets, graphData, connections } from "../src/lib/kb.mjs";
 import { publishableKb } from "../src/lib/kb.mjs";
@@ -53,20 +52,18 @@ test("graphData: same-source + shared-concept edges, deduped", () => {
   assert.equal(g.nodes[1].degree, 2);
 });
 
-test(
-  "smoke: real store",
-  { skip: !existsSync("../../data/kb/index.json") },
-  () => {
-    const o = loadKb("../../data/kb/");
-    assert.equal(o.length, 422);
-    assert.ok(o.every((x) => x.title && x.schema && x.slug));
-    const g = graphData(o);
-    assert.ok(
-      g.links.length > 100 && g.links.length <= 4000,
-      `links out of expected range: ${g.links.length}`,
-    );
-  },
-);
+// The store lives in this repo (kb/), so the real-store tests run everywhere —
+// no workspace guard, no skip.
+test("smoke: real store", () => {
+  const o = loadKb();
+  assert.equal(o.length, 422);
+  assert.ok(o.every((x) => x.title && x.schema && x.slug));
+  const g = graphData(o);
+  assert.ok(
+    g.links.length > 100 && g.links.length <= 4000,
+    `links out of expected range: ${g.links.length}`,
+  );
+});
 
 // Synthetic normalized objects (loadKb output shape) — publishableKb is pure.
 const mk = (over = {}) => ({
@@ -156,13 +153,9 @@ test("publishableKb: high-risk requires explicit public boundary", () => {
   );
 });
 
-test(
-  "publishableKb: real store yields ZERO public objects today",
-  { skip: !existsSync("../../data/kb/index.json") },
-  () => {
-    assert.equal(publishableKb(loadKb("../../data/kb/")).length, 0);
-  },
-);
+test("publishableKb: real store yields ZERO public objects today", () => {
+  assert.equal(publishableKb(loadKb()).length, 0);
+});
 
 // connections() operates on normalized objects (loadKb output shape).
 const n = (title, slug, raw = {}) => ({ title, slug, schema: "resource", raw });
@@ -219,19 +212,15 @@ test("connections: dup titles resolve to the first; sibling excludes concept-lin
   assert.deepEqual(c.backlinks[1], []);
 });
 
-test(
-  "connections: on the real store, every out-link index is valid",
-  { skip: !existsSync("../../data/kb/index.json") },
-  () => {
-    const o = loadKb("../../data/kb/");
-    const c = connections(o);
-    assert.equal(c.out.length, o.length);
-    const someResolved = c.out.reduce((a, l) => a + l.length, 0);
-    assert.ok(someResolved > 0, "expected some related_concepts to resolve");
-    for (const list of c.out)
-      for (const j of list) assert.ok(j >= 0 && j < o.length, "valid index");
-  },
-);
+test("connections: on the real store, every out-link index is valid", () => {
+  const o = loadKb();
+  const c = connections(o);
+  assert.equal(c.out.length, o.length);
+  const someResolved = c.out.reduce((a, l) => a + l.length, 0);
+  assert.ok(someResolved > 0, "expected some related_concepts to resolve");
+  for (const list of c.out)
+    for (const j of list) assert.ok(j >= 0 && j < o.length, "valid index");
+});
 
 test("public lens: connections over publishableKb never link to non-public objects", () => {
   // Two publishable objects linking to each other + to a non-public title.

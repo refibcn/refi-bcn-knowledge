@@ -215,9 +215,19 @@ test("a carded row beats a stale planned entry of the same id", () => {
   assert.equal(m.columns.length, 1);
   const c = m.columns[0];
   assert.equal(c.planned, false);
-  assert.equal(c.href, "sources/r1/"); // planned columns carry href null
+  assert.equal(c.href, "sources/r1/"); // the carded row's own href
   assert.equal(c.cells.store.text, "10 typed objects"); // computed, not dashed
   assert.equal(c.cells.origin.text, "20 files");
+
+  // And the contrast the old comment claimed but never checked: a genuinely
+  // planned column carries href null, because there is no /sources page to
+  // link to until a card exists.
+  const p = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "p1", label: "Planned" }])),
+    rows: [],
+    planned: [{ id: "p1", title: "Planned", planned: true }],
+  });
+  assert.equal(p.columns[0].href, null);
 });
 
 test("infra rows (role !== source) land in the footnote, never as columns", () => {
@@ -315,6 +325,41 @@ test("a relative href is NOT flagged external, and no YAML cell ever is", () => 
   for (const c of matrixViewModel().columns)
     for (const key of ["internal", "public", "ontology"])
       assert.equal(c.cells[key]?.external, undefined, `${c.id}.${key}`);
+});
+
+test("the two href predicates agree: any scheme is external, not just http(s)", () => {
+  // cell() and the schema must share one definition of "absolute", or a card
+  // URL the schema would reject could reach the page unflagged.
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "One" }])),
+    rows: [row({ card: { corpus_path: "cid", url: "ipfs://bafy/one" } })],
+    planned: [],
+  });
+  assert.equal(m.columns[0].cells.location.external, true);
+});
+
+test("leading whitespace does not smuggle an absolute href past either check", () => {
+  // The fail-open crack: " https://x" read as relative by the schema AND as
+  // non-external by cell() would produce "/ https://x" through withBase().
+  assert.throws(
+    () =>
+      parseMatrixDefs(
+        defs([
+          {
+            id: "r1",
+            label: "One",
+            public: { text: "Site", href: "  https://example.org/" },
+          },
+        ]),
+      ),
+    /instance-relative/,
+  );
+  const m = assembleMatrix({
+    defs: parseMatrixDefs(defs([{ id: "r1", label: "One" }])),
+    rows: [row({ card: { corpus_path: "x", url: "  https://example.org/" } })],
+    planned: [],
+  });
+  assert.equal(m.columns[0].cells.location.external, true);
 });
 
 test("an absolute href in the YAML is rejected, not silently marked external", () => {
@@ -495,40 +540,54 @@ test("store is null at zero objects — never the invented claim `0 typed object
 });
 
 test("round-trip over the real matrix.yaml: refi-bcn-old-kb renders in full", () => {
-  // Couples to the live store's counts on purpose — tests/kb-summary.test.mjs
-  // already fails when src/data/kb-summary.json goes stale against it, so the
-  // two paths cannot disagree here without that test saying so first.
+  // Structure is asserted exactly; the four computed COUNTS are asserted by
+  // format only. The assembler owns the shape of those strings — the values
+  // belong to the store, and tests/kb-summary.test.mjs already owns them. Wired
+  // to literals, this test would go red on every batch, every review promotion
+  // and every C1 resolution, and — unlike the staleness test it would be
+  // imitating — re-deriving the summary would not heal it. A human would have to
+  // retype four numbers to get back to green, which is how a test stops being
+  // read and starts being edited.
   const col = matrixViewModel().columns.find((c) => c.id === "refi-bcn-old-kb");
-  assert.deepEqual(col, {
-    id: "refi-bcn-old-kb",
-    label: "Old knowledge base",
-    href: "sources/refi-bcn-old-kb/",
-    steward: "ReFi BCN (Luiz Fernando)",
-    planned: false,
-    gate: null,
-    owner: null,
-    loop: null,
-    cells: {
-      location: {
-        text: "repos/ReFi-Barcelona",
-        href: "https://github.com/refibcn/ReFi-Barcelona",
-        external: true,
+  const { origin, store, review, ingestion, ...cells } = col.cells;
+
+  assert.deepEqual(
+    { ...col, cells },
+    {
+      id: "refi-bcn-old-kb",
+      label: "Old knowledge base",
+      href: "sources/refi-bcn-old-kb/",
+      steward: "ReFi BCN (Luiz Fernando)",
+      planned: false,
+      gate: null,
+      owner: null,
+      loop: null,
+      cells: {
+        location: {
+          text: "repos/ReFi-Barcelona",
+          href: "https://github.com/refibcn/ReFi-Barcelona",
+          external: true,
+        },
+        ontology: {
+          text: "toolkit 7-schema",
+          ref: "docs/kms/INGEST-AGENT-BRIEF.md",
+        },
+        internal: { text: "Review lens", href: "review/" },
+        public: { text: "Knowledge — fail-closed", href: "knowledge/" },
       },
-      origin: { text: "272 files" },
-      ingestion: {
-        text: "batch-1 complete",
-        detail: "88 ingested · 9 merged · 175 excluded · 0 pending",
-      },
-      store: { text: "416 typed objects" },
-      ontology: {
-        text: "toolkit 7-schema",
-        ref: "docs/kms/INGEST-AGENT-BRIEF.md",
-      },
-      review: { text: "362 raw · 104 high-risk unresolved" },
-      internal: { text: "Review lens", href: "review/" },
-      public: { text: "Knowledge — fail-closed", href: "knowledge/" },
     },
-  });
+  );
+
+  // The asserted half of the ingestion cell is still exact — only its computed
+  // `detail` is volatile.
+  assert.equal(ingestion.text, "batch-1 complete");
+  assert.match(origin.text, /^\d+ files$/);
+  assert.match(store.text, /^\d+ typed objects$/);
+  assert.match(review.text, /^\d+ raw · \d+ high-risk unresolved$/);
+  assert.match(
+    ingestion.detail,
+    /^\d+ ingested · \d+ merged · \d+ excluded · \d+ pending$/,
+  );
 });
 
 test("round-trip: notion-refi-bcn carries its gate, owner, loop and asserted cells", () => {
@@ -558,9 +617,67 @@ test("round-trip: notion-refi-bcn carries its gate, owner, loop and asserted cel
   // No href on either: both are asserted, and an asserted href is relative by
   // schema, so neither may carry the external flag.
   assert.equal(col.cells.location.external, undefined);
-  // Deliberately NOT asserting `store` here — it renders "—" and that is
-  // correct, but the objects_total > 0 guard that produces it is already pinned
-  // by its own test above, on a synthetic row rather than on live data.
+  // Not a duplicate of the synthetic guard test above: that one pins the
+  // FUNCTION (null at zero), this one pins the DATA CLAIM (nothing in the store
+  // is attributed to this container today).
+  // Flips the day the KB→CRM fold lands — at which point this line should fail
+  // and be updated deliberately, not discovered on the page.
+  assert.equal(col.cells.store, null);
+});
+
+test("round-trip: research-agent — a planned column renders from asserted cells alone", () => {
+  // The carded half of the matrix has two round-trips; without this the planned
+  // half had none, and three of the seven shipped columns render ENTIRELY from
+  // asserted cells. No numbers here are volatile: every value is hand-authored
+  // in matrix.yaml and covered by its `as_of`, so unlike the carded round-trip
+  // this one can safely assert the whole object.
+  const col = matrixViewModel().columns.find((c) => c.id === "research-agent");
+  assert.deepEqual(col, {
+    id: "research-agent",
+    label: "Research agent",
+    href: null, // no card, so no /sources page to link to
+    steward: null,
+    planned: true,
+    gate: "write path held (F6) until C1 lands",
+    owner: "Giulio",
+    loop: null,
+    cells: {
+      location: { text: "serverito — Giulio's server" },
+      origin: {
+        text: "464 crawled → 93 candidates · 51 already in CRM (coverage evidence)",
+      },
+      ingestion: {
+        text: "continuous scouting — candidates only, no direct writes",
+        detail: null, // nothing ingested, so no disposition line
+      },
+      store: null,
+      ontology: { text: "CRM rules" },
+      review: { text: "38 new candidates awaiting review" },
+      internal: null,
+      public: null,
+    },
+  });
+});
+
+test("round-trip: catalunya-map carries the public cell no other planned column has", () => {
+  const col = matrixViewModel().columns.find((c) => c.id === "catalunya-map");
+  assert.deepEqual(col.cells.public, { text: "his public site (external)" });
+  assert.equal(col.gate, "D9 — the coordinate-source answer");
+});
+
+test("asOf is the defs' as_of, passed through rather than defaulted", () => {
+  // The committed-file test matches "2026-08-12", which is also what a
+  // hardcoded default would return — so the passthrough itself needs a value
+  // the implementation could not have invented.
+  const m = assembleMatrix({
+    defs: parseMatrixDefs({
+      as_of: "2020-01-01",
+      columns: [{ id: "r1", label: "One" }],
+    }),
+    rows: [row()],
+    planned: [],
+  });
+  assert.equal(m.asOf, "2020-01-01");
 });
 
 test("round-trip: the footnote lists the infra repos in full", () => {

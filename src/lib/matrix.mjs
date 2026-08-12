@@ -63,10 +63,21 @@ export const LAYERS = Object.freeze([
 // error anywhere. `.min(1)` on every optional string for this file's own
 // doctrine: absent and empty are different claims, and `ingestion: ""` must not
 // quietly become the same null cell as an omitted `ingestion:`.
+/** True for an href the page must NOT put through withBase(): anything carrying
+ *  a scheme (`https:`, `mailto:`, `ipfs:`) or protocol-relative (`//host`).
+ *
+ *  ONE predicate, used in both directions — the schema rejects these in
+ *  hand-authored cells, `cell()` flags them on a card's URL — so the two can
+ *  never disagree about what "absolute" means. Leading whitespace is consumed
+ *  deliberately: `" https://x"` must not read as relative to the schema and as
+ *  non-external to `cell()` at the same time, which is a fail-open crack in an
+ *  otherwise fail-closed invariant. */
+const isAbsoluteHref = (h) => /^\s*(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(h);
+
 const relativeHref = z
   .string()
   .min(1)
-  .refine((h) => !/^[a-z][a-z0-9+.-]*:/i.test(h) && !h.startsWith("//"), {
+  .refine((h) => !isAbsoluteHref(h), {
     message:
       "must be instance-relative (pages wrap it in withBase()); put an external link in the cell text",
   });
@@ -179,7 +190,7 @@ const cell = (text, href) =>
     ? {
         text,
         ...(href
-          ? { href, ...(/^https?:/i.test(href) ? { external: true } : {}) }
+          ? { href, ...(isAbsoluteHref(href) ? { external: true } : {}) }
           : {}),
       }
     : null;

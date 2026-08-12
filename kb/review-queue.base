@@ -1,0 +1,11 @@
+filters:
+  and:
+    - maturity == "raw"
+views:
+  - type: table
+    name: Review queue
+    order:
+      - file.folder
+      - file.name
+      - domain
+      - high_risk

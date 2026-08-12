@@ -1,0 +1,9 @@
+views:
+  - type: table
+    name: All objects
+    order:
+      - file.name
+      - file.folder
+      - domain
+      - maturity
+      - high_risk

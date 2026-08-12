@@ -63,8 +63,7 @@ export function signoff(card) {
  * @param {{id: string, card: Record<string, any> | null, objects: any[],
  *   high_risk_count?: number, unresolved_high_risk?: number}} container
  *   `unresolved_high_risk` is required in practice: absent, the high-risk check
- *   fails closed. Both container paths supply it — sourceContainers() tallies it
- *   from the live store, the committed kb-summary carries it for a clone.
+ *   fails closed. sourceContainers() tallies it from the store.
  * @param {{dispositionFor?: (id: string) => any}} [deps] Injectable for tests.
  * @returns {Verdict}
  */
@@ -164,12 +163,12 @@ export function archiveReady(container, deps = {}) {
   //    The count is SUPPLIED, never recomputed here. It used to be
   //    `container.objects.filter(o => o.high_risk && o.maturity === "raw").length`,
   //    which is correct only while `objects` is the full listing. A container
-  //    built from the committed summary (a standalone clone, which has no
-  //    workspace store) carries `objects: []`, so that filter returned 0 and the
-  //    check passed VACUOUSLY — the verdict would read "archive-ready" in CI for
-  //    a container with 104 unreviewed high-risk objects, and this verdict is the
-  //    evidence that authorises freezing a repo read-only. A verdict must never
-  //    get more permissive as it gets less information, so a missing count FAILS.
+  //    row whose listing is empty or partial (the retired committed-summary
+  //    rows carried `objects: []`) made that filter return 0 and the check pass
+  //    VACUOUSLY — the verdict read "archive-ready" for a container with 104
+  //    unreviewed high-risk objects, and this verdict is the evidence that
+  //    authorises freezing a repo read-only. A verdict must never get more
+  //    permissive as it gets less information, so a missing count FAILS.
   const unresolvedHighRisk = container.unresolved_high_risk;
   const hrKnown =
     typeof unresolvedHighRisk === "number" &&

@@ -8,7 +8,6 @@ public/CNAME.pending
 # Minified deploy payload, not source: the atlas fetches this at runtime and
 # pretty-printing it inflates the download 118 KB -> 210 KB.
 public/geo/
-data/kb-public/
 
 # Generated store content, not prose: kb/<schema>/<slug>.md files are written
 # by scripts/migrate-kb-to-md.mjs under a byte-fidelity contract (frontmatter +

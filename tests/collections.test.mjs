@@ -2,11 +2,9 @@
 // pinning: membership is rule-driven but explicit ids override; excludes always
 // win; a typo'd include/exclude key fails CLOSED (not open to the whole store);
 // the public member set is publishableKb-gated (a raw object can be a MEMBER
-// but never a public ENTRY); the summary path reads counts from the committed
-// rollup rather than degrading to zero when it is absent; and both paths yield
-// the identical row shape for the same objects — the single assertion that
-// would have caught the "Sources 0" class of incident this module is built to
-// avoid repeating (see collections.mjs's module header).
+// but never a public ENTRY); and the public row shape gates member BODIES
+// without also hiding publishable ENTRIES. The store lives in this repo (kb/),
+// so nothing here needs a workspace guard — every test runs everywhere.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -15,18 +13,6 @@ import {
   collectionMembers,
   collectionsViewModel,
 } from "../src/lib/collections.mjs";
-import { resolveKbDir, PUBLIC_KB_DIR } from "../src/lib/kb.mjs";
-
-// House pattern (tests/kb-sources.test.mjs, tests/archive-ready.test.mjs): a
-// standalone CI clone has no workspace store, so any test that calls
-// collectionsViewModel() with its DEFAULT `objects`/`fromSummary` reads the
-// committed summary — which legitimately has no `collections` rollup until
-// T1.2 lands it, and correctly throws. That is the module working as
-// designed, not a test failure, so the test self-skips instead of asserting
-// against a store that is not there. Tests that inject their own
-// objects/summary/defs are unaffected by this and must NOT skip — the whole
-// point of the injectables is that they run everywhere.
-const noWorkspace = resolveKbDir() === PUBLIC_KB_DIR;
 
 const o = (schema, slug, extra = {}) => ({
   id: `${schema}/${slug}`,
@@ -164,18 +150,14 @@ test("source-system cards are never members", () => {
   );
 });
 
-test(
-  "viewModel over the real store: publishable is gated, raw members count but do not list publicly",
-  { skip: noWorkspace },
-  () => {
-    const vm = collectionsViewModel();
-    for (const row of vm.rows) {
-      assert.ok(row.members_total >= row.publishable_total, row.id);
-      assert.ok(Array.isArray(row.public_entries));
-      for (const e of row.public_entries) assert.notEqual(e.maturity, "raw");
-    }
-  },
-);
+test("viewModel over the real store: publishable is gated, raw members count but do not list publicly", () => {
+  const vm = collectionsViewModel();
+  for (const row of vm.rows) {
+    assert.ok(row.members_total >= row.publishable_total, row.id);
+    assert.ok(Array.isArray(row.public_entries));
+    for (const e of row.public_entries) assert.notEqual(e.maturity, "raw");
+  }
+});
 
 test("the real collections.yaml parses to at least one collection", () => {
   assert.ok(Object.keys(loadCollections()).length > 0);
@@ -188,117 +170,10 @@ test("loadCollections names the missing file rather than a bare ENOENT", () => {
   );
 });
 
-test("summary path reads counts from the injected rollup, not from computed members", () => {
-  const defs = parseCollections({
-    collections: { c: { title: "C", status: "curating" } },
-  });
-  const vm = collectionsViewModel({
-    objects: [],
-    fromSummary: true,
-    defs,
-    summary: {
-      collections: {
-        c: {
-          members_total: 15,
-          publishable_total: 0,
-          by_schema: { resource: 15 },
-          by_container: { x: 15 },
-        },
-      },
-    },
-  });
-  assert.equal(vm.rows[0].members_total, 15);
-  assert.equal(vm.rows[0].publishable_total, 0);
-  assert.deepEqual(vm.rows[0].by_schema, { resource: 15 });
-});
-
-test("summary path throws when the committed rollup carries no `collections` key — never degrades to zero", () => {
-  const defs = parseCollections({
-    collections: { c: { title: "C", status: "curating" } },
-  });
-  assert.throws(
-    () =>
-      collectionsViewModel({
-        objects: [],
-        fromSummary: true,
-        defs,
-        summary: {},
-      }),
-    /carries no `collections` rollup/,
-  );
-});
-
-test("summary path throws when a specific collection has no rollup entry — never degrades to zero", () => {
-  const defs = parseCollections({
-    collections: { c: { title: "C", status: "curating" } },
-  });
-  assert.throws(
-    () =>
-      collectionsViewModel({
-        objects: [],
-        fromSummary: true,
-        defs,
-        summary: { collections: {} },
-      }),
-    /no rollup for collection "c"/,
-  );
-});
-
-test("summary path throws when a rollup entry is missing members_total — present is not the same as well-shaped", () => {
-  const defs = parseCollections({
-    collections: { c: { title: "C", status: "curating" } },
-  });
-  assert.throws(() =>
-    collectionsViewModel({
-      objects: [],
-      fromSummary: true,
-      defs,
-      summary: {
-        collections: {
-          c: { publishable_total: 0, by_schema: {}, by_container: {} },
-        },
-      },
-    }),
-  );
-});
-
-test("summary path throws on the objects_total-instead-of-members_total trap — the containers rollup's key name, not the collections rollup's", () => {
-  // derive-kb-summary.mjs's CONTAINER_KEYS names its count `objects_total`.
-  // A collections rollup that reused that shape by habit is caught here by
-  // the REQUIRED `members_total` field being absent — with or without
-  // `.strict()` on RollupSchema. `.strict()` earns its place on a different
-  // ground (rejecting an otherwise-correct rollup carrying an extra,
-  // unaccounted-for field) — see the comment on RollupSchema in collections.mjs.
-  const defs = parseCollections({
-    collections: { c: { title: "C", status: "curating" } },
-  });
-  assert.throws(() =>
-    collectionsViewModel({
-      objects: [],
-      fromSummary: true,
-      defs,
-      summary: {
-        collections: {
-          c: {
-            objects_total: 15,
-            publishable_total: 0,
-            by_schema: {},
-            by_container: {},
-          },
-        },
-      },
-    }),
-  );
-});
-
-test("cross-path agreement: live and summary yield identical counts, ENTRIES, and row shape for the same objects", () => {
-  // This is the test the C2 fork bug would fail: a mutant that hard-codes
-  // `members: []` / `public_entries: []` on the summary path changes no key
-  // NAME, and the four counts still come from the injected rollup either way
-  // — so key-set equality and count equality alone cannot catch it. What
-  // catches it is comparing the actual entry ids, and only on a fixture where
-  // publishable_total is non-zero (otherwise `public_entries` is `[]` on both
-  // sides regardless of whether the fork is present).
+test("counts, entries and the public row shape, over a fixture with a publishable member", () => {
+  // The counts are computed from the same membership the entries render from,
+  // and asserted against independently-derived expectations — not read back
+  // off the row, which would just check the code agrees with itself.
   const defs = parseCollections({
     collections: {
       c: {
@@ -351,7 +226,6 @@ test("cross-path agreement: live and summary yield identical counts, ENTRIES, an
 
   const live = collectionsViewModel({
     objects,
-    fromSummary: false,
     defs,
     internal: true,
   }).rows[0];
@@ -365,38 +239,12 @@ test("cross-path agreement: live and summary yield identical counts, ENTRIES, an
     expectedPublicIds,
   );
 
-  const summary = collectionsViewModel({
-    objects,
-    fromSummary: true,
-    defs,
-    internal: true,
-    summary: { collections: { c: expected } },
-  }).rows[0];
-  assert.equal(summary.members_total, expected.members_total);
-  assert.equal(summary.publishable_total, expected.publishable_total);
-  assert.deepEqual(summary.by_schema, expected.by_schema);
-  assert.deepEqual(summary.by_container, expected.by_container);
-
-  // The entries themselves — not just the counts — must agree between the
-  // two paths. This is the assertion a members:[]/public_entries:[] fork on
-  // the summary branch would fail.
-  assert.deepEqual(
-    summary.members.map((m) => m.id).sort(),
-    live.members.map((m) => m.id).sort(),
-  );
-  assert.deepEqual(
-    summary.public_entries.map((m) => m.id).sort(),
-    live.public_entries.map((m) => m.id).sort(),
-  );
-  assert.deepEqual(Object.keys(summary).sort(), Object.keys(live).sort());
-
-  // A third, `internal: false` call — the actual PUBLIC row shape. This is
+  // A second, `internal: false` call — the actual PUBLIC row shape. This is
   // the only test exercising that branch of `members: internal ? members : []`
   // with a non-empty member set; every other `.members` assertion above runs
   // under `internal: true`. Two separate claims: member BODIES are gated...
   const publicRow = collectionsViewModel({
     objects,
-    fromSummary: false,
     defs,
   }).rows[0];
   assert.deepEqual(

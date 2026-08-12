@@ -8,10 +8,8 @@
 //   - high_risk_count without unresolved_high_risk throws — absent is a claim
 //     about the build, 0 is a claim about the corpus (archiveReady doctrine).
 //
-// Dual-path for free: every number comes from sourcesViewModel(), which already
-// resolves the workspace store vs the committed aggregate behind one row shape.
-// This module reads no store of its own, and must not start — see the
-// "one row shape, both paths" note in sources.mjs.
+// Every number comes from sourcesViewModel(), which reads the in-repo store.
+// This module reads no store of its own, and must not start.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -198,11 +196,9 @@ const cell = (text, href) =>
 /** One carded column. `r` is a sourcesViewModel row — card already flat. */
 function cardedColumn(def, r) {
   const d = r.disposition;
-  // `== null`, not `=== undefined`: this crosses a JSON boundary (the committed
-  // kb-summary) where an explicit null is representable, and a null slipping
-  // past the guard would reach `?? 0` and understate exactly what the guard
-  // exists to prevent. derive-kb-summary.mjs already refuses to emit one; this
-  // is the belt to that pair of braces.
+  // `== null`, not `=== undefined`: rows can cross JSON boundaries where an
+  // explicit null is representable, and a null slipping past the guard would
+  // reach `?? 0` and understate exactly what the guard exists to prevent.
   if ((r.high_risk_count ?? 0) > 0 && r.unresolved_high_risk == null)
     throw new Error(
       `matrix: ${r.id} has high_risk_count ${r.high_risk_count} but no unresolved_high_risk — refusing to understate`,
@@ -333,9 +329,7 @@ export function assembleMatrix({ defs, rows, planned }) {
   return { columns, footnote, asOf: defs.as_of };
 }
 
-/** The page-facing wrapper: live rows + planned + the committed YAML. Dual-path
- *  for free — sourcesViewModel resolves its own path, and the defs are a
- *  committed instance file. */
+/** The page-facing wrapper: live rows + planned + the committed YAML defs. */
 export function matrixViewModel() {
   const src = sourcesViewModel();
   return assembleMatrix({

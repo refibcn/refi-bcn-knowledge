@@ -3,7 +3,6 @@
 // drift apart — C2 says "reuse sourceContainers — no second grouping
 // implementation", and this is the layer that keeps that honest.
 import { loadKb, sourceContainers, disposition } from "./kb.mjs";
-import { summaryContainers, usingCommittedStore } from "./kb-summary.mjs";
 import { archiveReady } from "./archive-ready.mjs";
 
 // A card reaches us either as the raw YAML entry or as a KbObject wrapping it in
@@ -165,17 +164,17 @@ export const PLANNED_SOURCES = Object.freeze([
  * @property {string} id
  * @property {string} title
  * @property {Record<string, any> | null} card
- * @property {any[]} objects  EMPTY on the summary path — read `objects_total`.
- * @property {number} objects_total
+ * @property {any[]} objects
+ * @property {number} objects_total  The count every page reads — named, never
+ *   `objects.length` off the array (see the SourceContainer typedef in kb.mjs).
  * @property {Record<string, number>} by_maturity
  * @property {Record<string, number>} by_schema
  * @property {number} high_risk_count
  * @property {number} unresolved_high_risk  High-risk objects still at maturity
- *   `raw`. Supplied on BOTH paths (sourceContainers tallies it; the committed
- *   kb-summary carries it) and depended on by archive-ready.mjs, matrix.mjs and
- *   the /sources pages — absent, each of them fails closed rather than reading
- *   it as 0, because 0 is a claim about the corpus and absent is one about the
- *   build.
+ *   `raw`. Tallied by sourceContainers and depended on by archive-ready.mjs,
+ *   matrix.mjs and the /sources pages — absent, each of them fails closed
+ *   rather than reading it as 0, because 0 is a claim about the corpus and
+ *   absent is one about the build.
  * @property {Disposition | null} disposition
  * @property {import("./archive-ready.mjs").Verdict} verdict
  * @property {string} role
@@ -185,27 +184,16 @@ export const PLANNED_SOURCES = Object.freeze([
 
 /** Order the index reads best in: real containers, planned rows, then the
  *  unattributed canary — which stays visible at zero on purpose.
- *  @returns {{rows: SourceRow[], planned: typeof PLANNED_SOURCES, totals: {objects: number, containers: number, unattributed: number}, from_summary: boolean}} */
+ *  @returns {{rows: SourceRow[], planned: typeof PLANNED_SOURCES, totals: {objects: number, containers: number, unattributed: number}}} */
 export function sourcesViewModel({ internal = false } = {}) {
-  // Two container sources, ONE row shape.
+  // ONE container source: the in-repo store (kb/), which every build — dev,
+  // CI, standalone clone — carries since the 2026-08-12 md-store migration.
+  // (The dual path this used to fork on — live store vs a committed aggregate
+  // summary — is retired with the parent-workspace store.)
   //
-  // Live store when this build sits inside a refi-bcn-os checkout; the committed
-  // aggregate summary when it does not (a standalone CI clone). The summary path
-  // yields `objects: []` and takes every count from named fields, so nothing
-  // downstream — the index, the container pages, dispositionBar, archiveReady —
-  // has to know which one it got. That is the whole contract; if a consumer ever
-  // needs to branch on it, the seam has been broken.
-  //
-  // Why not just read the store: a clone has none. `data/kb-public/` is the
-  // fallback and it is legitimately empty until review promotes objects, so
-  // sourceContainers() there produces no containers at all (the cards are
-  // themselves store entries). Aggregates are committed; bodies are not.
-  const fromSummary = usingCommittedStore();
-  const containers = fromSummary
-    ? summaryContainers()
-    : // One argument: sourceContainers derives the card list from the store's own
-      // source-system entries. C2's "no second grouping implementation" rule.
-      sourceContainers(loadKb());
+  // One argument: sourceContainers derives the card list from the store's own
+  // source-system entries. C2's "no second grouping implementation" rule.
+  const containers = sourceContainers(loadKb());
 
   const rows = containers.map((c) => {
     // Flatten the card ONCE, before anything reads it. A card arrives either as
@@ -229,16 +217,13 @@ export function sourcesViewModel({ internal = false } = {}) {
   return {
     rows,
     planned: PLANNED_SOURCES,
-    // `objects_total`, never `objects.length` — the summary path has no bodies.
+    // `objects_total`, never `objects.length` — the named-count contract.
     totals: {
       objects: rows.reduce((n, r) => n + r.objects_total, 0),
       containers: rows.filter((r) => r.id !== "unattributed").length,
       unattributed:
         rows.find((r) => r.id === "unattributed")?.objects_total ?? 0,
     },
-    /** Which container source this build read. Diagnostic only — no page may
-     *  branch on it, or the two paths start drifting again. */
-    from_summary: fromSummary,
   };
 }
 

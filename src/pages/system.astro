@@ -9,28 +9,19 @@ import SectionBlock from "../components/SectionBlock.astro";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
 import { loadKb, publishableKb } from "../lib/kb.mjs";
-import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { withBase } from "../lib/paths";
 
 const src = sourcesViewModel();
 const col = collectionsViewModel();
 
-// Dual path, exactly as knowledge.astro:25-31 does it: count the LIVE store
-// when there is one, fall back to the committed aggregate only in a standalone
-// clone. Reading the committed file unconditionally would make this page
-// disagree with /sources and /knowledge in the window between a data change
-// and the next `npm run derive:kb-summary` — the one thing this page's own
-// lede promises cannot happen.
+// Counted live off the in-repo store (kb/), the same read /sources and
+// /knowledge perform — so this page cannot disagree with them, which is the
+// one thing its own lede promises cannot happen.
 const all = loadKb();
-const summary = usingCommittedStore() ? kbSummary() : null;
-const objectsTotal = summary ? summary.objects_total : all.length;
-const inReview = summary
-  ? summary.in_review
-  : all.filter((o) => o.maturity === "raw").length;
-const publishedCount = summary ? summary.published : publishableKb(all).length;
-const schemaCount = summary
-  ? Object.keys(summary.by_schema).length
-  : new Set(all.map((o) => o.schema)).size;
+const objectsTotal = all.length;
+const inReview = all.filter((o) => o.maturity === "raw").length;
+const publishedCount = publishableKb(all).length;
+const schemaCount = new Set(all.map((o) => o.schema)).size;
 
 const bands = [
   {
@@ -56,7 +47,7 @@ const bands = [
     ],
   },
   {
-    name: `Store (data/kb, ${schemaCount} schemas)`,
+    name: `Store (kb/, ${schemaCount} schemas)`,
     items: [
       // "Objects", not "typed objects": this counts the WHOLE store, source
       // cards included. /slices reserves "typed objects" for the store minus
@@ -89,13 +80,13 @@ const bands = [
 const AUTHORITY = [
   {
     what: "KB objects",
-    sot: "refi-bcn-os data/kb",
-    note: "Local YAML is the source of truth.",
+    sot: "kb/ (this repo)",
+    note: "One markdown file per object — frontmatter is the fields, the body is the notes. Local files are the source of truth.",
   },
   {
     what: "CRM records",
-    sot: "data/crm.yaml",
-    note: "Notion is the pushed mirror — the instance reads the mirror, at build time, read-only.",
+    sot: "refi-bcn-os data/crm.yaml",
+    note: "The CRM registry stays in the refi-bcn-os workspace; Notion is the pushed mirror — the instance reads the mirror, at build time, read-only.",
   },
   {
     what: "Collections",
@@ -103,9 +94,9 @@ const AUTHORITY = [
     note: "Hand-authored definitions; membership is computed, not stored.",
   },
   {
-    what: "Disposition / summary",
-    sot: "src/data/*.json",
-    note: "Derived, committed for CI — never hand-edited.",
+    what: "Ingest disposition",
+    sot: "src/data/sources-disposition.json",
+    note: "Derived from the refi-bcn-os batch rosters and committed — never hand-edited.",
   },
 ];
 
@@ -125,10 +116,6 @@ const GATES = [
   {
     what: "computed archive-ready verdicts",
     note: "A source is archive-ready only when all four checks pass: every file is dispositioned, the batch numbers reconcile against the checkout, every high-risk object (Indigenous/TEK, personal, governance-sensitive material) has cleared raw review, and a real signoff is recorded. Any missing input fails the verdict closed — it must never read ready because it has less information, the bug this module was hardened against.",
-  },
-  {
-    what: "summary aggregates-only",
-    note: "The committed kb-summary.json carries counts and source-system cards only — never object titles, bodies, slugs or origins.",
   },
 ];
 ---
@@ -200,8 +187,8 @@ const GATES = [
       <strong>{objectsTotal - src.totals.objects}</strong> source cards. The{
         " "
       }
-      <strong>{objectsTotal}</strong> above is everything in <code>data/kb</code
-      >, cards included — a card describes a container rather than belonging to
+      <strong>{objectsTotal}</strong> above is everything in <code>kb/</code>,
+      cards included — a card describes a container rather than belonging to
       one, so <a href={withBase("sources/")}>/sources</a> attributes{" "}
       <strong>{src.totals.objects}</strong> objects to containers, and{" "}
       <a href={withBase("slices/")}>/slices</a> counts that same set as typed objects.
@@ -257,18 +244,6 @@ const GATES = [
         }
       </tbody>
     </table>
-
-    {
-      usingCommittedStore() && (
-        <p class="sys-dualpath">
-          This build has no workspace store, so the counts above come from the
-          committed summary (<code>src/data/kb-summary.json</code>) rather than
-          the live workspace — the standalone-clone half of the dual-path
-          contract. See the header comment in{" "}
-          <code>src/lib/kb-summary.mjs</code>.
-        </p>
-      )
-    }
 
     <p class="sys-note">
       <a href={withBase("slices/")}>/slices</a> draws crosscuts over this pipeline
@@ -386,12 +361,5 @@ const GATES = [
   }
   .sys-table code {
     font-size: 0.8rem;
-  }
-  .sys-dualpath {
-    margin-top: var(--space-8);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--border-subtle);
-    font-size: 0.85rem;
-    color: var(--text-muted);
   }
 </style>

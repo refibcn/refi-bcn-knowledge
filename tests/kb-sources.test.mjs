@@ -20,10 +20,11 @@ import {
 } from "../scripts/derive-disposition.mjs";
 
 // fileURLToPath, not .pathname — the checkout path contains spaces ("03 Libraries").
+// The store itself lives in this repo (kb/), so the real-store tests below run
+// unconditionally. The batch ROSTERS still live in the parent workspace, so the
+// disposition staleness test keeps its guard.
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
-const WORKSPACE_KB = join(REPO_ROOT, "..", "..", "data", "kb");
 const WORKSPACE_BATCHES = join(REPO_ROOT, "..", "..", "docs", "kms", "batches");
-const noWorkspace = !existsSync(join(WORKSPACE_KB, "index.json"));
 const noBatches = !existsSync(WORKSPACE_BATCHES);
 
 // The plan's fixture helper, verbatim: origin lands at BOTH `o.origin` (the
@@ -362,55 +363,48 @@ test("cards default to the source-system objects in the set", () => {
 
 // ── Real store ───────────────────────────────────────────────────────────
 
-test(
-  "real store: every object is attributed, unattributed is zero",
-  { skip: noWorkspace },
-  () => {
-    const objects = loadKb("../../data/kb/");
-    assert.equal(objects.length, 422, "416 content objects + 6 source cards");
-    const c = sourceContainers(objects);
+test("real store: every object is attributed, unattributed is zero", () => {
+  const objects = loadKb();
+  assert.equal(objects.length, 422, "416 content objects + 6 source cards");
+  const c = sourceContainers(objects);
 
-    assert.deepEqual(
-      c.map((x) => x.id),
-      [
-        "refi-bcn-old-kb",
-        "notion-refi-bcn",
-        "refi-bcn",
-        "refi-bcn-os-operations",
-        "refibcn-site",
-        "regenerant-catalunya-repo",
-        "unattributed",
-      ],
-      "6 cards + unattributed last; ties broken by id",
-    );
-
-    assert.equal(byId(c, "refi-bcn-old-kb").objects.length, 416);
-    // THE CANARY. If this ever goes non-zero, grouping has silently lost
-    // objects that a container page would otherwise never show.
-    assert.equal(byId(c, "unattributed").objects.length, 0);
-    // Batch 2/3 are not ingested yet — these exist but are legitimately empty.
-    for (const id of [
-      "refi-bcn",
+  assert.deepEqual(
+    c.map((x) => x.id),
+    [
+      "refi-bcn-old-kb",
       "notion-refi-bcn",
-      "regenerant-catalunya-repo",
+      "refi-bcn",
       "refi-bcn-os-operations",
       "refibcn-site",
-    ]) {
-      assert.equal(byId(c, id).objects.length, 0, id);
-    }
+      "regenerant-catalunya-repo",
+      "unattributed",
+    ],
+    "6 cards + unattributed last; ties broken by id",
+  );
 
-    // No object is counted twice, and none is dropped.
-    const total = c.reduce((a, x) => a + x.objects.length, 0);
-    assert.equal(total, 416);
-    assert.equal(
-      new Set(c.flatMap((x) => x.objects.map((y) => y.id))).size,
-      416,
-    );
-  },
-);
+  assert.equal(byId(c, "refi-bcn-old-kb").objects.length, 416);
+  // THE CANARY. If this ever goes non-zero, grouping has silently lost
+  // objects that a container page would otherwise never show.
+  assert.equal(byId(c, "unattributed").objects.length, 0);
+  // Batch 2/3 are not ingested yet — these exist but are legitimately empty.
+  for (const id of [
+    "refi-bcn",
+    "notion-refi-bcn",
+    "regenerant-catalunya-repo",
+    "refi-bcn-os-operations",
+    "refibcn-site",
+  ]) {
+    assert.equal(byId(c, id).objects.length, 0, id);
+  }
 
-test("real store: per-container tallies", { skip: noWorkspace }, () => {
-  const objects = loadKb("../../data/kb/");
+  // No object is counted twice, and none is dropped.
+  const total = c.reduce((a, x) => a + x.objects.length, 0);
+  assert.equal(total, 416);
+  assert.equal(new Set(c.flatMap((x) => x.objects.map((y) => y.id))).size, 416);
+});
+
+test("real store: per-container tallies", () => {
+  const objects = loadKb();
   const old = byId(sourceContainers(objects), "refi-bcn-old-kb");
 
   assert.deepEqual(old.by_schema, {
@@ -451,8 +445,8 @@ test("real store: per-container tallies", { skip: noWorkspace }, () => {
 
   // `unresolved_high_risk` is the number the archive verdict blocks on, so it is
   // tallied HERE (one definition, in the same loop as high_risk_count) rather
-  // than recomputed in archive-ready.mjs — which cannot recompute it at all once
-  // a container arrives from the committed summary with `objects: []`.
+  // than recomputed in archive-ready.mjs — a verdict recomputing it from a row
+  // whose `objects` listing is empty or partial would read 0 and certify.
   // 157 normalized high-risk minus the 53 boundary records (maturity
   // "boundary", not "raw") = 104 still awaiting review.
   assert.equal(old.unresolved_high_risk, 104);
@@ -737,30 +731,24 @@ test("a source card is never content inside a container", () => {
   );
 });
 
-test(
-  "real store: every object is attributed and the totals reconcile",
-  {
-    skip: noWorkspace,
-  },
-  () => {
-    // /sources calls `unattributed` a canary that should read 0. That is only a
-    // signal if something asserts it.
-    const objects = loadKb();
-    const containers = sourceContainers(objects);
-    const canary = containers.find((c) => c.id === "unattributed");
-    assert.equal(
-      canary.objects.length,
-      0,
-      `unattributed must be empty; got ${canary.objects.length}: ${canary.objects
-        .slice(0, 5)
-        .map((o) => `${o.id} <- ${o.origin}`)
-        .join(" | ")}`,
-    );
-    const grouped = containers.reduce((n, c) => n + c.objects.length, 0);
-    const cards = objects.filter((o) => o.schema === "source-system").length;
-    assert.equal(grouped + cards, objects.length);
-  },
-);
+test("real store: every object is attributed and the totals reconcile", () => {
+  // /sources calls `unattributed` a canary that should read 0. That is only a
+  // signal if something asserts it.
+  const objects = loadKb();
+  const containers = sourceContainers(objects);
+  const canary = containers.find((c) => c.id === "unattributed");
+  assert.equal(
+    canary.objects.length,
+    0,
+    `unattributed must be empty; got ${canary.objects.length}: ${canary.objects
+      .slice(0, 5)
+      .map((o) => `${o.id} <- ${o.origin}`)
+      .join(" | ")}`,
+  );
+  const grouped = containers.reduce((n, c) => n + c.objects.length, 0);
+  const cards = objects.filter((o) => o.schema === "source-system").length;
+  assert.equal(grouped + cards, objects.length);
+});
 
 test("a corpus with no batch is reported as fully pending, not omitted", () => {
   // Emitting only batched sources leaves those containers with no record at all,

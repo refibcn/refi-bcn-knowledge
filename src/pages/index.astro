@@ -12,7 +12,7 @@
 // page no longer claims "one vocabulary": that was tabled, not settled.
 //
 // Honesty contract, unchanged from the rest of the site: every count comes
-// from a view-model or the dual-path store read — never a literal; every
+// from a view-model or the live store read — never a literal; every
 // number's denominator is stated in the adjacent prose; conditionals are
 // explicit (`> 0`), never bare `{arr.length && …}`.
 //
@@ -21,36 +21,33 @@
 import Layout from "../components/Layout.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { loadKb, publishableKb } from "../lib/kb.mjs";
-import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
 import { matrixViewModel, LAYERS } from "../lib/matrix.mjs";
 import { loopNotes, containerCounts } from "../lib/home-summary.mjs";
 import { withBase } from "../lib/paths";
 
-// ── Store counts: same dual-path contract as /system and /knowledge ───────
-// Live workspace store when there is one, committed aggregate in a clone.
+// ── Store counts: read live off the in-repo store, same as /system and
+// /knowledge — every build carries kb/ since the md-store migration.
 const all = loadKb();
-const summary = usingCommittedStore() ? kbSummary() : null;
-const objectsTotal = summary ? summary.objects_total : all.length;
-const inReview = summary
-  ? summary.in_review
-  : all.filter((o) => o.maturity === "raw").length;
-const publishedCount = summary ? summary.published : publishableKb(all).length;
+const objectsTotal = all.length;
+const inReview = all.filter((o) => o.maturity === "raw").length;
+const publishedCount = publishableKb(all).length;
 
-// Per-schema tally for the store band, dual-path like everything above.
-const bySchemaTally: Record<string, number> = summary
-  ? (summary.by_schema as Record<string, number>)
-  : all.reduce((acc: Record<string, number>, o: any) => {
-      acc[o.schema] = (acc[o.schema] ?? 0) + 1;
-      return acc;
-    }, {});
+// Per-schema tally for the store band.
+const bySchemaTally: Record<string, number> = all.reduce(
+  (acc: Record<string, number>, o: any) => {
+    acc[o.schema] = (acc[o.schema] ?? 0) + 1;
+    return acc;
+  },
+  {},
+);
 const bySchema: [string, number][] = Object.entries(bySchemaTally).sort(
   (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
 );
 const schemaCount = bySchema.length;
 
-// All three view-models resolve their own dual path internally.
+// All three view-models read the same in-repo store internally.
 const m = matrixViewModel();
 const col = collectionsViewModel();
 // `src` is still read directly for two things the matrix does not carry: the
@@ -435,11 +432,12 @@ const tools = [
           }
         </ul>
         <p>
-          The typed store (<code>data/kb/</code>) sits beside the CRM registry (<code
-            >data/crm.yaml</code
-          >) and the org registries — one band of the common layer, not the
-          whole of it. Local YAML holds field authority over the Notion mirror —
-          the Flows band below states exactly how far that goes — and{" "}
+          The typed store lives in this repo (<code>kb/</code>, one markdown
+          file per object) beside the CRM registry, which remains in refi-bcn-os
+          (<code>data/crm.yaml</code>) with the org registries — one band of the
+          common layer, not the whole of it. Local files hold field authority
+          over the Notion mirror — the Flows band below states exactly how far
+          that goes — and{" "}
           <a href={withBase("system/")}>/system</a> carries the authority table.
         </p>
         <p>

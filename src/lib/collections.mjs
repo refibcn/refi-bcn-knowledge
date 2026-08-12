@@ -1,22 +1,13 @@
 // Collections: curated sub-scopes over the KMS store (D6). Definitions, never
 // copies — this module computes membership; it never stores object content.
 //
-// Dual-path contract — a HYBRID, not a fork (correction 2026-08-10, code
-// review on e7fb22b). The first draft copied sources.mjs's early-return fork,
-// which is wrong here: sources.mjs may legitimately return `objects: []` on
-// the summary path because /sources deliberately renders zero object bodies
-// publicly. A collection's entire job is to LIST its public entries, and
-// `usingCommittedStore()` is the *permanent* CI branch (true forever once
-// `data/kb-public/` holds real published objects, not a transitional state) —
-// so a fork would leave `public_entries` permanently empty in CI. The correct
-// sibling is src/pages/knowledge.astro: `loadKb()` always returns the right
-// source to RENDER from (workspace store or the committed public subset —
-// exactly `publishableKb()`), while aggregate COUNTS come from the committed
-// summary when there is no workspace store to count from directly. So here:
-// `objects` is loaded the same way on both paths and drives `members` /
-// `public_entries` on both paths; only the *counts* switch source. `from_summary`
-// is diagnostic only — same rule as the `from_summary` note on sources.mjs's
-// `sourcesViewModel` — no page may branch on it.
+// Everything is computed live from `objects` (the in-repo store via loadKb()):
+// `members`, `public_entries`, and the four aggregate counts alike. The
+// dual-path hybrid this module used to implement — live computation for the
+// entries, a committed summary rollup for the counts on a store-less clone —
+// retired with the md-store migration: every clone now carries the store, so
+// there is exactly one computation and nothing for the two paths to disagree
+// about.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,7 +20,6 @@ import {
   UNATTRIBUTED,
   sortedCounts,
 } from "./kb.mjs";
-import { usingCommittedStore, kbSummary, SUMMARY_FILE } from "./kb-summary.mjs";
 
 // Repo-root walk, same as kb.mjs — see its header before "simplifying" this.
 function findRepoRoot() {
@@ -131,30 +121,6 @@ export function loadCollections(file = COLLECTIONS_FILE) {
 // therefore always-unconstrained) axis instead of a validation error.
 const hit = (list, v) => list.length === 0 || list.includes(v);
 
-// The shape a summary rollup entry must have. The REQUIRED fields
-// (members_total etc.) are what catches the likely trap on their own — a
-// rollup that reused the neighbouring containers shape from
-// derive-kb-summary.mjs (which names its count `objects_total`, not
-// `members_total`) fails on a missing required field whether or not the
-// schema is strict.
-//
-// `.strict()` earns its place on a DIFFERENT, leak-contract ground: this is a
-// read-side allowlist mirroring the write-side doctrine already stated for
-// derive-kb-summary.mjs's CONTAINER_KEYS — "anything else is a bug in this
-// script, not a field to quietly pass through — the whole value of the
-// artifact is that a reader can see it holds no content." Without `.strict()`
-// an otherwise-correct rollup could carry an extra field (e.g. a stray
-// `by_title: {...}` map) into a committed public artifact and nothing here
-// would ever notice.
-const RollupSchema = z
-  .object({
-    members_total: z.number().int().nonnegative(),
-    publishable_total: z.number().int().nonnegative(),
-    by_schema: z.record(z.number()),
-    by_container: z.record(z.number()),
-  })
-  .strict();
-
 /** Membership: (all include axes match) OR explicit include id; excludes always
  *  win. `containerOf(objectId)` keeps this module free of a second grouping
  *  implementation — the caller supplies attribution from sourceContainers. */
@@ -174,85 +140,25 @@ export function collectionMembers(def, objects, containerOf) {
 }
 
 /**
- * The summary's `collections` rollup for one collection, validated PRESENT
- * and validated SHAPE. Throws rather than degrading to zeros or `undefined`
- * — same reasoning as `kbSummary()` and `disposition()` in kb.mjs: "0
- * members" is a claim about the corpus, and it is the one value that is both
- * plausible and wrong when the real statement is "the build has not been
- * taught this collection yet". This is the exact failure mode that nearly
- * shipped a "Sources 0 · Objects 0" page on 2026-08-10 — reproduced again on
- * this module's own first draft (15 members in the workspace, 0 in a clone
- * simulation, tests green both ways) before the presence guard existed.
+ * Rows for /collections and /collections/<id>. Everything — members, public
+ * entries, and the four aggregate counts — is one live computation over
+ * `objects`; see the module header.
  *
- * The shape guard (RollupSchema) exists for a second, subtler version of the
- * same failure: present-but-wrong. A rollup entry that reuses a neighbouring
- * shape by habit (e.g. `objects_total` instead of `members_total`, matching
- * derive-kb-summary.mjs's CONTAINER_KEYS) would otherwise pass the presence
- * check, then read as `undefined` — plausible, silent, and wrong in exactly
- * the same way. That specific trap is caught by the REQUIRED fields alone
- * (a missing `members_total` fails either way); `.strict()` on RollupSchema
- * is a separate, additional guard against an extra field riding along
- * unnoticed — see the comment on RollupSchema itself.
- *
- * @param {Record<string, any>} summaryDoc  Injectable for tests; defaults to
- *   the real committed file via kbSummary().
- * @param {string} id
- */
-function summaryAggFor(summaryDoc, id) {
-  const agg = summaryDoc.collections;
-  if (!agg) {
-    throw new Error(
-      `collections.mjs: ${SUMMARY_FILE} carries no \`collections\` rollup. ` +
-        "It is a committed artifact — run `npm run derive:kb-summary` inside a refi-bcn-os checkout.",
-    );
-  }
-  const a = agg[id];
-  if (!a) {
-    throw new Error(
-      `collections.mjs: no rollup for collection "${id}" — re-run \`npm run derive:kb-summary\` after editing ${COLLECTIONS_FILE}.`,
-    );
-  }
-  try {
-    return RollupSchema.parse(a);
-  } catch (e) {
-    if (!(e instanceof z.ZodError)) throw e;
-    throw new Error(
-      `collections.mjs: malformed rollup for "${id}" in ${SUMMARY_FILE} — ` +
-        e.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ") +
-        ". Re-run `npm run derive:kb-summary`.",
-    );
-  }
-}
-
-/**
- * One row shape, both paths — see the module header for why this is a hybrid
- * rather than a fork. `members`/`public_entries` are always computed live
- * from `objects` (workspace store or the committed public subset); only the
- * four aggregate COUNTS switch source when there is no workspace store.
- *
- * Every parameter is injectable, the way `resolveKbDir({workspaceExists})`
- * already is in kb.mjs — so tests can exercise either branch, or both
- * branches against the SAME fixture objects, without depending on the real
- * store or the real committed summary.
+ * `objects` and `defs` stay injectable so tests can drive the whole pipeline
+ * from fixtures without depending on the real store or the real definitions
+ * file.
  *
  * @param {object} [opts]
  * @param {boolean} [opts.internal]
  * @param {import("./kb.mjs").KbObject[]} [opts.objects]  Defaults to loadKb().
- * @param {boolean} [opts.fromSummary]  Defaults to usingCommittedStore().
- * @param {Record<string, any>} [opts.summary]  Defaults to kbSummary(); only
- *   consulted when `fromSummary` is true.
  * @param {Record<string, ReturnType<typeof parseCollections>[string]>} [opts.defs]
  *   Defaults to loadCollections().
  */
 export function collectionsViewModel({
   internal = false,
   objects = loadKb(),
-  fromSummary = usingCommittedStore(),
-  summary,
   defs = loadCollections(),
 } = {}) {
-  const summaryDoc = fromSummary ? (summary ?? kbSummary()) : null;
-
   const containers = sourceContainers(objects);
   const byObject = new Map();
   for (const c of containers)
@@ -273,28 +179,17 @@ export function collectionsViewModel({
     const by_container = sortedCounts(byContainerTally);
     const public_entries = members.filter((m) => pub.has(m.id));
 
-    // Aggregate COUNTS come from the committed rollup when there is no
-    // workspace store to count from directly; `members`/`public_entries`
-    // themselves are always the live computation above, on both paths.
-    const a = summaryDoc ? summaryAggFor(summaryDoc, def.id) : null;
-
     return {
       ...def,
       members: internal ? members : [],
       public_entries,
-      members_total: a ? a.members_total : members.length,
-      publishable_total: a ? a.publishable_total : public_entries.length,
-      by_schema: a ? a.by_schema : by_schema,
-      by_container: a ? a.by_container : by_container,
+      members_total: members.length,
+      publishable_total: public_entries.length,
+      by_schema,
+      by_container,
       href: `collections/${def.id}/`,
     };
   });
 
-  return {
-    rows,
-    // Diagnostic only — no page may branch on it, or the two paths start
-    // drifting again. Same rule as the `from_summary` note on sources.mjs's
-    // `sourcesViewModel`.
-    from_summary: fromSummary,
-  };
+  return { rows };
 }

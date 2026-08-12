@@ -33,45 +33,42 @@ the chrome carries functional labels only.
 
 ## Two feeds
 
-1. **Local `data/kb/`** — the knowledge base compiled inside the org-os checkout by the
-   KB engine. This repo lives at `refi-bcn-os/repos/refi-bcn-knowledge/`, so the engine
-   reaches its source over a relative path (`../../data/kb/`). **Do not relocate this
-   repo** — later tooling depends on that depth.
+1. **The typed store `kb/`** — in this repo: one markdown file per object at
+   `kb/<schema>/<slug>.md`. Frontmatter holds the object's fields, the body its
+   `notes`; the folder carries the schema and the filename the slug. See `kb/README.md`
+   for the store contract, and the header of `scripts/migrate-kb-to-md.mjs` for the
+   exact parse rule `src/lib/kb.mjs` mirrors (migrated 2026-08-12 from
+   `refi-bcn-os/data/kb/*.yaml` with a 422/422 round-trip fidelity proof). Because the
+   store travels with the repo, every build — dev, CI, a standalone clone — reads the
+   same store; there is no fallback path.
 2. **Notion CRM** — organizations, programs, events and territory records that feed the
    directory and the atlas, read through `@notionhq/client` with `NOTION_API_KEY`
-   (copy `.env.example` to `.env`). Local YAML remains the source of truth for org-os
-   registries; Notion is the CRM surface.
+   (copy `.env.example` to `.env`). The CRM registry itself stays in the refi-bcn-os
+   workspace (`data/crm.yaml`) as the source of truth; Notion is the pushed mirror this
+   instance reads at build time.
 
-### The store is outside this repo — two committed derivations bridge the gap
+### One committed derivation still bridges to the workspace
 
-Feed 1 lives in the org-os checkout, which CI does **not** have: GitHub Actions clones
-this repo standalone, so `resolveKbDir()` falls back to `data/kb-public/` — the exported
-public subset, which is legitimately **empty** until human review promotes objects.
-`export:public-kb` cannot fill it, and must not be made to: `publishableKb()` is
-fail-closed by design.
+The ingest **batch rosters** live in the org-os checkout
+(`refi-bcn-os/docs/kms/batches/*.yaml`), which CI does not have — so the per-source
+file disposition is **derived from the workspace and committed**:
 
-So the aggregates a public page needs are **derived from the workspace and committed**:
+| Artifact                            | Command                      | What it holds                                                           |
+| ----------------------------------- | ---------------------------- | ----------------------------------------------------------------------- |
+| `src/data/sources-disposition.json` | `npm run derive:disposition` | Per-source file disposition from `refi-bcn-os/docs/kms/batches/*.yaml`. |
 
-| Artifact                            | Command                      | What it holds                                                                  |
-| ----------------------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
-| `src/data/sources-disposition.json` | `npm run derive:disposition` | Per-source file disposition from `refi-bcn-os/docs/kms/batches/*.yaml`.        |
-| `src/data/kb-summary.json`          | `npm run derive:kb-summary`  | Per-container and global object counts + the `source-system` cards. No bodies. |
+**After any batch: `npm run derive:disposition`, commit the result.** It is derived
+data under version control, so it goes stale silently. `npm test` pins that:
+`tests/kb-sources.test.mjs` recomputes the disposition from the workspace rosters and
+fails if the committed file disagrees (skipped when there is no workspace, i.e. in CI).
+This is not hypothetical bookkeeping — it fired on 2026-08-10: an upstream commit added
+8 files to a counted corpus, `sources-disposition.json` went stale (155 → 162 files),
+and the suite went red until it was re-derived. Treat that failure mode as the
+staleness guard doing its job, not as a flaky test.
 
-**After any batch: `npm run derive:disposition` + `npm run derive:kb-summary`, commit
-both.** They are derived data under version control, so they go stale silently. `npm
-test` pins that: `tests/kb-summary.test.mjs` recomputes the summary from the live store
-and fails if the committed file disagrees (skipped when there is no workspace store,
-i.e. in CI). This is not hypothetical bookkeeping — it fired on 2026-08-10: an upstream
-commit added 8 files to a counted corpus, `sources-disposition.json` went stale
-(155 → 162 files), and the suite went red until it was re-derived. Treat that failure
-mode as the staleness guard doing its job, not as a flaky test.
-
-`derive:kb-summary` **refuses** to run when it can only see `data/kb-public/` — deriving
-there would write zeros over good data and render `/sources` as "nothing ingested", which
-is the reading that could authorise archiving an unprocessed source.
-
-The summary carries counts and the source cards only. Object titles, bodies, slugs and
-origins are excluded, and the script asserts that rather than promising it.
+**This repo still lives at `refi-bcn-os/repos/refi-bcn-knowledge/` — do not relocate
+it.** `derive:disposition` reaches the workspace rosters and source cards over that
+relative depth.
 
 ## Routes
 
@@ -127,9 +124,8 @@ npm run preview   # serve the built dist/
 npm run check     # astro check (types) + prettier --check
 npm run format    # prettier --write
 
-# Committed derivations — re-run both after every ingest batch
+# Committed derivation — re-run after every ingest batch
 npm run derive:disposition   # → src/data/sources-disposition.json
-npm run derive:kb-summary    # → src/data/kb-summary.json
 ```
 
 `npm run build` ends in `node scripts/verify-public-kb.mjs` — a hard gate that walks the

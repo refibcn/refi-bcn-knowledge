@@ -7,9 +7,8 @@
 // check. Everything below is a pure function of already-computed view-models:
 // this module reads no store, no YAML and no disk, and must not start.
 //
-// Dual-path is inherited, not re-implemented: every number handed in comes
-// from matrixViewModel() or sourcesViewModel(), which resolve the workspace
-// store vs the committed aggregate behind one shape before we see it.
+// Every number handed in comes from matrixViewModel() or sourcesViewModel(),
+// which read the in-repo store before we see it.
 
 /** Every loop note declared on a matrix column, in column order.
  *

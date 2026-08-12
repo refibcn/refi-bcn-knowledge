@@ -10,8 +10,7 @@ import {
   assembleMatrix,
   matrixViewModel,
 } from "../src/lib/matrix.mjs";
-import { PLANNED_SOURCES } from "../src/lib/sources.mjs";
-import { summaryContainers } from "../src/lib/kb-summary.mjs";
+import { PLANNED_SOURCES, sourcesViewModel } from "../src/lib/sources.mjs";
 
 const defs = (cols) => ({ as_of: "2026-08-12", columns: cols });
 const row = (over = {}) => ({
@@ -275,12 +274,12 @@ test("the unattributed canary is neither a column nor a footnote entry", () => {
   assert.deepEqual(m.footnote, []);
 });
 
-test("the committed matrix.yaml resolves: every id is a summary container or a planned source", () => {
-  // summaryContainers() reads the committed aggregate — present on BOTH paths,
-  // so this coverage test never skips in a clone.
+test("the committed matrix.yaml resolves: every id is a source container or a planned source", () => {
+  // sourcesViewModel() reads the in-repo store, so this coverage test runs
+  // everywhere — a clone carries the store.
   const vm = matrixViewModel();
   const known = new Set([
-    ...summaryContainers().map((c) => c.id),
+    ...sourcesViewModel().rows.map((r) => r.id),
     ...PLANNED_SOURCES.map((p) => p.id),
   ]);
   assert.ok(
@@ -542,10 +541,9 @@ test("store is null at zero objects — never the invented claim `0 typed object
 test("round-trip over the real matrix.yaml: refi-bcn-old-kb renders in full", () => {
   // Structure is asserted exactly; the four computed COUNTS are asserted by
   // format only. The assembler owns the shape of those strings — the values
-  // belong to the store, and tests/kb-summary.test.mjs already owns them. Wired
+  // belong to the store, and the store tests already own them. Wired
   // to literals, this test would go red on every batch, every review promotion
-  // and every C1 resolution, and — unlike the staleness test it would be
-  // imitating — re-deriving the summary would not heal it. A human would have to
+  // and every C1 resolution. A human would have to
   // retype four numbers to get back to green, which is how a test stops being
   // read and starts being edited.
   const col = matrixViewModel().columns.find((c) => c.id === "refi-bcn-old-kb");

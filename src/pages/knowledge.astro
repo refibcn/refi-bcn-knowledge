@@ -3,48 +3,28 @@ import Layout from "../components/Layout.astro";
 import SourceCrumb from "../components/SourceCrumb.astro";
 import SectionBlock from "../components/SectionBlock.astro";
 import { loadKb, facets, publishableKb } from "../lib/kb.mjs";
-import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { COLORS, TYPE_INFO, tagRowHtml } from "../lib/kb-render.mjs";
 import { withBase } from "../lib/paths";
 
-// ── Counters: aggregates from the summary, bodies from the store ──────────
-//
-// `loadKb()` returns the WORKSPACE store inside a refi-bcn-os checkout and the
-// committed public subset (`data/kb-public/`) in a standalone clone. That subset
-// is exactly `publishableKb()` — 0 objects today, by design, and never more than
-// the published set. So it is the right source for what to RENDER and the wrong
-// source for how much EXISTS: read from it, this page said "0 ingested · 0 in
-// review" in CI while the store held 422 and 368.
-//
-// So the three counters and the "What's inside" table come from the committed
-// aggregate summary when there is no workspace store, and the published cards
-// below always come from `publishableKb(loadKb())`. Aggregates are committed;
-// bodies stay behind the fail-closed publication filter, unchanged.
+// ── Counters and bodies alike come from the in-repo store (kb/) ───────────
+// Every build carries it, so the counters here are the live computation and
+// the published cards below come from `publishableKb(loadKb())` — 0 objects
+// today, by design; bodies stay behind the fail-closed publication filter.
 const all = loadKb();
 const pub = publishableKb(all);
-const summary = usingCommittedStore() ? kbSummary() : null;
 
-const total = summary ? summary.objects_total : all.length;
-const inReview = summary
-  ? summary.in_review
-  : all.filter((o) => o.maturity === "raw").length;
-const publishedCount = summary ? summary.published : pub.length;
-const bySchema = summary
-  ? summary.by_schema
-  : Object.fromEntries(
-      facets(all).schemas.map((s) => [
-        s,
-        all.filter((o) => o.schema === s).length,
-      ]),
-    );
+const total = all.length;
+const inReview = all.filter((o) => o.maturity === "raw").length;
+const publishedCount = pub.length;
+const bySchema = Object.fromEntries(
+  facets(all).schemas.map((s) => [s, all.filter((o) => o.schema === s).length]),
+);
 const schemas = Object.keys(bySchema);
 
 // Guard the meter's divisor: `0 / 0` would emit `width:NaN%`. Still reachable —
-// the summary is derived data and a container-less store is a legal state.
+// an empty store is a legal state.
 const publishedPct = total ? Math.round((publishedCount / total) * 100) : 0;
-// Published objects grouped by schema (empty today by design). Bodies, so always
-// from the store the build can actually read — never from the summary, which
-// carries no object-level data at all.
+// Published objects grouped by schema (empty today by design).
 const pubBySchema = facets(all)
   .schemas.map((s) => ({ schema: s, items: pub.filter((o) => o.schema === s) }))
   .filter((g) => g.items.length > 0);

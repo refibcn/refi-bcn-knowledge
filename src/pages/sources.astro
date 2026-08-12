@@ -79,8 +79,8 @@ const real = rows.filter((r) => r.id !== "unattributed");
               )}
 
               <p class="src-counts">
-                {/* objects_total, not objects.length — a standalone clone reads
-                    the committed summary, whose rows carry counts and no bodies. */}
+                {/* objects_total, not objects.length — the named-count contract
+                    (see the SourceContainer typedef in kb.mjs). */}
                 <strong>{r.objects_total}</strong> objects
                 {r.high_risk_count > 0 && (
                   <span class="src-hr"> · {r.high_risk_count} high-risk</span>

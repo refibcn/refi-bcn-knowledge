@@ -299,11 +299,9 @@ test("archiveReadyAll keys verdicts by container id", () => {
 // ── Against the real store ───────────────────────────────────────────────
 
 test("real store: refi-bcn-old-kb blocks on high-risk review and sign-off", async () => {
-  const { resolveKbDir, PUBLIC_KB_DIR } = await import("../src/lib/kb.mjs");
-  if (resolveKbDir() === PUBLIC_KB_DIR) return; // standalone CI clone
-
   // Through the real view model, so this exercises the same normalization the
-  // pages use rather than a hand-built fixture.
+  // pages use rather than a hand-built fixture. The store lives in this repo,
+  // so this runs everywhere — no clone guard.
   const { sourcesViewModel } = await import("../src/lib/sources.mjs");
   const row = sourcesViewModel().rows.find((r) => r.id === "refi-bcn-old-kb");
   const v = row.verdict;
@@ -410,9 +408,6 @@ test("an unreconciled batch is not 'absorbed', however zero its pending count", 
 });
 
 test("real store: the refi-bcn-old-kb chip the page renders reads 'absorbed'", async () => {
-  const { resolveKbDir, PUBLIC_KB_DIR } = await import("../src/lib/kb.mjs");
-  if (resolveKbDir() === PUBLIC_KB_DIR) return; // standalone CI clone
-
   // sourcesViewModel is what /sources renders from, so this is the assertion
   // that actually pins the user-visible chip rather than a fixture's echo.
   const { sourcesViewModel } = await import("../src/lib/sources.mjs");

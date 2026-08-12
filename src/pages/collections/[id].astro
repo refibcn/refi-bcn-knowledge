@@ -13,10 +13,9 @@
 // dist/collections/ independently; same belt-and-braces as /sources.
 //
 // Counts come from `members_total` / `publishable_total` / `by_schema` /
-// `by_container` — never from an array length. On a standalone-clone build
-// those four come from the committed aggregate summary while `public_entries`
-// comes from the committed public subset. See the header of
-// src/lib/collections.mjs for why that hybrid is the contract.
+// `by_container` — never from an array length, because `members` is blanked
+// on the public path by construction. See the header of
+// src/lib/collections.mjs.
 import Layout from "../../components/Layout.astro";
 import SectionBlock from "../../components/SectionBlock.astro";
 import { collectionsViewModel } from "../../lib/collections.mjs";

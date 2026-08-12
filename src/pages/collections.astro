@@ -9,11 +9,9 @@
 // with a number rather than hiding it.
 //
 // Counts come from `members_total`/`publishable_total`, never from
-// `members.length`: `members` is empty on the public path by construction, and
-// on a standalone-clone build the counts come from the committed summary while
-// the entries come from the committed public subset. Reading a count off an
-// array here would print 0 in CI while the store holds 15 — the 2026-08-10
-// incident, one page over.
+// `members.length`: `members` is empty on the public path by construction, so
+// reading a count off that array would print 0 while the store holds 15 — the
+// 2026-08-10 incident, one page over.
 //
 // Styles are page-local rather than lifted into global.css. The plan floated
 // the lift; it is not a clean move today because `.src-block`, `.src-views` and

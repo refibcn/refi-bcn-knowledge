@@ -3,7 +3,8 @@
 //
 // Why a committed artifact: the rosters live OUTSIDE this repo, in the
 // refi-bcn-os workspace. CI clones this repo standalone, so /sources has to
-// render from something committed — same reasoning as data/kb-public/.
+// render the disposition from something committed. (The source CARDS, by
+// contrast, come from this repo's own store — see loadSourceCards.)
 //
 // Why it asserts instead of trusting: a container's disposition feeds the
 // archive-ready verdict, which is the evidence that authorises archiving a
@@ -26,18 +27,21 @@ import { join, resolve } from "node:path";
 import { statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import yaml from "js-yaml";
+import { loadKb } from "../src/lib/kb.mjs";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
-/** The refi-bcn-os checkout this repo lives inside. Absent in a standalone clone. */
+/** The refi-bcn-os checkout this repo lives inside. Absent in a standalone
+ *  clone — the rosters and corpus trees below are read relative to it. */
 export const WORKSPACE_ROOT = resolve(REPO_ROOT, "..", "..");
 
-/** The source cards, as [slug, entry] pairs. Empty in a standalone clone. */
+/** The source cards, as [slug, entry] pairs — read from THIS repo's md store
+ *  (kb/source-system/*.md) via loadKb(), one parser for the whole store. The
+ *  parent-workspace YAML this used to read is retired. */
 export function loadSourceCards() {
-  const file = join(WORKSPACE_ROOT, "data", "kb", "source-system.yaml");
-  if (!existsSync(file)) return [];
-  const doc = yaml.load(readFileSync(file, "utf8"));
-  return Object.entries(doc?.entries ?? {});
+  return loadKb()
+    .filter((o) => o.schema === "source-system")
+    .map((o) => [o.slug, o.raw]);
 }
 
 /** Count .md under `dir`, or null when it is not present locally. */

@@ -137,20 +137,21 @@ const GATES = [
   title="System"
   current="system"
   section="Knowledge"
-  description="The architecture of this instance, drawn from its own data — feeds, store, curation and surfaces, with live counts and the gates that keep content from leaking."
+  description="The common layer of this instance, drawn from its own data — feeds, store, curation and surfaces, with live counts and the gates that keep content from leaking."
 >
   <SectionBlock
     id="system"
     title="System"
     tissue={true}
     tissueSeed={11}
-    intro="Four bands, feeds through surfaces, each carrying counts read live off the store — not drawn by hand, so this page cannot describe a system that no longer exists."
+    intro="Four bands, feeds through surfaces, each carrying counts read live off the store — not drawn by hand, so this page cannot describe a system that no longer exists. The containers themselves, and the ontology each one keeps, are the matrix on the home page."
   >
     <p class="lede">
-      This is the pipeline that produces every other page on this site: sources
-      feed an object store, curation narrows it into collections, and a handful
-      of public surfaces render what has cleared review. Every number below
-      comes from the same view-models that render
+      This is the common layer under the containers — the pipeline that produces
+      every other page on this site: sources feed an object store, curation
+      narrows it into collections, and a handful of public surfaces render what
+      has cleared review. Every number below comes from the same view-models
+      that render
       <a href={withBase("sources/")}>/sources</a>,
       <a href={withBase("collections/")}>/collections</a> and
       <a href={withBase("knowledge/")}>/knowledge</a> — if this page ever disagrees

@@ -17,6 +17,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-36d0006bf370
+crm_ref: crm-260428-fiare-banca-etica
 ---
 
 Ethical/cooperative bank named in this WIP doc as running "Ethical Banking Projects" — support for solidarity-economy initiatives. Pitched as a natural match for ReFi BCN's GG24 quadratic-funding round on mission alignment ("perfect alignment with ethical banking mission") and access to international ethical-finance networks. No URL given in source; no evidence in this file of an agreed partnership — see companion signal.

@@ -19,6 +19,7 @@ related_concepts:
   - economia-social-i-solidaria
   - impuls-cooperatiu-de-sants
 work_order: wo-97cc02b6b864
+crm_ref: crm-260428-quesoni
 ---
 
 Non-profit worker cooperative (Quesoni, Serveis Integrals per a l'Espectacle, SCCL; Fàbrica de Creació Fabra i Coats, carrer de Sant Adrià 20, 08030 Barcelona, and carrer de Girona 9, Llinars del Vallès; 4 worker-members, 4 employees), formed in 2015 by merging three projects running since 2008: the technical-services SL "Quesoni," the "Say it Loud" Black-music festival, and the "Rebelmadiaq Sound" artisanal sound system. Contact: info@quesoni.cat, 931 885 525. Aims to promote cultural initiatives in a community/social-economy key, extend cooperative practice in culture, and professionalise technical services for grassroots and social-movement events. Say it Loud programmes bands from around the world, draws 4,000+ attendees per edition, runs in public/community cultural centres (Ateneu Popular 9 Barris, Farinera del Clot, Ateneu l'Harmonia), and partners with cooperatives such as Llibreria Pebre Negre, Diomcoop and Alterevents. Linked to the Xarxa d'Economia Solidària and the Impuls Cooperatiu de Sants.

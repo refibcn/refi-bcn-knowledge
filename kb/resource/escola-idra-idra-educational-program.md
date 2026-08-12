@@ -21,6 +21,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-7df55367c8a9
+crm_ref: crm-260805-escola-idra-idra-educational-program
 ---
 
 IDRA's ongoing educational initiative: reading groups (e.g. collaborative study of "La terra és vostra" / Ricardo Robledo's "La Tierra es vuestra", on land access for agroecological transition), debate cycles (named example: "Organització! Acció col·lectiva en la crisi ecològica" — Organization! Collective Action in the Ecological Crisis), and local events at IDRA's Barcelona space. No distinct URL confirmed in the source beyond the parent idrabcn.com site; link_status left unresolved pending verification of a dedicated Escola IDRA page.

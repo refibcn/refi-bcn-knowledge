@@ -17,6 +17,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-3fa396d4f625
+crm_ref: crm-260428-aigua-es-vida
 ---
 
 Named on the ODG entity page as a collaborator: ODG "provid[es] research support" for this initiative, described as Barcelona's water remunicipalization movement. Source page gives no URL or further detail beyond that single line — link_status set to unresolved pending direct confirmation. Distinct real-world coalition, not an ODG program — kept as its own resource per the org/project-is-a-resource rule; if this org recurs elsewhere in the corpus, dedupe on this exact title.

@@ -20,6 +20,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-0fdd1732f31f
+crm_ref: crm-260805-retropgf-optimism-collective
 ---
 
 Optimism Collective's retroactive public-goods-funding program. Source file lists three reference URLs — this candidate carries the RetroPGF-3 governance doc as the primary url and folds the other two (RetroPGF-2 doc, an optimism.mirror.xyz retrospective post) into this note rather than spinning up separate resource entries for the same program: https://community.optimism.io/docs/governance/retropgf-2/ , https://optimism.mirror.xyz/oVnEz7LrfeOTC7H6xCXb5dMZ8Rc4dSkD2KfgG5W9cCw . link_status=unresolved: not fetched/verified during this ingest pass; Optimism has since restructured retroactive funding into numbered "Retro Funding" seasons, so these specific docs may have moved or been superseded — verify before promoting past raw.

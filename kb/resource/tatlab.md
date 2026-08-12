@@ -18,6 +18,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-2a6327b5492a
+crm_ref: crm-260805-tatlab
 ---
 
 TatLab SCCL (constituted 1997), Barcelona. Creative studio for the conception, design, production, and installation of exhibitions in heritage, fine arts, and applied-arts contexts. Holds the ISSOP ("Innovació Sostenible Sense Obsolescència Programada" — sustainable innovation without planned obsolescence) seal and promotes ecodesign through eco-efficient materials. Developed "Utub", an open cardboard-tube connector system for building low-cost, high-value exhibition structures, furniture, and display modules under environmental criteria — a concrete circular-economy/eco-design artifact rather than only a values statement. Member of FCTC, XES, Fiare Banca Ètica, and Coop57.

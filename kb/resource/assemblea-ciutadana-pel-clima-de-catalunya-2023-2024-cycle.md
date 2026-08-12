@@ -24,6 +24,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-760e4eb08cb1
+crm_ref: crm-260805-assemblea-ciutadana-pel-clima-de-catalun
 ---
 
 A citizen assembly convened by the Government of Catalonia (Department for Climate Action, Food & Rural Agenda), Nov 2023–Feb 2024: 100 randomly selected residents (stratified lottery via Idescat + the Sortition Foundation) met over six sessions, overseen by an independent "Grup Motor" advisory body, funded by the Horizon Europe "CLIMAS" project. Produced 30 headline policy recommendations across two dilemmas (renewable-energy deployment; agri-food model). Remit is advisory only — government committed to a public response but binding implementation is not guaranteed. link_status=broken: the in-document PDF link (participa.gencat.cat/.../ACxCC_document-recomanacions.pdf) is a signed Rails blob URL whose embedded token carries an expiry of 2025-05-30T21:26:37Z — already past at ingest time (2026-07); url field trimmed to the host since the full signed path is almost certainly dead. Governance recommendation content → high_risk; see accompanying public-use-boundary. Related BioFi/BFF/Arran de Terra/Eixarcolant concepts are wikilinks in the source, not defined by it — not duplicated here (see assessed-but-excluded).

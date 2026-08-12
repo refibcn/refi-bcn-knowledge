@@ -22,6 +22,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-d6387d8431d4
+crm_ref: crm-260428-nuria-social
 ---
 
 Associative management space in Olot (La Garrotxa, Girona) for social, economic, and ecological transformation and sociocultural dynamization across the territory. Frontmatter fields carried from the old-KB ontology-v1 entity page: status active, focus_areas [social-economy, change-management, food-sovereignty, intercultural-dialogue, leisure-education], network_affiliation [Resilience Earth, Arriant Formació i Lleure], relationship_to_refi_bcn: partner (stronger than the "peer" designation seen on most other Catalunya entity pages in this corpus — kept faithful to source, not editorialized), last_verified 2026-05-06. Location: Carrer Verge del Carme 8, Olot (17800) Girona — a public office/coworking address published on the org's own materials, not a residence. Contact: hola@nuriasocial.org. Facilities: coworking space, multipurpose room, canteen. This is the same physical address ("Espai Núria Social") listed as Balkar Earth's location in its own entity page — Núria Social's space functions as a shared venue for at least one other network-affiliated initiative (see companion encyclopedia-entry). Named sub-programs and the youth initiative are captured in the companion signal rather than fabricated as separate resource nodes (too thin individually — no URLs/dates beyond a name each).

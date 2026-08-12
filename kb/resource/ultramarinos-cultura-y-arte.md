@@ -18,6 +18,7 @@ related_concepts:
   - cooperativisme-cultural
   - intercanvi-cultural
 work_order: wo-97cc02b6b864
+crm_ref: crm-260805-ultramarinos-cultura-y-arte
 ---
 
 Cultural worker cooperative (Ultramarinos Cultura y Arte SCCL; 4 worker-members), founded 2018 by artists originally from Mexico and Catalunya. Contact: info@ultramarinos.net (no address/phone given). Promotes and disseminates art and culture by pooling ideas, organising events and strengthening relationships between the two territories; organises the "Visiones de Ultramar" contemporary-art exhibition cycle. Often hosted at community-managed spaces such as the Casal de Barri El Pou de la Figuera; supports roughly thirty artists, mostly of Mexican origin, across photography, painting, video art, collage, graphic design, illustration, screen printing, song, engraving and film.

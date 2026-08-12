@@ -20,6 +20,7 @@ provenance:
   transformation: quoted
   authorship: ai-assisted
 work_order: wo-b6f2609d3f4d
+crm_ref: crm-260805-hylo-biofi-community-of-practice
 ---
 
 A Hylo-hosted group connecting the global community of BioFi practitioners, as linked from the source page. link_status=unresolved — not fetched/verified during this ingest pass.

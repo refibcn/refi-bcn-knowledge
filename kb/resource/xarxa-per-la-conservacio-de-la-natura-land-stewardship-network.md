@@ -19,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-45db506504e9
+crm_ref: crm-260805-xarxa-per-la-conservaci-de-la-natura-lan
 ---
 
 Formerly Xarxa de Custòdia del Territori (XCT); a second-level non-profit (est. 2003) comprising land trusts, environmental NGOs, park agencies, municipalities, and individuals, coordinating voluntary land-stewardship agreements (farms, forests, river areas) for biodiversity conservation. Source notes support from the Catalan Government's environment department and close work with the Observatori del Paisatge de Catalunya (Landscape Observatory). Not flagged high_risk despite land-related subject matter: this describes an institutional conservation network's public mandate and government relationship, not exact parcel-level land tenure or Indigenous/TEK material. No URL given in-source; link_status: unresolved rather than invented.

@@ -17,6 +17,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-36d0006bf370
+crm_ref: crm-260428-coop-57
 ---
 
 Catalan cooperative finance organization named in this WIP doc as running a "Social Projects Fund" — an annual allocation for social transformation projects. Named as a potential co-funder/matcher for ReFi BCN's GG24 quadratic-funding round; the doc pitches QF as expanding Coop57's reach to regenerative projects and engaging younger, environmentally-minded members. No URL given in source; no evidence in this file of an agreed partnership — see companion signal.

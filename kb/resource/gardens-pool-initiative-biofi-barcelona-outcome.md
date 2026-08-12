@@ -18,6 +18,7 @@ provenance:
   transformation: quoted
   authorship: ai-assisted
 work_order: wo-976f1b199ba4
+crm_ref: crm-260805-gardens-pool-initiative-biofi-barcelona
 ---
 
 Listed as a key outcome/artifact of BioFi Barcelona: "Emerging collaboration around regenerative urban agriculture." No URL, working group roster, or further description given in source — genuinely a stub; `link_status: unresolved` reflects that no source-system or canonical page is known yet, not a broken link.

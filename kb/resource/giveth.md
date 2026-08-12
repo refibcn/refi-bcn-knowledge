@@ -20,6 +20,7 @@ provenance:
   authorship: ai-assisted
 original_source: repos/ReFi-Barcelona/content/02-ecosystem/global/global/Giveth.md
 work_order: wo-cf9946ef3dd3
+crm_ref: crm-260428-giveth
 ---
 
 Web3 funding platform connecting donors with causes/public goods projects, NGOs, and ReFi projects raising funds through crypto. Old-KB page frames Giveth as a longstanding, "forefront" actor in open-source development, decentralized governance, and ReFi ecosystem support "in its early days" — likely 2024-vintage framing; treat as historical description, not current status (see accompanying signal). Filed under content/02-ecosystem/global (global ecosystem entity, not a Catalunya/bioregional org), but the source page ties it to Barcelona via Giveth House (see separate resource object). References cited on the page: https://docs.giveth.io/whatisgiveth/history/ and https://trustedseed.org/giveth-house-in-barcelona.

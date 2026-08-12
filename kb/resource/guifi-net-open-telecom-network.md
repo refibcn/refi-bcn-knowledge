@@ -19,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-45db506504e9
+crm_ref: crm-260805-guifi-net-open-telecom-network
 ---
 
 Free, open, neutral wireless community-network infrastructure started in rural Catalonia in 2004; source claims "over 37,000 active nodes and 71,000 km of links," owned/operated by its users as a commons via a foundation. Partners with volunteers, SMEs, and sometimes municipalities. The node/km figures are stated by the source without a citation date and networks of this kind change size continuously — treat as approximate/stale rather than a current statistic (see companion signal on this file's vintage). No URL given in-source; link_status: unresolved rather than invented.

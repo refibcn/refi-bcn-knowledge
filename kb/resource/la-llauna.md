@@ -18,6 +18,7 @@ related_concepts:
   - cooperativisme-cultural
   - autoocupacio
 work_order: wo-97cc02b6b864
+crm_ref: crm-260805-la-llauna
 ---
 
 Worker cooperative (La Llauna SCCL, carrer de Martí Molins 21-23, 08027 Barcelona; 4 worker-members) providing staging, flooring, tables, chairs, sound and lighting equipment for multicultural events; contracts with Barcelona city council for technical infrastructure in Sant Martí, Nou Barris and Sant Andreu districts. Contact: info@lallauna.net, 933 496 571. Origin traces to the early-1980s economic crisis: in 1983 the Moviment de Joves Cristians de Barris i Ambients Populars (JOBAC) set up La Llauna in Trinitat Vella as a youth self-employment response to youth unemployment, initially collecting and reselling second-hand goods under the name "Cooperativa de Jóvenes Parados 'La Llauna Bon Pastor'" and the campaign "Lo que a ti te sobra, yo lo necesito," reselling out of a Poblenou warehouse.

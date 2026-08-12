@@ -25,6 +25,7 @@ provenance:
   authorship: ai-assisted
 relationship_to_refi_bcn: peer
 work_order: wo-9352e07e61db
+crm_ref: crm-260428-arran-de-terra
 ---
 
 Catalan agroecology and food-sovereignty cooperative, active per source (last_verified in source frontmatter: 2026-05-06). HQ: C/ Torre dels pardals 60, 1-4, 08032 Barcelona (org's own published social headquarters, per its website — not a farm/land-tenure location). Operates across la Garrotxa, la Selva, la Conca de Barberà, Catalunya Central, and Barcelona metropolitan area. Contact: info@arrandeterra.org. Activities per source: dynamization of local food networks; supports APACAT (Associació de Productors Agroecològics de Catalunya) and coordinates the "Recoopera" initiative; advocacy via a Network for Food Sovereignty in Central Catalonia and contributions to the Leader Ripollès Ges Bisaura Association's 2023-2027 plan; training/research including a "toolbox for agroecology" and a study of food-network impacts during COVID-19 (no links/citations given in source for either output — see companion signal). Member of the Federation of Work Cooperatives of Catalonia. Framed in source against BioFi/bioregional concepts (multi-capital, regeneration, bioregional organizing team) via wikilinks to the corpus's own BioFi Glossary / Design Principles pages — not restated here to avoid duplicating those entries.

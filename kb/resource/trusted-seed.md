@@ -18,6 +18,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-160c1d24dfd4
+crm_ref: crm-260805-trusted-seed
 ---
 
 Co-organizer (with ReFi Barcelona) of ReFi UNCONFERENCE Barcelona. This source page names them only as co-organizer via a link to trustedseed.org; no further description of their mandate is given here.

@@ -19,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-8650c711ea5c
+crm_ref: crm-260805-zazelenimo-muqa-municipal-initiative-for
 ---
 
 Per the source doc: a quadratic-funding pilot integrated directly into Split, Croatia's municipal governance, under the Municipal Initiative for Quadratic Funding (MUQA). Allocated €50,000 from the city budget for green-space improvements; proposals restricted to specific public-land interventions (trees, bushes, grass, flowers, benches, urban design); built on Ethereum with Ethereum Foundation support; ran a 20-day citizen voting/donation period that influenced larger municipal allocations. Cited by ReFi BCN as a precedent for municipal-government integration of QF ahead of a proposed GG24 Catalunya round. link_status: unresolved — not live-checked in this pass. GG23-era (2024), not GG24.

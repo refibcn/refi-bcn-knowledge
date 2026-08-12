@@ -17,6 +17,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-4f652cf60d31
+crm_ref: crm-260428-la-fundicio
 ---
 
 Cultural cooperative founded 2006, profiled in "Cultura Cooperativa Barcelona" as community artistic practices. Name-only mention (one line: name, founding year, activity type) — no contact/URL/location detail in this source. Possibly the same org already tracked elsewhere in ReFi BCN's relationship network under this same name — dedup/merge with any existing record on review rather than treating as a new entity; kept faithful to the thin source here.

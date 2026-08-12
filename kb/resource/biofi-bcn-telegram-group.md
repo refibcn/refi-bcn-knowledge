@@ -18,6 +18,7 @@ provenance:
   transformation: quoted
   authorship: ai-assisted
 work_order: wo-976f1b199ba4
+crm_ref: crm-260805-biofi-bcn-telegram-group
 ---
 
 Post-event community channel for BioFi Barcelona follow-up conversations and working-group self-organization. URL checked live during this ingest (HTTP 200) — `link_status: active` reflects that check, not a source-time claim.

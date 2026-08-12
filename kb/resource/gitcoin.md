@@ -19,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-053f700dee67
+crm_ref: crm-260805-gitcoin
 ---
 
 Old-KB "Gitcoin" entity page under Web3 Funding Mechanisms. Describes Gitcoin as a platform using blockchain to fund open-source and large-scale-issue work (climate change named explicitly), operating since September 2017 via the Gitcoin Grants program. Runs on quadratic funding (see companion encyclopedia-entry) and cites growth of ImpactDAOs and pluralistic community-funding tools. Same real-world org as the "Gitcoin", "Gitcoin Grants Protocol", and "Gitcoin Passport" entries already established in the refi-dao-os reference store — title kept identical ("Gitcoin") to dedup correctly at store time.

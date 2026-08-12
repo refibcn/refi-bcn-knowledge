@@ -20,6 +20,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-3fa396d4f625
+crm_ref: crm-260805-observatori-del-deute-en-la-globalitzaci
 ---
 
 Barcelona-based research and activism network (~25 years old, founded ~2000; celebrating its 25th anniversary in 2025 per the source), working across financial justice (speculative finance, illegitimate debt, global economic inequality), climate justice (extractivism, ecosocial alternatives), and commons defense (from an ecofeminist perspective). Contact per source: observatori@odg.cat, tel 93 301 17 93, office at C/ Junta de Comerç 20, principal, 08001 Barcelona (all published on ODG's own site). Bioregional role per source: knowledge production for grassroots movements/policy advocacy, commons-framework advancement, catalyst for citizen platforms on territorial struggles, research on Catalonia's energy transition (see companion encyclopedia-entry and resource on its Energy Communities guide), and research support for water-privatization resistance. Ontology-v1 frontmatter on the source page: status active, location Barcelonès/Barcelona, relationship_to_refi_bcn peer, no network_affiliation listed, last_verified 2026-05-06.

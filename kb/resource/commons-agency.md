@@ -17,6 +17,7 @@ provenance:
   transformation: quoted
   authorship: ai-assisted
 work_order: wo-ee8a06ed8b71
+crm_ref: crm-260428-commons-agency
 ---
 
 Named, alongside ReFi Barcelona, under "Organizers & Maintainers" of the Catalunya Bioregional Knowledge Commons. The source page gives no URL, description, or further detail beyond the name — no link_status set because no link was given. Distinct org from ReFi Barcelona itself; not covered by any other Batch 1 work order found in the roster search performed for this WO.

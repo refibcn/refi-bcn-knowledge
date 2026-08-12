@@ -17,6 +17,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-36d0006bf370
+crm_ref: crm-260805-caixa-d-enginyers-foundation
 ---
 
 Foundation of the Catalan financial cooperative Caixa d'Enginyers, named in this WIP doc as running environmental and social innovation grants. Listed among the existing cooperative-bank grant programs the ReFi BCN GG24 round is pitched as complementing. No URL given in source; no evidence in this file of an agreed partnership — see companion signal. Note: the doc separately names a "Fundació Seira" in the same stakeholder-benefits slot — possibly the same entity under a different name, not independently corroborated (see excluded-material note on the encyclopedia-entry candidate).

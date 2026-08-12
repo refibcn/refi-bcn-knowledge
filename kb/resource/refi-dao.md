@@ -18,6 +18,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-b999dbf7eb7c
+crm_ref: crm-260428-refi-dao
 ---
 
 Described in this file as "a global decentralized organization working on promoting and facilitating the development of the ReFi Ecosystem," of which ReFi Barcelona is a local node. Referenced only via an internal wikilink ([[ReFi DAO]]) — no URL given in this source file, so `url` is left unset rather than inferred; a fuller ReFi DAO source-system/resource card, if warranted, belongs to whichever old-KB page defines it directly (this repo has a refi-dao-os instance and knowledge-base entries of its own — check for an existing entry before treating this as first-surface).

@@ -18,6 +18,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-0fdcdd677a6a
+crm_ref: crm-260805-cooperativa-integral-catalana
 ---
 
 Named on the Research & Degrowth International entity page as a "knowledge bridge" connection: "mutual influence between grassroots degrowth experiments and academic frameworks." Source gives no URL or further detail beyond that single line — link_status set to unresolved pending direct confirmation. Distinct real-world grassroots cooperative initiative, not a program of Research & Degrowth International — kept as its own resource per the org/project-is-a-resource rule; if this org recurs elsewhere in the corpus, dedupe on this exact title.

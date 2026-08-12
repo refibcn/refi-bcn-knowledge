@@ -22,6 +22,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-a67643d2a08a
+crm_ref: crm-260428-miceli-social
 ---
 
 Cooperative service hub (status: active) providing comprehensive services to rural municipalities in Catalonia, positioned within the social economy. Mission: position rural municipalities at the forefront of transition, build territorial/community resilience, create practical alternatives to ecologically harmful models, and establish symbiotic relationships with natural ecosystems. Frontmatter fields carried from the old-KB ontology-v1 entity page: location "Plaça Gran 23, 17500 Ripoll, Girona" (comarca Ripollès), contact info@miceli.social / 676 669 972, focus_areas [rural-regeneration, social-economy, community-resilience, ecological-transition, nature-based-solutions], network_affiliation ["Resilience Earth orbit"], relationship_to_refi_bcn: partner, last_verified 2026-05-06. HIGH RISK: exact street address + direct phone number/email carried into this object — see companion public-use-boundary before promoting past raw.

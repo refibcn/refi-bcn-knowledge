@@ -20,6 +20,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-89752eda2bbe
+crm_ref: crm-260428-balkar-earth
 ---
 
 Transrural workshop for collective inquiry on catalyzing territorial balance change, based at Espai Núria Social, C/ del Carme 8, Olot (17800) Girona (comarca: Garrotxa). Coordinated by Resilience Earth (cooperative advising on change management through participatory processes) and Associació Núria Social. Partnership ecosystem per the source: XES, XES Garrotxa, Miceli, Community Catalysts, Climate Coaches. Co-financed by the Catalan Agency for Development Cooperation and the Generalitat de Catalunya. relationship_to_refi_bcn in the source frontmatter is "peer"; source claims last_verified 2026-05-06 — not independently re-verified at this ingest. Its named sub-program "Iltiŕ" is typed as a separate resource (see companion candidate) to keep the graph node granular rather than folding a three-part named initiative into this org's notes.

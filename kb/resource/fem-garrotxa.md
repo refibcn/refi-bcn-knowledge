@@ -20,6 +20,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-712ccd003cfa
+crm_ref: crm-260805-fem-garrotxa
 ---
 
 Participatory strategic plan for La Garrotxa comarca (Girona province), 2020-2030 timeframe, slogan "Si Som Garrotxa, Fem Garrotxa!". Frontmatter fields carried from the old-KB ontology-v1 entity page: status active, focus_areas [bioregional, participatory-planning, comarca-development, sdg], relationship_to_refi_bcn: peer, last_verified 2026-05-06. Cites 6,500+ participants in the plan's development; SDG (ODG)-aligned. No verified operational link to ReFi BCN beyond the peer-network listing in the source page — treat as a bioregional-planning peer initiative, not an active collaboration.

@@ -6,7 +6,8 @@ is_source_system_candidate: true
 link_status: unresolved
 related_concepts:
   - Bioregional Financing Facility (BFF)
-  - Bioregional Organizing Team and Bioregional Hub (enabling conditions for a BFF)
+  - Bioregional Organizing Team and Bioregional Hub (enabling conditions for a
+    BFF)
 domain: regenerative-economics
 high_risk: false
 maturity: raw
@@ -18,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-a45a39f9dea3
+crm_ref: crm-260805-biofi-community-of-practice
 ---
 
 An online community (hosted on Hylo) for practitioners designing/ implementing Bioregional Financing Facilities to share tools, insights, and best practices, and to find collaborators across roles (e.g. an Organizing Team finding BFF-design expertise). Source names the platform ("Hylo") but gives no direct join/community URL — link_status:unresolved pending a resolvable link; is_source_system_candidate:true flagged because it is a living community (not a static document) that could later be registered as a source-system if ReFi BCN draws on it on an ongoing basis. Likely dedups with other BioFi/BFF-related files in this corpus — kept the title stable ("BioFi Community of Practice") for that.

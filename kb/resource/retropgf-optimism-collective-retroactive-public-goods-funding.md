@@ -19,6 +19,7 @@ provenance:
   transformation: summarized
   authorship: ai-assisted
 work_order: wo-eb636c855bed
+crm_ref: crm-260805-retropgf-optimism-collective-retroactive
 ---
 
 Retroactive public-goods-funding program run by the Optimism Collective: "rewards projects contributing positively to public goods with OP tokens" via project applications, community voting, and token disbursement. Old-KB frames it as reflecting "a commitment to fostering a regenerative economy where impact equates to profit." URL is the maintainer's general docs landing page for the RetroPGF program family, not resolved to a specific numbered round — link_status left unresolved for that reason.

@@ -62,6 +62,33 @@ const src = sourcesViewModel();
 // not a fork. Exactly one column declares it; `null` when none does.
 const crmLoop = m.columns.find((c) => c.loop)?.loop ?? null;
 
+// Three container counts land on this page with three different denominators,
+// and a reader who counts the matrix's columns against the status strip gets
+// two answers with nothing between them: the matrix is the carded containers
+// PLUS the planned ones (no card, so no count claims them), while the strip's
+// Sources is the carded ones PLUS the infrastructure containers in the
+// footnote. Derived here, reconciled in prose under the table — same duty as
+// the store total in the first band.
+const cardedCount = m.columns.filter((c) => !c.planned).length;
+const plannedCount = m.columns.filter((c) => c.planned).length;
+
+// One string, not interpolated markup: every boundary between a conditional
+// block and the text after it is a place the compiler leaves a stray space,
+// and here those spaces would land before punctuation ("yet ," / "( 6)"),
+// where HTML will not collapse them away. A string cannot drift that way and
+// prettier cannot rewrap it into a new artifact. Rendered only when there is
+// something to reconcile — see the guard on it below.
+const containerCounts =
+  ` Counting up: the matrix holds ${cardedCount} containers with source cards` +
+  (plannedCount > 0
+    ? ` and ${plannedCount} planned ones that have none yet`
+    : "") +
+  `, while the Sources figure at the top of this page (${src.totals.containers}) is those same ${cardedCount} carded containers` +
+  (m.footnote.length > 0
+    ? ` plus the ${m.footnote.length} infrastructure ones just named`
+    : "") +
+  " — a planned container has no card yet, so no count claims it.";
+
 const statusStrip = [
   { label: "Objects", n: objectsTotal },
   { label: "In review", n: inReview },
@@ -301,6 +328,7 @@ const tools = [
           </>
         )
       }
+      {cardedCount > 0 && containerCounts}
       {
         src.totals.unattributed > 0 && (
           <strong>

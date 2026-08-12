@@ -25,6 +25,7 @@ import { kbSummary, usingCommittedStore } from "../lib/kb-summary.mjs";
 import { sourcesViewModel } from "../lib/sources.mjs";
 import { collectionsViewModel } from "../lib/collections.mjs";
 import { matrixViewModel, LAYERS } from "../lib/matrix.mjs";
+import { loopNotes, containerCounts } from "../lib/home-summary.mjs";
 import { withBase } from "../lib/paths";
 
 // ── Store counts: same dual-path contract as /system and /knowledge ───────
@@ -57,37 +58,19 @@ const col = collectionsViewModel();
 // container claimed, which surfaces here only when it FAILS.
 const src = sourcesViewModel();
 
-// The instance ↔ CRM loop. Stated once, in the matrix summary: the sync's
-// single most important correction was that ingestion and the CRM are a loop,
-// not a fork. Exactly one column declares it; `null` when none does.
-const crmLoop = m.columns.find((c) => c.loop)?.loop ?? null;
+// The loops a column declares — the sync's single most important correction
+// was that ingestion and the CRM are a loop, not a fork. A list, not a
+// `.find()`: see loopNotes() for why a second one must not vanish.
+const loops = loopNotes(m.columns);
 
-// Three container counts land on this page with three different denominators,
-// and a reader who counts the matrix's columns against the status strip gets
-// two answers with nothing between them: the matrix is the carded containers
-// PLUS the planned ones (no card, so no count claims them), while the strip's
-// Sources is the carded ones PLUS the infrastructure containers in the
-// footnote. Derived here, reconciled in prose under the table — same duty as
-// the store total in the first band.
-const cardedCount = m.columns.filter((c) => !c.planned).length;
-const plannedCount = m.columns.filter((c) => c.planned).length;
-
-// One string, not interpolated markup: every boundary between a conditional
-// block and the text after it is a place the compiler leaves a stray space,
-// and here those spaces would land before punctuation ("yet ," / "( 6)"),
-// where HTML will not collapse them away. A string cannot drift that way and
-// prettier cannot rewrap it into a new artifact. Rendered only when there is
-// something to reconcile — see the guard on it below.
-const containerCounts =
-  ` Counting up: the matrix holds ${cardedCount} containers with source cards` +
-  (plannedCount > 0
-    ? ` and ${plannedCount} planned ones that have none yet`
-    : "") +
-  `, while the Sources figure at the top of this page (${src.totals.containers}) is those same ${cardedCount} carded containers` +
-  (m.footnote.length > 0
-    ? ` plus the ${m.footnote.length} infrastructure ones just named`
-    : "") +
-  " — a planned container has no card yet, so no count claims it.";
+// The three container counts, and whether they actually add up. `reconciles`
+// is computed rather than assumed — the identity is not structural, and
+// home-summary.mjs documents (and tests) the case that breaks it.
+const counts = containerCounts({
+  columns: m.columns,
+  footnote: m.footnote,
+  containers: src.totals.containers,
+});
 
 const statusStrip = [
   { label: "Objects", n: objectsTotal },
@@ -180,10 +163,25 @@ const tools = [
     title="The containers"
     tissue={true}
     tissueSeed={5}
-    intro="Every knowledge space is one column; the system's layers are the rows. Computed values are read live from the store, asserted ones carry a date. Where a container is blocked, the foot row names the gate and who owns it."
+    intro="Every knowledge space is one column; the system's layers are the rows. Some values are computed from the store at every build and the rest are asserted by hand — the note under the table dates the asserted ones. Where a container is blocked, the foot row names the gate and who owns it."
   >
-    <div class="home-matrix-scroll">
+    {
+      /* tabindex + role: an overflow-x container is only scrollable by mouse
+        or touch unless it can take focus, which strands keyboard-only and
+        switch users on a table wider than any viewport (WCAG 2.1.1). */
+    }
+    <div
+      class="home-matrix-scroll"
+      tabindex="0"
+      role="region"
+      aria-label="Containers by layer — scrollable table"
+    >
       <table class="home-matrix">
+        <caption class="home-matrix__caption">
+          Each knowledge space as a column and each layer of the system as a
+          row; the foot row carries the gate blocking a container and who owns
+          it.
+        </caption>
         <thead>
           <tr>
             <th scope="col" class="home-matrix__corner">layer</th>
@@ -233,10 +231,17 @@ const tools = [
                       {/* Three shapes live in this one slot, and each is a
                           separate hazard: an `external` href must NOT go
                           through withBase() (it would emit "/https://…");
-                          the ingestion cell is the only one whose `text` may
-                          be null; `detail` and `ref` are independent, and
-                          neither implies the other. */}
-                      {cell === null ? (
+                          an ingestion cell is the only shape whose `text` can
+                          be null, and only on a column with no defs entry
+                          (matrix.mjs:237) — no current column is one, so that
+                          guard is unexercised in output, not unnecessary;
+                          `detail` and `ref` are independent, and neither
+                          implies the other.
+                          `== null`, not `===`: a LAYERS id the builders never
+                          emit arrives as `undefined`, which strict equality
+                          would send to the else branch to throw on
+                          `cell.text`. */}
+                      {cell == null ? (
                         <span class="home-matrix__none">—</span>
                       ) : (
                         <>
@@ -304,11 +309,11 @@ const tools = [
 
     <p class="home-sum">
       {
-        crmLoop !== null && (
+        loops.map((l) => (
           <>
-            <strong>{crmLoop}</strong>{" "}
+            <strong>{l}</strong>{" "}
           </>
-        )
+        ))
       }
       Asserted values as of {m.asOf}; computed values are read from the store at
       every build.
@@ -328,7 +333,62 @@ const tools = [
           </>
         )
       }
-      {cardedCount > 0 && containerCounts}
+      {
+        /* Editing this paragraph? Every conditional branch must START with a
+          word, never punctuation: the compiler emits a space at each branch
+          boundary, so a branch beginning "," renders "cards ,". Carry the
+          clause's terminal punctuation INSIDE the branch, attached to its
+          last word. Same reason system.astro:194 puts a space before its
+          text after every <strong>. */
+      }
+      {
+        /* Stated only when the arithmetic holds — see home-summary.mjs. */
+        counts.reconciles && counts.carded > 0 && (
+          <>
+            {" "}
+            Counting up: the matrix holds <strong>{counts.carded}</strong>{" "}
+            containers with source cards
+            {counts.planned > 0 ? (
+              <>
+                {" "}
+                and <strong>{counts.planned}</strong> planned ones that carry no
+                card and so appear in no count.{" "}
+              </>
+            ) : (
+              <> and no planned ones yet. </>
+            )}
+            The Sources figure at the top of this page counts{" "}
+            <strong>{counts.containers}</strong> — those same {counts.carded}{" "}
+            carded containers
+            {counts.infrastructure > 0 ? (
+              <>
+                {" "}
+                plus the {counts.infrastructure} infrastructure ones named just
+                above.
+              </>
+            ) : (
+              <> alone.</>
+            )}
+          </>
+        )
+      }
+      {
+        /* The fault path: a matrix column naming a non-source container is
+          rendered as a column AND listed in the footnote, so the sum above
+          would be a confident lie. Surface the break instead, like the
+          unattributed canary. */
+        counts.reconciles === false && (
+          <strong>
+            {" "}
+            ⚠ these container counts do not reconcile: the matrix holds{" "}
+            {counts.carded} carded containers and the footnote lists{" "}
+            {counts.infrastructure} infrastructure ones, but{" "}
+            <a href={withBase("sources/")}>/sources</a> counts{" "}
+            {counts.containers} — a container is being claimed twice or not at
+            all.
+          </strong>
+        )
+      }
       {
         src.totals.unattributed > 0 && (
           <strong>
@@ -378,14 +438,23 @@ const tools = [
           The typed store (<code>data/kb/</code>) sits beside the CRM registry (<code
             >data/crm.yaml</code
           >) and the org registries — one band of the common layer, not the
-          whole of it. Local YAML is the source of truth and Notion is a pushed
-          mirror;{" "}
+          whole of it. Local YAML holds field authority over the Notion mirror —
+          the Flows band below states exactly how far that goes — and{" "}
           <a href={withBase("system/")}>/system</a> carries the authority table.
         </p>
         <p>
-          The total above exceeds the store row of the matrix because every
-          container also carries a source card describing it — infrastructure,
-          not corpus.
+          {
+            /* Computed, not asserted — the sibling idiom at system.astro:194
+              on the identical quantity. Stating the relationship in prose
+              would silently stop being true the moment `unattributed` goes
+              non-zero or an infrastructure container holds objects. */
+          }
+          The containers themselves are attributed{" "}
+          <strong>{src.totals.objects}</strong> of those objects; the remaining{
+            " "
+          }
+          <strong>{objectsTotal - src.totals.objects}</strong> are source cards —
+          a card describes a container rather than belonging to one.
         </p>
       </article>
 
@@ -432,8 +501,26 @@ const tools = [
 
       <article class="home-band">
         <h3>Flows</h3>
+        {
+          /* The claim here is about FIELD AUTHORITY, not direction. Checked
+            against scripts/notion/ in the parent repo: pulls happen only
+            where a rule sets `authority: "notion"` (plan.mjs:5, :26) and no
+            rule does, so Notion never overwrites a local field — but the
+            tasks and crm rules both set `import: { enabled: true }`
+            (sync-rules.mjs:59, :87) and sync.mjs:217 appends those Notion
+            rows into the local YAML under an explicit `--import`. "Pushes,
+            never pulls" was simply false. */
+        }
         <ul class="home-band__list">
-          <li><code>notion:sync</code> pushes the mirror, never pulls.</li>
+          <li>
+            <code>notion:sync</code> gives local YAML field authority — Notion never
+            overwrites a field.
+          </li>
+          <li>
+            Existence syncs both ways: local records are created in Notion, and
+            Notion-created rows come down only under an explicit{" "}
+            <code>--import</code>.
+          </li>
           <li>The CRM build feed refreshes every 6 hours.</li>
           <li>Git carries history and review.</li>
         </ul>
@@ -528,9 +615,10 @@ const tools = [
   /* ── the matrix ──
      A real table: layers are row headers, containers are column headers, so a
      screen reader announces "Ontology / Notion / CRM" rather than a soup of
-     divs. It is wider than any phone, and squeezing seven columns into 380px
-     would destroy the comparison the table exists for — so it scrolls
-     horizontally with the layer column pinned. */
+     divs. Its width is set by the per-column minimums below and grows with
+     the number of containers, which is already past any viewport — squeezing
+     the columns down would destroy the comparison the table exists for, so it
+     scrolls horizontally with the layer column pinned. */
   .home-matrix-scroll {
     overflow-x: auto;
     border: 1px solid var(--border-subtle);
@@ -539,9 +627,15 @@ const tools = [
   }
   .home-matrix {
     border-collapse: collapse;
-    min-width: 900px;
     width: 100%;
     font-size: 0.82rem;
+  }
+  .home-matrix__caption {
+    caption-side: top;
+    text-align: left;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    font-size: 0.8rem;
+    color: var(--text-muted);
   }
   .home-matrix th,
   .home-matrix td {
@@ -580,15 +674,20 @@ const tools = [
     min-width: 12rem;
     font-weight: 500;
   }
+  /* Planned columns read lighter via a TOKEN, not opacity. Opacity here
+     stacked with the 0.6 that used to sit on `__none` and computed to ~0.49
+     effective — about 2:1 against this surface, far under AA. --text-muted
+     measures 5.05:1 on --surface-1, and the dashed rule plus the "planned"
+     chip carry the distinction that the fading was doing. */
   .home-matrix__col--planned,
   .home-matrix__td--planned {
     border-right-style: dashed;
-    opacity: 0.82;
+    color: var(--text-muted);
   }
   .home-matrix__name {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: var(--space-2);
     flex-wrap: wrap;
     font-family: var(--serif);
     font-size: var(--text-md);
@@ -599,7 +698,7 @@ const tools = [
   }
   .home-matrix__steward {
     display: block;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     font-family: var(--mono);
     font-size: 0.68rem;
     font-weight: 400;
@@ -608,11 +707,10 @@ const tools = [
   }
   .home-matrix__none {
     color: var(--text-muted);
-    opacity: 0.6;
   }
   .home-matrix__detail {
     display: block;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     font-family: var(--mono);
     font-size: 0.68rem;
     line-height: 1.45;
@@ -624,7 +722,7 @@ const tools = [
   }
   .home-matrix__owner {
     display: block;
-    margin-top: 4px;
+    margin-top: var(--space-1);
     font-family: var(--mono);
     font-size: 0.68rem;
     color: var(--text-muted);
@@ -635,7 +733,7 @@ const tools = [
     text-transform: uppercase;
     letter-spacing: 0.07em;
     border: 1px solid var(--border-default);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 1px 9px;
     color: var(--text-muted);
     white-space: nowrap;
@@ -735,14 +833,14 @@ const tools = [
     padding: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--space-2);
   }
   .home-schemas li {
     display: flex;
     gap: 6px;
     align-items: baseline;
     border: 1px solid var(--border-subtle);
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     padding: 2px 12px;
     font-size: 0.82rem;
   }
